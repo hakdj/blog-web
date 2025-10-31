@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function handlePaymentSucceeded(event: WebhookEvent, supabase: any) {
-  const { data } = event.data;
+  const data = event.data;
   
   // Update subscription status
   await supabase
@@ -89,7 +89,7 @@ async function handlePaymentSucceeded(event: WebhookEvent, supabase: any) {
 }
 
 async function handlePaymentFailed(event: WebhookEvent, supabase: any) {
-  const { data } = event.data;
+  const data = event.data;
   
   // Update subscription status
   await supabase
@@ -114,7 +114,7 @@ async function handlePaymentFailed(event: WebhookEvent, supabase: any) {
 }
 
 async function handleSubscriptionUpdated(event: WebhookEvent, supabase: any) {
-  const { data } = event.data;
+  const data = event.data;
   
   await supabase
     .from('subscriptions')
@@ -127,7 +127,7 @@ async function handleSubscriptionUpdated(event: WebhookEvent, supabase: any) {
 }
 
 async function handleSubscriptionCanceled(event: WebhookEvent, supabase: any) {
-  const { data } = event.data;
+  const data = event.data;
   
   await supabase
     .from('subscriptions')

@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export default async function DashboardPage() {
   const { user, subscription } = await requireSubscription();
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Get all posts (including locked ones for subscribers)
   const { data: posts } = await supabase

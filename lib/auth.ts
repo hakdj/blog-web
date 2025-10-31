@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
 export async function getUser() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   
   if (error) {
@@ -17,7 +17,7 @@ export async function getUserProfile() {
   const user = await getUser();
   if (!user) return null;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
@@ -36,7 +36,7 @@ export async function getActiveSubscription() {
   const user = await getUser();
   if (!user) return null;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: subscription, error } = await supabase
     .from('subscriptions')
     .select(`

@@ -3,7 +3,7 @@ import { getUser } from '@/lib/auth';
 import PricingCard from '@/components/PricingCard';
 
 export default async function PricingPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const user = await getUser();
 
   // Get available plans

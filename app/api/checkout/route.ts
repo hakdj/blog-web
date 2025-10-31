@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Get plan details
     const { data: plan, error: planError } = await supabase

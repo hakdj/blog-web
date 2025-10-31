@@ -11,7 +11,7 @@ interface PostPageProps {
 
 export default async function PostPage({ params }: PostPageProps) {
   const { id } = await params;
-  const supabase = createClient();
+  const supabase = await createClient();
   const user = await getUser();
   const subscription = await getActiveSubscription();
 

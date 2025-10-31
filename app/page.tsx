@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 
 export default async function HomePage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   // Get public posts
   const { data: posts } = await supabase
