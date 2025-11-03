@@ -50,14 +50,21 @@ export default function PricingPage() {
         console.log(`[${interval}] 가져온 플랜 개수:`, data.length);
         console.log(`[${interval}] 가져온 플랜:`, data.map(p => ({ tier: p.tier, interval: p.interval, name: p.name })));
         
-        // 클라이언트 사이드에서 interval 필터링 (이중 체크)
-        const filteredData = data.filter((plan: Plan) => {
-          const matches = plan.interval === interval;
+        // 클라이언트 사이드에서 interval 필터링 (이중 체크 - 문자열 비교 강화)
+        const filteredData = data.filter((plan: any) => {
+          const planInterval = String(plan.interval || '').toLowerCase().trim();
+          const targetInterval = String(interval).toLowerCase().trim();
+          const matches = planInterval === targetInterval;
+          
+          console.log(`🔍 [필터링 체크] ${plan.tier} - plan.interval: "${planInterval}" === "${targetInterval}": ${matches}`);
+          
           if (!matches) {
-            console.warn(`[필터링됨] ${plan.tier} 플랜 - 예상: ${interval}, 실제: ${plan.interval}`);
+            console.warn(`⚠️ [필터링됨] ${plan.tier} 플랜 - 예상: "${targetInterval}", 실제: "${planInterval}"`);
           }
           return matches;
         });
+        
+        console.log(`✅ [필터링 후] ${filteredData.length}개 플랜 남음 (원본: ${data.length}개)`);
 
         // tier 순서대로 정렬 (basic → starter → pro → enterprise)
         const tierOrder = { basic: 1, starter: 2, pro: 3, enterprise: 4 };
@@ -66,7 +73,14 @@ export default function PricingPage() {
           (tierOrder[b.tier as keyof typeof tierOrder] || 99)
         );
         
-        console.log(`[${interval}] 최종 표시할 플랜 개수:`, sortedData.length);
+        console.log(`🎯 [최종 설정] ${interval} 플랜 ${sortedData.length}개 표시 예정`);
+        console.log('🎯 [최종 플랜 목록]:', sortedData.map(p => `${p.tier} (${p.interval})`));
+        
+        // 최종 검증: 4개가 아니면 경고
+        if (sortedData.length !== 4) {
+          console.error(`❌ [오류] 예상 4개인데 ${sortedData.length}개가 표시됩니다!`);
+        }
+        
         setPlans(sortedData);
       } else {
         setPlans([]);
