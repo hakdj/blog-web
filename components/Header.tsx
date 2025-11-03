@@ -81,12 +81,20 @@ export default function Header() {
                 </div>
               </div>
             ) : (
-              <Link
-                href="/login"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-              >
-                로그인
-              </Link>
+              <div className="flex items-center space-x-3">
+                <Link
+                  href="/signup"
+                  className="text-gray-600 hover:text-gray-900 font-medium"
+                >
+                  회원가입
+                </Link>
+                <Link
+                  href="/login"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  로그인
+                </Link>
+              </div>
             )}
           </nav>
         </div>

@@ -48,6 +48,11 @@ export default function LoginPage() {
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+          <div className="text-center">
+            <Link href="/signup" className="text-sm text-blue-600 hover:text-blue-500">
+              회원가입
+            </Link>
+          </div>
           <div>
             <label htmlFor="email" className="sr-only">
               이메일 주소

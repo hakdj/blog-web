@@ -1,0 +1,3 @@
+[33m40e252f[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m docs: Add test checklist
+[33m855c7fc[m fix: Resolve TypeScript errors for Next.js 16 compatibility
+[33m716e0c4[m feat: Complete blog-web2 structure with Supabase, Portone, and authentication
