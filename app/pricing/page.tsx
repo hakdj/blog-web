@@ -45,15 +45,28 @@ export default function PricingPage() {
         return;
       }
 
-      if (data) {
+      if (data && Array.isArray(data)) {
+        // 디버깅: 가져온 데이터 확인
+        console.log(`[${interval}] 가져온 플랜 개수:`, data.length);
+        console.log(`[${interval}] 가져온 플랜:`, data.map(p => ({ tier: p.tier, interval: p.interval, name: p.name })));
+        
+        // 클라이언트 사이드에서 interval 필터링 (이중 체크)
+        const filteredData = data.filter((plan: Plan) => {
+          const matches = plan.interval === interval;
+          if (!matches) {
+            console.warn(`[필터링됨] ${plan.tier} 플랜 - 예상: ${interval}, 실제: ${plan.interval}`);
+          }
+          return matches;
+        });
+
         // tier 순서대로 정렬 (basic → starter → pro → enterprise)
         const tierOrder = { basic: 1, starter: 2, pro: 3, enterprise: 4 };
-        const sortedData = data
-          .filter((plan: Plan) => plan.interval === interval) // 클라이언트 사이드 추가 필터링
-          .sort((a, b) => 
-            (tierOrder[a.tier as keyof typeof tierOrder] || 99) - 
-            (tierOrder[b.tier as keyof typeof tierOrder] || 99)
-          );
+        const sortedData = filteredData.sort((a, b) => 
+          (tierOrder[a.tier as keyof typeof tierOrder] || 99) - 
+          (tierOrder[b.tier as keyof typeof tierOrder] || 99)
+        );
+        
+        console.log(`[${interval}] 최종 표시할 플랜 개수:`, sortedData.length);
         setPlans(sortedData);
       } else {
         setPlans([]);
@@ -180,7 +193,7 @@ export default function PricingPage() {
                       </span>
                       {plan.price > 0 && (
                         <span className="text-gray-600 text-sm ml-1">
-                          / {isMonthly ? '월' : '년'}
+                          / {plan.interval === 'month' ? '월' : '년'}
                         </span>
                       )}
                     </div>
