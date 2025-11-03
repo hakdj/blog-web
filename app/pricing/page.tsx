@@ -28,24 +28,35 @@ export default function PricingPage() {
 
   useEffect(() => {
     const fetchPlans = async () => {
+      setIsLoading(true);
       const supabase = createClient();
       const interval = isMonthly ? 'month' : 'year';
       
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('plans')
         .select('*')
         .eq('interval', interval)
         .eq('is_active', true)
-        .order('price', { ascending: true });
+        .order('price', { ascending: true }');
+
+      if (error) {
+        console.error('플랜 가져오기 오류:', error);
+        setIsLoading(false);
+        return;
+      }
 
       if (data) {
         // tier 순서대로 정렬 (basic → starter → pro → enterprise)
         const tierOrder = { basic: 1, starter: 2, pro: 3, enterprise: 4 };
-        const sortedData = data.sort((a, b) => 
-          (tierOrder[a.tier as keyof typeof tierOrder] || 99) - 
-          (tierOrder[b.tier as keyof typeof tierOrder] || 99)
-        );
+        const sortedData = data
+          .filter((plan: Plan) => plan.interval === interval) // 클라이언트 사이드 추가 필터링
+          .sort((a, b) => 
+            (tierOrder[a.tier as keyof typeof tierOrder] || 99) - 
+            (tierOrder[b.tier as keyof typeof tierOrder] || 99)
+          );
         setPlans(sortedData);
+      } else {
+        setPlans([]);
       }
       setIsLoading(false);
     };
