@@ -1,40 +1,50 @@
-import { requireSubscription } from '@/lib/auth';
+import { requireAuth, getActiveSubscription } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 
 export default async function DashboardPage() {
-  const { user, subscription } = await requireSubscription();
+  const user = await requireAuth();
+  const subscription = await getActiveSubscription();
   const supabase = await createClient();
 
-  // Get plan features
-  const plan = subscription.plan as any;
+  // Get plan features if subscription exists
+  const plan = subscription?.plan as any;
   const features = plan?.features || {};
   
-  // Get usage statistics for current month
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  
-  const { data: usageLogs } = await supabase
-    .from('usage_logs')
-    .select('usage_type, count')
-    .eq('user_id', user.id)
-    .eq('subscription_id', subscription.id)
-    .gte('created_at', startOfMonth);
+  // Get usage statistics for current month (only if subscription exists)
+  let agentUsage = 0;
+  let bulkUsage = 0;
+  let agentLimit = 0;
+  let bulkLimit = 0;
+  let agentRemaining = 0;
+  let bulkRemaining = 0;
 
-  // Calculate usage
-  const agentUsage = usageLogs
-    ?.filter(log => log.usage_type === 'agent')
-    .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
-  
-  const bulkUsage = usageLogs
-    ?.filter(log => log.usage_type === 'bulk')
-    .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
+  if (subscription) {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    
+    const { data: usageLogs } = await supabase
+      .from('usage_logs')
+      .select('usage_type, count')
+      .eq('user_id', user.id)
+      .eq('subscription_id', subscription.id)
+      .gte('created_at', startOfMonth);
 
-  const agentLimit = features.service_uses_per_month || 0;
-  const bulkLimit = features.bulk_mode || 0;
-  
-  const agentRemaining = Math.max(0, agentLimit - agentUsage);
-  const bulkRemaining = Math.max(0, bulkLimit - bulkUsage);
+    // Calculate usage
+    agentUsage = usageLogs
+      ?.filter(log => log.usage_type === 'agent')
+      .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
+    
+    bulkUsage = usageLogs
+      ?.filter(log => log.usage_type === 'bulk')
+      .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
+
+    agentLimit = features.service_uses_per_month || 0;
+    bulkLimit = features.bulk_mode || 0;
+    
+    agentRemaining = Math.max(0, agentLimit - agentUsage);
+    bulkRemaining = Math.max(0, bulkLimit - bulkUsage);
+  }
 
   // Get user's blog posts (created by AI)
   const { data: blogPosts } = await supabase
@@ -62,117 +72,154 @@ export default async function DashboardPage() {
         <p className="text-gray-600">
           안녕하세요, {user.email}님! AI 블로그 글을 생성하고 관리하세요.
         </p>
+        {!subscription && (
+          <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-yellow-800 text-sm">
+              구독이 필요합니다. <Link href="/pricing" className="font-semibold underline">요금제를 선택하세요</Link>
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Quick Actions */}
-      <div className="grid md:grid-cols-2 gap-4 mb-8">
-        <Link
-          href="/dashboard/create"
-          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg p-6 hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-bold mb-2">에이전트 모드</h3>
-              <p className="text-purple-100 text-sm">고품질 블로그 글 1개 생성</p>
+      {subscription ? (
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
+          <Link
+            href="/dashboard/create"
+            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg p-6 hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold mb-2">에이전트 모드</h3>
+                <p className="text-purple-100 text-sm">고품질 블로그 글 1개 생성</p>
+              </div>
+              <div className="text-3xl">✨</div>
             </div>
-            <div className="text-3xl">✨</div>
-          </div>
-        </Link>
-        <Link
-          href="/dashboard/create?mode=bulk"
-          className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg p-6 hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg hover:shadow-xl"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-bold mb-2">대량생성 모드</h3>
-              <p className="text-blue-100 text-sm">SEO 블로그 글 30개 세트 생성</p>
+          </Link>
+          <Link
+            href="/dashboard/create?mode=bulk"
+            className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg p-6 hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg hover:shadow-xl"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold mb-2">대량생성 모드</h3>
+                <p className="text-blue-100 text-sm">SEO 블로그 글 30개 세트 생성</p>
+              </div>
+              <div className="text-3xl">🚀</div>
             </div>
-            <div className="text-3xl">🚀</div>
-          </div>
-        </Link>
-      </div>
+          </Link>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-md p-8 mb-8 text-center">
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">구독이 필요합니다</h3>
+          <p className="text-gray-600 mb-4">AI 블로그 글 생성 기능을 사용하려면 구독이 필요합니다.</p>
+          <Link
+            href="/pricing"
+            className="inline-block bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 transition-all"
+          >
+            요금제 보기
+          </Link>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Left Column - Subscription & Usage */}
         <div className="lg:col-span-1 space-y-6">
           {/* Subscription Status */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              구독 상태
-            </h2>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">플랜:</span>
-                <span className="font-medium">
-                  {plan?.name || '알 수 없음'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">상태:</span>
-                <span className={`font-medium ${
-                  subscription.status === 'active' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {subscription.status === 'active' ? '활성' : subscription.status}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">만료일:</span>
-                <span className="font-medium">
-                  {new Date(subscription.current_period_end).toLocaleDateString('ko-KR')}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Usage Statistics */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              이번 달 사용량
-            </h2>
-            <div className="space-y-4">
-              {/* Agent Mode Usage */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">에이전트 모드</span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {agentUsage} / {agentLimit}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all ${
-                      agentRemaining > 0 ? 'bg-purple-500' : 'bg-red-500'
-                    }`}
-                    style={{ width: `${Math.min(100, (agentUsage / agentLimit) * 100)}%` }}
-                  />
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  남은 횟수: {agentRemaining}회
+          {subscription ? (
+            <>
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  구독 상태
+                </h2>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">플랜:</span>
+                    <span className="font-medium">
+                      {plan?.name || '알 수 없음'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">상태:</span>
+                    <span className={`font-medium ${
+                      subscription.status === 'active' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {subscription.status === 'active' ? '활성' : subscription.status}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">만료일:</span>
+                    <span className="font-medium">
+                      {new Date(subscription.current_period_end).toLocaleDateString('ko-KR')}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Bulk Mode Usage */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">대량생성 모드</span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {bulkUsage} / {bulkLimit}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all ${
-                      bulkRemaining > 0 ? 'bg-blue-500' : 'bg-red-500'
-                    }`}
-                    style={{ width: `${Math.min(100, (bulkUsage / bulkLimit) * 100)}%` }}
-                  />
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  남은 세트: {Math.floor(bulkRemaining / 30)}개
+              {/* Usage Statistics */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  이번 달 사용량
+                </h2>
+                <div className="space-y-4">
+                  {/* Agent Mode Usage */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">에이전트 모드</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {agentUsage} / {agentLimit}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all ${
+                          agentRemaining > 0 ? 'bg-purple-500' : 'bg-red-500'
+                        }`}
+                        style={{ width: `${Math.min(100, agentLimit > 0 ? (agentUsage / agentLimit) * 100 : 0)}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      남은 횟수: {agentRemaining}회
+                    </div>
+                  </div>
+
+                  {/* Bulk Mode Usage */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">대량생성 모드</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {bulkUsage} / {bulkLimit}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all ${
+                          bulkRemaining > 0 ? 'bg-blue-500' : 'bg-red-500'
+                        }`}
+                        style={{ width: `${Math.min(100, bulkLimit > 0 ? (bulkUsage / bulkLimit) * 100 : 0)}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      남은 세트: {Math.floor(bulkRemaining / 30)}개
+                    </div>
+                  </div>
                 </div>
               </div>
+            </>
+          ) : (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                구독 상태
+              </h2>
+              <p className="text-gray-600 text-sm mb-4">구독이 없습니다.</p>
+              <Link
+                href="/pricing"
+                className="inline-block w-full text-center bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 transition-all"
+              >
+                구독하기
+              </Link>
             </div>
-          </div>
+          )}
 
           {/* Recent Payments */}
           <div className="bg-white rounded-lg shadow-md p-6">
