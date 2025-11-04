@@ -4,11 +4,11 @@ import Link from 'next/link';
 export default async function HomePage() {
   const supabase = await createClient();
   
-  // Get public posts
+  // Get public blog posts (published status)
   const { data: posts } = await supabase
-    .from('posts')
-    .select('id, title, content, is_locked, created_at')
-    .eq('is_locked', false)
+    .from('blog_posts')
+    .select('id, title, content, status, created_at, generated_by')
+    .eq('status', 'published')
     .order('created_at', { ascending: false })
     .limit(5);
 
@@ -46,18 +46,25 @@ export default async function HomePage() {
                 key={post.id}
                 className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
               >
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  {post.title}
-                </h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    {post.title || '제목 없음'}
+                  </h3>
+                  {post.generated_by && (
+                    <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                      {post.generated_by === 'agent' ? 'AI 에이전트' : 'AI 대량생성'}
+                    </span>
+                  )}
+                </div>
                 <p className="text-gray-600 mb-4 line-clamp-3">
-                  {post.content}
+                  {post.content?.substring(0, 300) || '내용 없음'}...
                 </p>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">
                     {new Date(post.created_at).toLocaleDateString('ko-KR')}
                   </span>
                   <Link
-                    href={`/post/${post.id}`}
+                    href={`/dashboard/posts/${post.id}`}
                     className="text-blue-600 hover:text-blue-800 font-medium"
                   >
                     읽기 →
