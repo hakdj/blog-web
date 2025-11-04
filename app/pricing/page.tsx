@@ -37,7 +37,7 @@ export default function PricingPage() {
         .select('*')
         .eq('interval', interval)
         .eq('is_active', true)
-        .order('price', { ascending: true }');
+        .order('price', { ascending: true });
 
       if (error) {
         console.error('플랜 가져오기 오류:', error);
