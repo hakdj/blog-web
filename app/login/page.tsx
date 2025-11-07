@@ -80,7 +80,16 @@ function LoginForm() {
         });
 
         if (error) {
-          setMessage('로그인 중 오류가 발생했습니다: ' + error.message);
+          // 에러 메시지를 더 친절하게 표시
+          let errorMessage = '로그인에 실패했습니다. ';
+          if (error.message.includes('Invalid login credentials')) {
+            errorMessage += '이메일 또는 비밀번호가 올바르지 않습니다. ';
+            errorMessage += '이메일 인증이 완료되지 않았을 수 있습니다. ';
+            errorMessage += '이메일 링크 로그인을 사용하시거나 이메일을 확인해주세요.';
+          } else {
+            errorMessage += error.message;
+          }
+          setMessage(errorMessage);
         } else if (data.user) {
           router.push('/dashboard');
         }
