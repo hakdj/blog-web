@@ -18,52 +18,89 @@ function LoginForm() {
 
   // 이미 로그인된 사용자 확인 및 이메일 링크 처리
   useEffect(() => {
+    let subscription: { unsubscribe: () => void } | null = null;
+
     const checkAuth = async () => {
       try {
-        // URL에 인증 토큰이 있는지 확인 (이메일 링크 클릭 시)
-        // Hash fragment 확인
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const hashAccessToken = hashParams.get('access_token');
-        const hashRefreshToken = hashParams.get('refresh_token');
-        
-        // Query parameter 확인
-        const queryToken = searchParams.get('token');
-        const queryType = searchParams.get('type');
-
-        // Hash fragment에 토큰이 있는 경우 (일반적인 Supabase 이메일 링크)
-        if (hashAccessToken && hashRefreshToken) {
-          const { error } = await supabase.auth.setSession({
-            access_token: hashAccessToken,
-            refresh_token: hashRefreshToken,
-          });
-
-          if (!error) {
-            // 세션 설정 후 대시보드로 이동
+        // Supabase 인증 상태 변경 리스너 설정
+        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log('Auth state changed:', event, session?.user?.email);
+          
+          if (event === 'SIGNED_IN' && session?.user) {
+            // 로그인 성공 시 대시보드로 이동
             router.push('/dashboard');
-            return;
+          }
+        });
+        subscription = authSubscription;
+
+        // URL에 인증 토큰이 있는지 확인 (이메일 링크 클릭 시)
+        // Hash fragment 확인 (Supabase 이메일 링크는 보통 hash로 옴)
+        if (window.location.hash) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const hashAccessToken = hashParams.get('access_token');
+          const hashRefreshToken = hashParams.get('refresh_token');
+          const hashType = hashParams.get('type');
+
+          console.log('Hash params found:', { hashAccessToken: !!hashAccessToken, hashRefreshToken: !!hashRefreshToken, hashType });
+
+          // Hash fragment에 토큰이 있는 경우
+          if (hashAccessToken && hashRefreshToken) {
+            console.log('Setting session from hash...');
+            const { data, error } = await supabase.auth.setSession({
+              access_token: hashAccessToken,
+              refresh_token: hashRefreshToken,
+            });
+
+            if (error) {
+              console.error('Session set error:', error);
+              setMessage('인증 중 오류가 발생했습니다: ' + error.message);
+              setCheckingAuth(false);
+              return;
+            }
+
+            if (data.session && data.user) {
+              console.log('Session set successfully, redirecting...');
+              // Hash 제거
+              window.history.replaceState(null, '', window.location.pathname);
+              router.push('/dashboard');
+              return;
+            }
           }
         }
 
-        // Query parameter에 토큰이 있는 경우
+        // Query parameter 확인
+        const queryToken = searchParams.get('token');
+        const queryType = searchParams.get('type');
+        
         if (queryToken) {
+          console.log('Query token found, waiting for Supabase to process...');
           // Supabase가 자동으로 처리할 수 있도록 기다림
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         // 이미 로그인된 사용자인지 확인
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (user) {
+          console.log('User already logged in:', user.email);
           router.push('/dashboard');
           return;
         }
       } catch (error) {
         console.error('Auth check error:', error);
+        setMessage('인증 확인 중 오류가 발생했습니다.');
       } finally {
         setCheckingAuth(false);
       }
     };
 
     checkAuth();
+
+    // Cleanup 함수
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, [router, supabase, searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
