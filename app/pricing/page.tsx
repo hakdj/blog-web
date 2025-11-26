@@ -17,7 +17,7 @@ interface Plan {
     delivery_fee?: number;
     free_trial?: boolean;
     discount_rate?: number;
-  };
+  } | string | null | any;
   is_active: boolean;
 }
 
