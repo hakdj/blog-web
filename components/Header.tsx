@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [nickname, setNickname] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // 초기값을 false로 변경
   const supabase = createClient();
   const router = useRouter();
 
@@ -19,10 +19,7 @@ export default function Header() {
         const { data: { user } } = await supabase.auth.getUser();
         setUser(user);
         
-        // 로딩 상태를 먼저 해제 (버튼이 보이도록)
-        setIsLoading(false);
-        
-        // 프로필에서 닉네임 가져오기 (비동기로 처리)
+        // 프로필에서 닉네임 가져오기 (비동기로 처리, 에러 무시)
         if (user) {
           supabase
             .from('profiles')
@@ -32,18 +29,17 @@ export default function Header() {
             .then(({ data: profile }) => {
               setNickname(profile?.nickname || null);
             })
-            .catch((profileError) => {
-              console.error('Profile fetch error:', profileError);
+            .catch(() => {
+              // 에러는 무시하고 계속 진행
               setNickname(null);
             });
         } else {
           setNickname(null);
         }
       } catch (error) {
-        console.error('Get user error:', error);
+        // 에러 발생해도 사용자는 null로 설정하고 계속 진행
         setUser(null);
         setNickname(null);
-        setIsLoading(false);
       }
     };
 
@@ -51,32 +47,24 @@ export default function Header() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        try {
-          setUser(session?.user ?? null);
-          
-          // 로딩 상태를 먼저 해제
-          setIsLoading(false);
-          
-          // 프로필에서 닉네임 가져오기 (비동기로 처리)
-          if (session?.user) {
-            supabase
-              .from('profiles')
-              .select('nickname')
-              .eq('id', session.user.id)
-              .single()
-              .then(({ data: profile }) => {
-                setNickname(profile?.nickname || null);
-              })
-              .catch((profileError) => {
-                console.error('Profile fetch error:', profileError);
-                setNickname(null);
-              });
-          } else {
-            setNickname(null);
-          }
-        } catch (error) {
-          console.error('Auth state change error:', error);
-          setIsLoading(false);
+        setUser(session?.user ?? null);
+        
+        // 프로필에서 닉네임 가져오기 (비동기로 처리, 에러 무시)
+        if (session?.user) {
+          supabase
+            .from('profiles')
+            .select('nickname')
+            .eq('id', session.user.id)
+            .single()
+            .then(({ data: profile }) => {
+              setNickname(profile?.nickname || null);
+            })
+            .catch(() => {
+              // 에러는 무시하고 계속 진행
+              setNickname(null);
+            });
+        } else {
+          setNickname(null);
         }
       }
     );
