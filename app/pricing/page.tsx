@@ -30,8 +30,16 @@ export default function PricingPage() {
 
   useEffect(() => {
     const fetchPlans = async () => {
+      setIsLoading(true);
+      
+      // 타임아웃 설정 (10초)
+      const timeoutId = setTimeout(() => {
+        console.error('플랜 가져오기 타임아웃');
+        setPlans([]);
+        setIsLoading(false);
+      }, 10000);
+
       try {
-        setIsLoading(true);
         const supabase = createClient();
         const interval = isMonthly ? 'month' : 'year';
         
@@ -42,6 +50,8 @@ export default function PricingPage() {
           .eq('is_active', true)
           .order('price', { ascending: true });
 
+        clearTimeout(timeoutId);
+
         if (error) {
           console.error('플랜 가져오기 오류:', error);
           setPlans([]);
@@ -50,12 +60,12 @@ export default function PricingPage() {
         }
 
         if (data && Array.isArray(data)) {
-          // 빌구독은 1개 플랜만 표시
           setPlans(data);
         } else {
           setPlans([]);
         }
       } catch (err) {
+        clearTimeout(timeoutId);
         console.error('플랜 가져오기 중 예외:', err);
         setPlans([]);
       } finally {
@@ -78,7 +88,7 @@ export default function PricingPage() {
           .select('*')
           .eq('interval', 'month')
           .eq('is_active', true)
-          .maybeSingle(); // single() 대신 maybeSingle() 사용 (데이터 없어도 에러 안남)
+          .maybeSingle();
         
         if (error) {
           console.error('월간 플랜 가져오기 오류:', error);
