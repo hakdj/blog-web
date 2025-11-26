@@ -97,7 +97,7 @@ export default function Header() {
                 </Link>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">
-                    {nickname || user.email}
+                    {nickname || '사용자'}
                   </span>
                   <button
                     onClick={handleLogout}

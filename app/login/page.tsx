@@ -22,13 +22,21 @@ function LoginForm() {
 
     const checkAuth = async () => {
       try {
-        // Supabase 인증 상태 변경 리스너 설정
+        // Supabase 인증 상태 변경 리스너 설정 (이메일 링크 로그인용)
+        // 이 리스너는 이메일 링크 로그인 완료 시에만 작동하도록 제한
         const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
           console.log('Auth state changed:', event, session?.user?.email);
           
+          // 이메일 링크로 로그인한 경우에만 리다이렉트
+          // hash나 token이 있을 때만 자동 리다이렉트
           if (event === 'SIGNED_IN' && session?.user) {
-            // 로그인 성공 시 대시보드로 이동
-            router.push('/dashboard');
+            const hasHash = window.location.hash && window.location.hash.includes('access_token');
+            const hasToken = searchParams.get('token');
+            
+            if (hasHash || hasToken) {
+              // 이메일 링크로 로그인한 경우에만 대시보드로 이동
+              router.push('/dashboard');
+            }
           }
         });
         subscription = authSubscription;
@@ -78,9 +86,12 @@ function LoginForm() {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        // 이미 로그인된 사용자인지 확인
+        // 이미 로그인된 사용자인지 확인 (페이지 로드 시에만)
+        // 사용자가 직접 로그인 페이지에 접근한 경우에만 체크
+        // 입력 필드 클릭 등으로는 리다이렉트하지 않음
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (user) {
+        if (user && !window.location.hash && !searchParams.get('token')) {
+          // 이메일 링크나 토큰이 없는 경우에만 자동 리다이렉트
           console.log('User already logged in:', user.email);
           router.push('/dashboard');
           return;
