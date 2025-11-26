@@ -21,18 +21,18 @@ export default function Header() {
         
         // 프로필에서 닉네임 가져오기 (비동기로 처리, 에러 무시)
         if (user) {
-          supabase
-            .from('profiles')
-            .select('nickname')
-            .eq('id', user.id)
-            .single()
-            .then(({ data: profile }) => {
-              setNickname(profile?.nickname || null);
-            })
-            .catch(() => {
-              // 에러는 무시하고 계속 진행
-              setNickname(null);
-            });
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('nickname')
+              .eq('id', user.id)
+              .single();
+            
+            setNickname(profile?.nickname || null);
+          } catch {
+            // 에러는 무시하고 계속 진행
+            setNickname(null);
+          }
         } else {
           setNickname(null);
         }
@@ -51,18 +51,18 @@ export default function Header() {
         
         // 프로필에서 닉네임 가져오기 (비동기로 처리, 에러 무시)
         if (session?.user) {
-          supabase
-            .from('profiles')
-            .select('nickname')
-            .eq('id', session.user.id)
-            .single()
-            .then(({ data: profile }) => {
-              setNickname(profile?.nickname || null);
-            })
-            .catch(() => {
-              // 에러는 무시하고 계속 진행
-              setNickname(null);
-            });
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('nickname')
+              .eq('id', session.user.id)
+              .single();
+            
+            setNickname(profile?.nickname || null);
+          } catch {
+            // 에러는 무시하고 계속 진행
+            setNickname(null);
+          }
         } else {
           setNickname(null);
         }
