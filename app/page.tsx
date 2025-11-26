@@ -26,11 +26,6 @@ export default async function HomePage() {
           </Link>
         </div>
       </div>
-
-      {/* 최신 포스트 섹션 - 추후 추가 예정 */}
-      <div className="grid gap-8">
-        {/* 콘텐츠 영역 - 추후 추가 예정 */}
-      </div>
     </div>
   );
 }
