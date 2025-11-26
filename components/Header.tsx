@@ -19,20 +19,23 @@ export default function Header() {
         const { data: { user } } = await supabase.auth.getUser();
         setUser(user);
         
-        // 프로필에서 닉네임 가져오기
+        // 로딩 상태를 먼저 해제 (버튼이 보이도록)
+        setIsLoading(false);
+        
+        // 프로필에서 닉네임 가져오기 (비동기로 처리)
         if (user) {
-          try {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('nickname')
-              .eq('id', user.id)
-              .single();
-            
-            setNickname(profile?.nickname || null);
-          } catch (profileError) {
-            console.error('Profile fetch error:', profileError);
-            setNickname(null);
-          }
+          supabase
+            .from('profiles')
+            .select('nickname')
+            .eq('id', user.id)
+            .single()
+            .then(({ data: profile }) => {
+              setNickname(profile?.nickname || null);
+            })
+            .catch((profileError) => {
+              console.error('Profile fetch error:', profileError);
+              setNickname(null);
+            });
         } else {
           setNickname(null);
         }
@@ -40,7 +43,6 @@ export default function Header() {
         console.error('Get user error:', error);
         setUser(null);
         setNickname(null);
-      } finally {
         setIsLoading(false);
       }
     };
@@ -52,26 +54,28 @@ export default function Header() {
         try {
           setUser(session?.user ?? null);
           
-          // 프로필에서 닉네임 가져오기
+          // 로딩 상태를 먼저 해제
+          setIsLoading(false);
+          
+          // 프로필에서 닉네임 가져오기 (비동기로 처리)
           if (session?.user) {
-            try {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('nickname')
-                .eq('id', session.user.id)
-                .single();
-              
-              setNickname(profile?.nickname || null);
-            } catch (profileError) {
-              console.error('Profile fetch error:', profileError);
-              setNickname(null);
-            }
+            supabase
+              .from('profiles')
+              .select('nickname')
+              .eq('id', session.user.id)
+              .single()
+              .then(({ data: profile }) => {
+                setNickname(profile?.nickname || null);
+              })
+              .catch((profileError) => {
+                console.error('Profile fetch error:', profileError);
+                setNickname(null);
+              });
           } else {
             setNickname(null);
           }
         } catch (error) {
           console.error('Auth state change error:', error);
-        } finally {
           setIsLoading(false);
         }
       }
