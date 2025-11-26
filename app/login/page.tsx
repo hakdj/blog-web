@@ -23,78 +23,73 @@ function LoginForm() {
     const checkAuth = async () => {
       try {
         // Supabase 인증 상태 변경 리스너 설정 (이메일 링크 로그인용)
-        // 이 리스너는 이메일 링크 로그인 완료 시에만 작동하도록 제한
         const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
           console.log('Auth state changed:', event, session?.user?.email);
           
           // 이메일 링크로 로그인한 경우에만 리다이렉트
-          // hash나 token이 있을 때만 자동 리다이렉트
           if (event === 'SIGNED_IN' && session?.user) {
-            const hasHash = window.location.hash && window.location.hash.includes('access_token');
-            const hasToken = searchParams.get('token');
-            
-            if (hasHash || hasToken) {
-              // 이메일 링크로 로그인한 경우에만 대시보드로 이동
-              router.push('/dashboard');
+            try {
+              const hasHash = typeof window !== 'undefined' && window.location.hash && window.location.hash.includes('access_token');
+              const hasToken = searchParams?.get('token');
+              
+              if (hasHash || hasToken) {
+                router.push('/dashboard');
+              }
+            } catch (err) {
+              console.error('Auth state change error:', err);
             }
           }
         });
         subscription = authSubscription;
 
         // URL에 인증 토큰이 있는지 확인 (이메일 링크 클릭 시)
-        // Hash fragment 확인 (Supabase 이메일 링크는 보통 hash로 옴)
-        if (window.location.hash) {
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          const hashAccessToken = hashParams.get('access_token');
-          const hashRefreshToken = hashParams.get('refresh_token');
-          const hashType = hashParams.get('type');
+        if (typeof window !== 'undefined' && window.location.hash) {
+          try {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const hashAccessToken = hashParams.get('access_token');
+            const hashRefreshToken = hashParams.get('refresh_token');
 
-          console.log('Hash params found:', { hashAccessToken: !!hashAccessToken, hashRefreshToken: !!hashRefreshToken, hashType });
+            if (hashAccessToken && hashRefreshToken) {
+              const { data, error } = await supabase.auth.setSession({
+                access_token: hashAccessToken,
+                refresh_token: hashRefreshToken,
+              });
 
-          // Hash fragment에 토큰이 있는 경우
-          if (hashAccessToken && hashRefreshToken) {
-            console.log('Setting session from hash...');
-            const { data, error } = await supabase.auth.setSession({
-              access_token: hashAccessToken,
-              refresh_token: hashRefreshToken,
-            });
+              if (error) {
+                console.error('Session set error:', error);
+                setMessage('인증 중 오류가 발생했습니다: ' + error.message);
+                setCheckingAuth(false);
+                return;
+              }
 
-            if (error) {
-              console.error('Session set error:', error);
-              setMessage('인증 중 오류가 발생했습니다: ' + error.message);
-              setCheckingAuth(false);
-              return;
+              if (data.session && data.user) {
+                window.history.replaceState(null, '', window.location.pathname);
+                router.push('/dashboard');
+                return;
+              }
             }
-
-            if (data.session && data.user) {
-              console.log('Session set successfully, redirecting...');
-              // Hash 제거
-              window.history.replaceState(null, '', window.location.pathname);
-              router.push('/dashboard');
-              return;
-            }
+          } catch (err) {
+            console.error('Hash processing error:', err);
           }
         }
 
         // Query parameter 확인
-        const queryToken = searchParams.get('token');
-        const queryType = searchParams.get('type');
-        
+        const queryToken = searchParams?.get('token');
         if (queryToken) {
-          console.log('Query token found, waiting for Supabase to process...');
-          // Supabase가 자동으로 처리할 수 있도록 기다림
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        // 이미 로그인된 사용자인지 확인 (페이지 로드 시에만)
-        // 사용자가 직접 로그인 페이지에 접근한 경우에만 체크
-        // 입력 필드 클릭 등으로는 리다이렉트하지 않음
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (user && !window.location.hash && !searchParams.get('token')) {
+        // 이미 로그인된 사용자인지 확인
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const hasHash = typeof window !== 'undefined' && window.location.hash;
+          const hasToken = searchParams?.get('token');
+          
           // 이메일 링크나 토큰이 없는 경우에만 자동 리다이렉트
-          console.log('User already logged in:', user.email);
-          router.push('/dashboard');
-          return;
+          if (!hasHash && !hasToken) {
+            router.push('/dashboard');
+            return;
+          }
         }
       } catch (error) {
         console.error('Auth check error:', error);

@@ -15,43 +15,65 @@ export default function Header() {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      // 프로필에서 닉네임 가져오기
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('nickname')
-          .eq('id', user.id)
-          .single();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
         
-        setNickname(profile?.nickname || null);
+        // 프로필에서 닉네임 가져오기
+        if (user) {
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('nickname')
+              .eq('id', user.id)
+              .single();
+            
+            setNickname(profile?.nickname || null);
+          } catch (profileError) {
+            console.error('Profile fetch error:', profileError);
+            setNickname(null);
+          }
+        } else {
+          setNickname(null);
+        }
+      } catch (error) {
+        console.error('Get user error:', error);
+        setUser(null);
+        setNickname(null);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
 
     getUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null);
-        
-        // 프로필에서 닉네임 가져오기
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('nickname')
-            .eq('id', session.user.id)
-            .single();
+        try {
+          setUser(session?.user ?? null);
           
-          setNickname(profile?.nickname || null);
-        } else {
-          setNickname(null);
+          // 프로필에서 닉네임 가져오기
+          if (session?.user) {
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('nickname')
+                .eq('id', session.user.id)
+                .single();
+              
+              setNickname(profile?.nickname || null);
+            } catch (profileError) {
+              console.error('Profile fetch error:', profileError);
+              setNickname(null);
+            }
+          } else {
+            setNickname(null);
+          }
+        } catch (error) {
+          console.error('Auth state change error:', error);
+        } finally {
+          setIsLoading(false);
         }
-        
-        setIsLoading(false);
       }
     );
 
