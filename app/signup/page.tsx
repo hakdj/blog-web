@@ -53,6 +53,27 @@ export default function SignupPage() {
       return;
     }
 
+    try {
+      // Supabase 클라이언트 초기화
+      const supabase = createClient();
+
+      // 닉네임 중복 체크
+      const { data: existingNickname } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('nickname', nickname.trim())
+        .maybeSingle();
+
+      if (existingNickname) {
+        setError('이미 사용 중인 닉네임입니다. 다른 닉네임을 선택해주세요.');
+        setIsLoading(false);
+        return;
+      }
+    } catch (nicknameCheckError) {
+      console.error('닉네임 중복 체크 오류:', nicknameCheckError);
+      // 중복 체크 실패해도 계속 진행 (서버에서도 체크됨)
+    }
+
     // 주소 필수 확인
     if (!postalCode || !postalCode.trim()) {
       setError('우편번호를 입력해주세요.');
@@ -238,7 +259,7 @@ export default function SignupPage() {
             회원가입
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            빌구독 서비스를 시작하세요
+            레트로게임의 모든 것을 한 곳에서
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSignup}>

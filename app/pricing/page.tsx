@@ -152,7 +152,7 @@ export default function PricingPage() {
             빌구독 요금제
           </h1>
           <p className="text-lg text-gray-600 mb-8">
-            필요한 건 빌리고, 생활은 가볍게
+            레트로게임, 정보, 리뷰를 한 곳에서
           </p>
 
           {/* 월간/연간 토글 - 참고 사이트 스타일 */}
@@ -267,28 +267,28 @@ export default function PricingPage() {
                         <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>대여 가능 상품: {features.rental_limit || 1}개</span>
+                        <span>레트로게임 플레이</span>
                       </div>
                       
                       <div className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>전체 카테고리 이용 가능</span>
+                        <span>레트로게임 구매</span>
                       </div>
                       
                       <div className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>배송비 무료</span>
+                        <span>게임 정보 및 리뷰</span>
                       </div>
                       
                       <div className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>간편한 반납 시스템</span>
+                        <span>레트로게임 굿즈 구매</span>
                       </div>
                     </div>
 
@@ -313,9 +313,9 @@ export default function PricingPage() {
         {/* 하단 설명 */}
         <div className="mt-12 text-center">
           <p className="text-sm text-gray-600 max-w-3xl mx-auto">
-            구독으로 필요한 물건을 빌리고, 쓰고, 반납하는 새로운 대여 서비스입니다.
+            레트로게임 플레이, 게임 구매, 정보 및 리뷰를 한 곳에서 즐기세요.
             <br />
-            연간 구독 시 15% 할인 혜택을 받으실 수 있습니다.
+            연간 구독 시 16% 할인 혜택을 받으실 수 있습니다.
           </p>
         </div>
       </div>
