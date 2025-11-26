@@ -137,7 +137,7 @@ export default function SignupPage() {
           .eq('id', data.user.id)
           .single();
 
-        // 프로필이 없으면 생성, 있으면 닉네임 업데이트
+        // 프로필이 없으면 생성, 있으면 정보 업데이트
         if (!existingProfile) {
           const { error: profileError } = await supabase
             .from('profiles')
@@ -145,6 +145,11 @@ export default function SignupPage() {
               id: data.user.id,
               email: data.user.email || email,
               nickname: nickname.trim(),
+              postal_code: postalCode.trim(),
+              address: address.trim(),
+              address_detail: addressDetail.trim() || null,
+              recipient_name: recipientName.trim(),
+              phone: phone.trim(),
             })
             .select()
             .single();
