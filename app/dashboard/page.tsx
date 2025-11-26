@@ -46,6 +46,15 @@ export default async function DashboardPage() {
     bulkRemaining = Math.max(0, bulkLimit - bulkUsage);
   }
 
+  // Get user profile for nickname
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('nickname')
+    .eq('id', user.id)
+    .single();
+
+  const displayName = profile?.nickname || user.email || '사용자';
+
   // Get user's blog posts (created by AI)
   const { data: blogPosts } = await supabase
     .from('blog_posts')
@@ -70,7 +79,7 @@ export default async function DashboardPage() {
           대시보드
         </h1>
         <p className="text-gray-600">
-          안녕하세요, {user.email}님! AI 블로그 글을 생성하고 관리하세요.
+          안녕하세요, {displayName}님! 빌구독 서비스를 이용해보세요.
         </p>
         {!subscription && (
           <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">

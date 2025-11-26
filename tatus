@@ -1,0 +1,5 @@
+[33m382e3b3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m Fix: 이메일 링크 로그인 처리 개선 - onAuthStateChange 리스너 추가 및 hash fragment 처리 강화
+[33mc1d03bb[m Improve: 로그인 에러 메시지 개선 - 이메일 인증 안내 추가
+[33mb655bf0[m Fix: useSearchParams를 Suspense로 감싸서 Next.js 16 빌드 에러 해결
+[33m9d7cf7f[m Add: 이메일/비밀번호 로그인 방식 추가 및 로그인 방식 토글 기능
+[33me7d1ea0[m Fix: 로그인 페이지에서 이미 인증된 사용자 자동 리다이렉트 및 이메일 링크 처리

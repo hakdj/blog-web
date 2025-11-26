@@ -110,10 +110,23 @@ function LoginForm() {
 
     try {
       if (loginMode === 'password') {
+        // 이메일/비밀번호 검증
+        if (!email || !email.trim()) {
+          setMessage('이메일을 입력해주세요.');
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!password || !password.trim()) {
+          setMessage('비밀번호를 입력해주세요.');
+          setIsLoading(false);
+          return;
+        }
+
         // 이메일/비밀번호 로그인
         const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+          email: email.trim(),
+          password: password.trim(),
         });
 
         if (error) {

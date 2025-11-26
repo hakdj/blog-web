@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
+  const [nickname, setNickname] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClient();
   const router = useRouter();
@@ -16,14 +17,40 @@ export default function Header() {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      
+      // 프로필에서 닉네임 가져오기
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('nickname')
+          .eq('id', user.id)
+          .single();
+        
+        setNickname(profile?.nickname || null);
+      }
+      
       setIsLoading(false);
     };
 
     getUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setUser(session?.user ?? null);
+        
+        // 프로필에서 닉네임 가져오기
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('nickname')
+            .eq('id', session.user.id)
+            .single();
+          
+          setNickname(profile?.nickname || null);
+        } else {
+          setNickname(null);
+        }
+        
         setIsLoading(false);
       }
     );
@@ -41,7 +68,7 @@ export default function Header() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="text-xl font-bold text-gray-900">
-            구독형 블로그
+            빌구독
           </Link>
 
           <nav className="flex items-center space-x-6">
@@ -70,7 +97,7 @@ export default function Header() {
                 </Link>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">
-                    {user.email}
+                    {nickname || user.email}
                   </span>
                   <button
                     onClick={handleLogout}
