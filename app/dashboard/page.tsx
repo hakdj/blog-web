@@ -55,13 +55,8 @@ export default async function DashboardPage() {
 
   const displayName = profile?.nickname || user.email || '사용자';
 
-  // Get user's blog posts (created by AI)
-  const { data: blogPosts } = await supabase
-    .from('blog_posts')
-    .select('id, title, content, status, created_at, generated_by')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(10);
+  // Get user's game history (if needed in the future)
+  // For now, we'll show available retro games
 
   // Get user's payment history
   const { data: payments } = await supabase
@@ -263,88 +258,95 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Blog Posts */}
+        {/* Retro Games Arcade */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-900">
-                최근 생성된 블로그 글
+                레트로 게임 아케이드
               </h2>
               <Link
-                href="/dashboard/posts"
+                href="/dashboard/games"
                 className="text-sm text-blue-600 hover:text-blue-800 font-medium"
               >
                 전체 보기 →
               </Link>
             </div>
-            {blogPosts && blogPosts.length > 0 ? (
-              <div className="space-y-4">
-                {blogPosts.map((post: any) => (
-                  <article
-                    key={post.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {post.title || '제목 없음'}
-                          </h3>
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            post.status === 'published' 
-                              ? 'bg-green-100 text-green-800'
-                              : post.status === 'draft'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {post.status === 'published' ? '발행됨' : 
-                             post.status === 'draft' ? '초안' : '보관됨'}
-                          </span>
-                          {post.generated_by && (
-                            <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                              {post.generated_by === 'agent' ? '에이전트' : '대량생성'}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-gray-600 mb-2 line-clamp-2">
-                          {post.content?.substring(0, 200) || '내용 없음'}...
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-500">
-                            {new Date(post.created_at).toLocaleDateString('ko-KR')}
-                          </span>
-                          <div className="flex gap-2">
-                            <Link
-                              href={`/dashboard/posts/${post.id}`}
-                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                            >
-                              보기 →
-                            </Link>
-                            <Link
-                              href={`/dashboard/posts/${post.id}/edit`}
-                              className="text-gray-600 hover:text-gray-800 font-medium text-sm"
-                            >
-                              수정
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </article>
-                ))}
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* Tetris */}
+              <Link
+                href="/games/tetris"
+                className="border-2 border-gray-200 rounded-lg p-6 hover:border-purple-500 hover:shadow-lg transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="text-5xl group-hover:scale-110 transition-transform">🎮</div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">테트리스</h3>
+                    <p className="text-sm text-gray-600">클래식 블록 퍼즐 게임</p>
+                    <div className="mt-2 text-xs text-gray-500">1984년 출시</div>
+                  </div>
+                  <div className="text-gray-400 group-hover:text-purple-500">→</div>
+                </div>
+              </Link>
+
+              {/* 1945 */}
+              <Link
+                href="/games/1945"
+                className="border-2 border-gray-200 rounded-lg p-6 hover:border-purple-500 hover:shadow-lg transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="text-5xl group-hover:scale-110 transition-transform">✈️</div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">1945</h3>
+                    <p className="text-sm text-gray-600">전투기 슈팅 게임</p>
+                    <div className="mt-2 text-xs text-gray-500">클래식 슈터</div>
+                  </div>
+                  <div className="text-gray-400 group-hover:text-purple-500">→</div>
+                </div>
+              </Link>
+
+              {/* Snake */}
+              <Link
+                href="/games/snake"
+                className="border-2 border-gray-200 rounded-lg p-6 hover:border-purple-500 hover:shadow-lg transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="text-5xl group-hover:scale-110 transition-transform">🐍</div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">스네이크</h3>
+                    <p className="text-sm text-gray-600">뱀을 키워가는 게임</p>
+                    <div className="mt-2 text-xs text-gray-500">클래식 아케이드</div>
+                  </div>
+                  <div className="text-gray-400 group-hover:text-purple-500">→</div>
+                </div>
+              </Link>
+
+              {/* Pac-Man */}
+              <Link
+                href="/games/pacman"
+                className="border-2 border-gray-200 rounded-lg p-6 hover:border-purple-500 hover:shadow-lg transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="text-5xl group-hover:scale-110 transition-transform">👾</div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">팩맨</h3>
+                    <p className="text-sm text-gray-600">미로 탈출 게임</p>
+                    <div className="mt-2 text-xs text-gray-500">1980년 출시</div>
+                  </div>
+                  <div className="text-gray-400 group-hover:text-purple-500">→</div>
+                </div>
+              </Link>
+            </div>
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <p className="text-sm text-gray-600 text-center mb-4">
+                클래식 레트로 게임을 웹에서 즐겨보세요!
+              </p>
+              <div className="flex justify-center gap-2">
+                <span className="text-xs px-3 py-1 bg-purple-100 text-purple-800 rounded-full">무료 플레이</span>
+                <span className="text-xs px-3 py-1 bg-blue-100 text-blue-800 rounded-full">웹 브라우저</span>
+                <span className="text-xs px-3 py-1 bg-pink-100 text-pink-800 rounded-full">레트로 스타일</span>
               </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-4">📝</div>
-                <p className="text-gray-500 mb-4">아직 생성된 블로그 글이 없습니다.</p>
-                <Link
-                  href="/dashboard/create"
-                  className="inline-block bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 transition-all"
-                >
-                  첫 번째 글 생성하기
-                </Link>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
