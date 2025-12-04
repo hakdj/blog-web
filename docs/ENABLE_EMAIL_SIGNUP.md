@@ -55,3 +55,4 @@
 
 **지금 바로 Supabase에서 "Enable email signup"을 체크하세요!**
 
+

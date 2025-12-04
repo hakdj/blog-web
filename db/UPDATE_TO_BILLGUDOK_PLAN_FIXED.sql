@@ -35,6 +35,17 @@ INSERT INTO plans (tier, interval, name, price, features, is_active) VALUES
   }', true);
 
 -- ============================================
+-- RLS 정책 설정 (플랜 읽기 권한)
+-- ============================================
+-- plans 테이블에 RLS 활성화 확인
+ALTER TABLE plans ENABLE ROW LEVEL SECURITY;
+
+-- 누구나 활성화된 플랜을 볼 수 있도록 정책 추가
+DROP POLICY IF EXISTS "Anyone can view active plans" ON plans;
+CREATE POLICY "Anyone can view active plans" ON plans
+  FOR SELECT USING (is_active = true);
+
+-- ============================================
 -- 확인 쿼리
 -- ============================================
 -- SELECT tier, interval, name, price, features, is_active 
@@ -47,5 +58,6 @@ INSERT INTO plans (tier, interval, name, price, features, is_active) VALUES
 -- 이제 구독 플랜이 1개(월간/연간)로 설정되었습니다.
 -- 월간: 14,900원
 -- 연간: 150,000원 (16% 할인)
+-- RLS 정책도 설정되어 누구나 플랜을 볼 수 있습니다.
 -- ============================================
 

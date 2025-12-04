@@ -21,3 +21,7 @@ ADD COLUMN IF NOT EXISTS phone TEXT;
 -- - phone: 전화번호
 -- ============================================
 
+
+
+
+

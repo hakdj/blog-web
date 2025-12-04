@@ -97,3 +97,4 @@ CREATE TRIGGER on_auth_user_created
 
 **1단계만 하면 99% 해결됩니다! 지금 바로 해보세요! 🎉**
 
+

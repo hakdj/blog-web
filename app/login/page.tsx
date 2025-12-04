@@ -64,7 +64,7 @@ function LoginForm() {
 
               if (data.session && data.user) {
                 window.history.replaceState(null, '', window.location.pathname);
-                router.push('/dashboard');
+                router.push('/');
                 return;
               }
             }
@@ -87,7 +87,7 @@ function LoginForm() {
           
           // 이메일 링크나 토큰이 없는 경우에만 자동 리다이렉트
           if (!hasHash && !hasToken) {
-            router.push('/dashboard');
+            router.push('/');
             return;
           }
         }
@@ -147,14 +147,14 @@ function LoginForm() {
           }
           setMessage(errorMessage);
         } else if (data.user) {
-          router.push('/dashboard');
+          router.push('/');
         }
       } else {
         // 이메일 링크 로그인
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            emailRedirectTo: `${window.location.origin}/`,
           },
         });
 

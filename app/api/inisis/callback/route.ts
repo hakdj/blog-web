@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
       // TODO: 실제 계약 완료 처리 로직
       // 예: subscriptions 업데이트, 계약 정보 저장 등
 
-      // 사용자를 대시보드로 리다이렉트
-      return redirect(`/dashboard?contract=success&id=${contractId}`);
+      // 사용자를 홈으로 리다이렉트
+      return redirect(`/?contract=success&id=${contractId}`);
     }
 
     if (cancel === 'true') {

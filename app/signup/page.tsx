@@ -108,7 +108,7 @@ export default function SignupPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             email: email,
           },
@@ -223,14 +223,14 @@ export default function SignupPage() {
       // Supabase 설정에서 이메일 확인이 비활성화되어 있으면 자동으로 확인된 상태
       // 확인이 필요한 경우에도 세션이 있으면 일단 대시보드로 이동
       if (data.session) {
-        // 세션이 있으면 바로 대시보드로 이동
+        // 세션이 있으면 바로 홈으로 이동
         setMessage('회원가입이 완료되었습니다!');
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push('/');
         }, 1000);
       } else if (data.user && !data.user.email_confirmed_at) {
         // 세션이 없고 이메일 확인이 필요한 경우
-        // 하지만 일단 대시보드로 이동 시도 (Supabase 설정에 따라 다를 수 있음)
+        // 하지만 일단 홈으로 이동 시도 (Supabase 설정에 따라 다를 수 있음)
         setMessage('회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.');
         setTimeout(() => {
           router.push('/login?message=회원가입이 완료되었습니다. 로그인해주세요.');
@@ -239,7 +239,7 @@ export default function SignupPage() {
         // 이미 확인된 경우
         setMessage('회원가입이 완료되었습니다!');
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push('/');
         }, 1000);
       }
     } catch (error: any) {

@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
           status: paymentData.status,
         });
 
-      return redirect(`${process.env.APP_URL}/dashboard?success=true`);
+      return redirect(`${process.env.APP_URL}/?success=true`);
     } catch (error) {
       console.error('Billing callback error:', error);
       return redirect(`${process.env.APP_URL}/pricing?error=payment_failed`);

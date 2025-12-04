@@ -114,10 +114,10 @@ export default async function PostPage({ params }: PostPageProps) {
             </Link>
             {user && (
               <Link
-                href="/dashboard"
+                href="/"
                 className="text-gray-600 hover:text-gray-800 font-medium"
               >
-                대시보드
+                홈
               </Link>
             )}
           </div>

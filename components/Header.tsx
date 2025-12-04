@@ -19,18 +19,23 @@ export default function Header() {
         const { data: { user } } = await supabase.auth.getUser();
         setUser(user);
         
-        // 프로필에서 닉네임 가져오기 (비동기로 처리, 에러 무시)
+        // 프로필에서 닉네임 가져오기
         if (user) {
           try {
-            const { data: profile } = await supabase
+            const { data: profile, error } = await supabase
               .from('profiles')
               .select('nickname')
               .eq('id', user.id)
               .single();
             
-            setNickname(profile?.nickname || null);
-          } catch {
-            // 에러는 무시하고 계속 진행
+            if (error) {
+              console.error('프로필 가져오기 오류:', error);
+              setNickname(null);
+            } else {
+              setNickname(profile?.nickname || null);
+            }
+          } catch (err) {
+            console.error('프로필 조회 중 예외:', err);
             setNickname(null);
           }
         } else {
@@ -49,18 +54,23 @@ export default function Header() {
       async (event, session) => {
         setUser(session?.user ?? null);
         
-        // 프로필에서 닉네임 가져오기 (비동기로 처리, 에러 무시)
+        // 프로필에서 닉네임 가져오기
         if (session?.user) {
           try {
-            const { data: profile } = await supabase
+            const { data: profile, error } = await supabase
               .from('profiles')
               .select('nickname')
               .eq('id', session.user.id)
               .single();
             
-            setNickname(profile?.nickname || null);
-          } catch {
-            // 에러는 무시하고 계속 진행
+            if (error) {
+              console.error('프로필 가져오기 오류:', error);
+              setNickname(null);
+            } else {
+              setNickname(profile?.nickname || null);
+            }
+          } catch (err) {
+            console.error('프로필 조회 중 예외:', err);
             setNickname(null);
           }
         } else {
@@ -103,15 +113,9 @@ export default function Header() {
               <div className="w-20 h-8 bg-gray-200 rounded animate-pulse"></div>
             ) : user ? (
               <div className="flex items-center space-x-4">
-                <Link
-                  href="/dashboard"
-                  className="text-gray-600 hover:text-gray-900 font-medium"
-                >
-                  대시보드
-                </Link>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">
-                    {nickname || '사용자'}
+                    {nickname || user?.email?.split('@')[0] || '사용자'}
                   </span>
                   <button
                     onClick={handleLogout}
