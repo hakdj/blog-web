@@ -296,9 +296,6 @@ export default async function HomePage() {
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-gray-900 mb-2">레트로제품판매</h3>
                     <p className="text-sm text-gray-600 mb-3">추억의 레트로 제품을 만나보세요</p>
-                    <div className="text-sm font-semibold text-orange-600">
-                      ₩1,000 ~ ₩3,000
-                    </div>
                   </div>
                   <div className="text-gray-400 group-hover:text-orange-500">→</div>
                 </div>
