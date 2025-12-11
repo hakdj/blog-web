@@ -117,6 +117,12 @@ export default function Header() {
                   <span className="text-sm text-gray-600">
                     {nickname || user?.email?.split('@')[0] || '사용자'}
                   </span>
+                  <Link
+                    href="/settings"
+                    className="text-sm text-gray-600 hover:text-gray-900 font-medium"
+                  >
+                    설정
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="text-sm text-gray-600 hover:text-gray-900 font-medium"

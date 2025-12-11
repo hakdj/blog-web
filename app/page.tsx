@@ -258,94 +258,107 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Retro Games Arcade */}
-        <div className="lg:col-span-2">
+        {/* Content Sections */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* 2. 운영 모델 섹션 */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                레트로 게임 아케이드
-              </h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">2. 운영 모델</h2>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* 레트로게임 */}
               <Link
-                href="/dashboard/games"
-                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-              >
-                전체 보기 →
-              </Link>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              {/* Tetris */}
-              <Link
-                href="/games/tetris"
+                href="/games"
                 className="border-2 border-gray-200 rounded-lg p-6 hover:border-purple-500 hover:shadow-lg transition-all group"
               >
-                <div className="flex items-center gap-4">
-                  <div className="text-5xl group-hover:scale-110 transition-transform">🎮</div>
+                <div className="flex items-start gap-4">
+                  <div className="text-4xl group-hover:scale-110 transition-transform">🎮</div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">테트리스</h3>
-                    <p className="text-sm text-gray-600">클래식 블록 퍼즐 게임</p>
-                    <div className="mt-2 text-xs text-gray-500">1984년 출시</div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">레트로게임</h3>
+                    <p className="text-sm text-gray-600 mb-3">클래식 레트로 게임을 즐겨보세요</p>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded">테트리스</span>
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">1945</span>
+                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">스네이크</span>
+                      <span className="text-xs px-2 py-1 bg-pink-100 text-pink-800 rounded">팩맨</span>
+                    </div>
                   </div>
                   <div className="text-gray-400 group-hover:text-purple-500">→</div>
                 </div>
               </Link>
 
-              {/* 1945 */}
+              {/* 레트로제품판매 */}
               <Link
-                href="/games/1945"
-                className="border-2 border-gray-200 rounded-lg p-6 hover:border-purple-500 hover:shadow-lg transition-all group"
+                href="/products"
+                className="border-2 border-gray-200 rounded-lg p-6 hover:border-orange-500 hover:shadow-lg transition-all group"
               >
-                <div className="flex items-center gap-4">
-                  <div className="text-5xl group-hover:scale-110 transition-transform">✈️</div>
+                <div className="flex items-start gap-4">
+                  <div className="text-4xl group-hover:scale-110 transition-transform">🛍️</div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">1945</h3>
-                    <p className="text-sm text-gray-600">전투기 슈팅 게임</p>
-                    <div className="mt-2 text-xs text-gray-500">클래식 슈터</div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">레트로제품판매</h3>
+                    <p className="text-sm text-gray-600 mb-3">추억의 레트로 제품을 만나보세요</p>
+                    <div className="text-sm font-semibold text-orange-600">
+                      ₩1,000 ~ ₩3,000
+                    </div>
                   </div>
-                  <div className="text-gray-400 group-hover:text-purple-500">→</div>
+                  <div className="text-gray-400 group-hover:text-orange-500">→</div>
                 </div>
               </Link>
 
-              {/* Snake */}
+              {/* 이벤트 일정 */}
               <Link
-                href="/games/snake"
-                className="border-2 border-gray-200 rounded-lg p-6 hover:border-purple-500 hover:shadow-lg transition-all group"
+                href="/events"
+                className="border-2 border-gray-200 rounded-lg p-6 hover:border-green-500 hover:shadow-lg transition-all group"
               >
-                <div className="flex items-center gap-4">
-                  <div className="text-5xl group-hover:scale-110 transition-transform">🐍</div>
+                <div className="flex items-start gap-4">
+                  <div className="text-4xl group-hover:scale-110 transition-transform">📅</div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">스네이크</h3>
-                    <p className="text-sm text-gray-600">뱀을 키워가는 게임</p>
-                    <div className="mt-2 text-xs text-gray-500">클래식 아케이드</div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">이벤트 일정</h3>
+                    <p className="text-sm text-gray-600 mb-3">전국 축제, 지역 특색, 지역 광고 정보를 확인하세요</p>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">축제</span>
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">지역 특색</span>
+                      <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded">지역 광고</span>
+                    </div>
                   </div>
-                  <div className="text-gray-400 group-hover:text-purple-500">→</div>
+                  <div className="text-gray-400 group-hover:text-green-500">→</div>
                 </div>
               </Link>
 
-              {/* Pac-Man */}
+              {/* 추억의 일기장 */}
               <Link
-                href="/games/pacman"
-                className="border-2 border-gray-200 rounded-lg p-6 hover:border-purple-500 hover:shadow-lg transition-all group"
+                href="/diary"
+                className="border-2 border-gray-200 rounded-lg p-6 hover:border-pink-500 hover:shadow-lg transition-all group"
               >
-                <div className="flex items-center gap-4">
-                  <div className="text-5xl group-hover:scale-110 transition-transform">👾</div>
+                <div className="flex items-start gap-4">
+                  <div className="text-4xl group-hover:scale-110 transition-transform">📔</div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">팩맨</h3>
-                    <p className="text-sm text-gray-600">미로 탈출 게임</p>
-                    <div className="mt-2 text-xs text-gray-500">1980년 출시</div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">추억의 일기장</h3>
+                    <p className="text-sm text-gray-600 mb-3">소중한 추억을 기록하고 공유하세요</p>
+                    <div className="text-xs text-gray-500">개인 일기 작성 및 관리</div>
                   </div>
-                  <div className="text-gray-400 group-hover:text-purple-500">→</div>
+                  <div className="text-gray-400 group-hover:text-pink-500">→</div>
                 </div>
               </Link>
-            </div>
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <p className="text-sm text-gray-600 text-center mb-4">
-                클래식 레트로 게임을 웹에서 즐겨보세요!
-              </p>
-              <div className="flex justify-center gap-2">
-                <span className="text-xs px-3 py-1 bg-purple-100 text-purple-800 rounded-full">무료 플레이</span>
-                <span className="text-xs px-3 py-1 bg-blue-100 text-blue-800 rounded-full">웹 브라우저</span>
-                <span className="text-xs px-3 py-1 bg-pink-100 text-pink-800 rounded-full">레트로 스타일</span>
-              </div>
+
+              {/* 개인비서 */}
+              <Link
+                href="/assistant"
+                className="border-2 border-gray-200 rounded-lg p-6 hover:border-indigo-500 hover:shadow-lg transition-all group md:col-span-2"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="text-4xl group-hover:scale-110 transition-transform">🤖</div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">개인비서</h3>
+                    <p className="text-sm text-gray-600 mb-3">일정 관리 및 세부 취미 정보를 제공합니다</p>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-800 rounded">일정 관리</span>
+                      <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded">취미 추천</span>
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">맞춤 정보</span>
+                    </div>
+                  </div>
+                  <div className="text-gray-400 group-hover:text-indigo-500">→</div>
+                </div>
+              </Link>
             </div>
           </div>
         </div>
