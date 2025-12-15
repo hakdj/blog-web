@@ -62,17 +62,19 @@ export default function AdminPage() {
         
         // 데이터 로드 (에러가 발생해도 로딩은 끝나도록)
         try {
-          await Promise.race([
-            loadAdminData(),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('데이터 로드 타임아웃')), 8000)
-            )
-          ]);
+          // 타임아웃 없이 로드 시도 (각 쿼리가 독립적으로 실패해도 계속 진행)
+          loadAdminData().catch((err) => {
+            console.error('데이터 로드 백그라운드 오류:', err);
+          });
         } catch (dataError) {
           console.error('데이터 로드 오류:', dataError);
           // 데이터 로드 실패해도 페이지는 표시
         } finally {
           clearTimeout(timeoutId);
+          // 데이터 로드와 관계없이 즉시 로딩 종료
+          if (mounted) {
+            setLoading(false);
+          }
         }
       } catch (error) {
         console.error('관리자 확인 오류:', error);

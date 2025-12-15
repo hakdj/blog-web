@@ -56,8 +56,15 @@ export default function PricingPage() {
         });
         
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `HTTP ${response.status}`);
+          let errorMessage = `HTTP ${response.status}`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+            console.error('플랜 API 오류:', errorData);
+          } catch {
+            console.error('플랜 API 응답 파싱 실패');
+          }
+          throw new Error(errorMessage);
         }
         
         const result = await response.json();
@@ -65,7 +72,8 @@ export default function PricingPage() {
         
         console.log('플랜 가져오기 결과:', { 
           dataLength: data?.length, 
-          data: data
+          data: data,
+          hasPlans: data.length > 0
         });
 
         clearTimeout(timeoutId);
