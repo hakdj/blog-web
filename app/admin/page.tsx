@@ -51,12 +51,13 @@ export default function AdminPage() {
     };
 
     checkAdminAndLoadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadAdminData = async () => {
     try {
       // 전체 구독 통계
-      const { data: subsData } = await supabase
+      const { data: subsData, error: subsError } = await supabase
         .from('subscriptions')
         .select(`
           *,
@@ -65,7 +66,9 @@ export default function AdminPage() {
         `)
         .order('created_at', { ascending: false });
 
-      if (subsData) {
+      if (subsError) {
+        console.error('구독 데이터 로드 오류:', subsError);
+      } else if (subsData) {
         setSubscriptions(subsData);
         const active = subsData.filter(
           (sub: any) => sub.status === 'active' && new Date(sub.current_period_end) > new Date()
@@ -74,39 +77,52 @@ export default function AdminPage() {
       }
 
       // 전체 사용자 수
-      const { count } = await supabase
+      const { count, error: usersError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true });
-      setTotalUsers(count || 0);
+      
+      if (usersError) {
+        console.error('사용자 수 로드 오류:', usersError);
+      } else {
+        setTotalUsers(count || 0);
+      }
 
       // 사용량 통계
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       
-      const { data: usageLogs } = await supabase
+      const { data: usageLogs, error: usageError } = await supabase
         .from('usage_logs')
         .select('usage_type, count')
         .gte('created_at', startOfMonth);
 
-      const agent = usageLogs
-        ?.filter(log => log.usage_type === 'agent')
-        .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
-      setAgentUsage(agent);
+      if (usageError) {
+        console.error('사용량 로드 오류:', usageError);
+      } else {
+        const agent = usageLogs
+          ?.filter(log => log.usage_type === 'agent')
+          .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
+        setAgentUsage(agent);
 
-      const bulk = usageLogs
-        ?.filter(log => log.usage_type === 'bulk')
-        .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
-      setBulkUsage(bulk);
+        const bulk = usageLogs
+          ?.filter(log => log.usage_type === 'bulk')
+          .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
+        setBulkUsage(bulk);
+      }
 
       // 결제 통계
-      const { data: payments } = await supabase
+      const { data: payments, error: paymentsError } = await supabase
         .from('payments')
         .select('amount, currency, status')
         .eq('status', 'paid')
         .gte('paid_at', startOfMonth);
 
-      const revenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
-      setMonthlyRevenue(revenue);
+      if (paymentsError) {
+        console.error('결제 데이터 로드 오류:', paymentsError);
+      } else {
+        const revenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+        setMonthlyRevenue(revenue);
+      }
     } catch (error) {
       console.error('데이터 로드 오류:', error);
     }

@@ -129,7 +129,7 @@ export default function Header() {
               href="/pricing"
               className="text-gray-700 hover:text-gray-900 font-semibold px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              가격
+              구독
             </Link>
 
             {isLoading ? (
