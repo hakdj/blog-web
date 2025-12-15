@@ -259,7 +259,7 @@ export default function SignupPage() {
             회원가입
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            레트로게임의 모든 것을 한 곳에서
+            그때 그 게임의 모든 것을 한 곳에서
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSignup}>

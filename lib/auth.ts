@@ -75,3 +75,19 @@ export async function requireSubscription() {
   return { user, subscription };
 }
 
+// 관리자 이메일 목록
+const ADMIN_EMAILS = ['hakdjhakdj@naver.com'];
+
+export function isAdmin(user: { email?: string | null } | null): boolean {
+  if (!user || !user.email) return false;
+  return ADMIN_EMAILS.includes(user.email.toLowerCase());
+}
+
+export async function requireAdmin() {
+  const user = await requireAuth();
+  if (!isAdmin(user)) {
+    redirect('/');
+  }
+  return user;
+}
+

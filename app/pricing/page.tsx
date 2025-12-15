@@ -161,7 +161,7 @@ export default function PricingPage() {
 
   const getTierName = (tier: string, name: string) => {
     // 빌구독은 플랜 이름을 그대로 사용
-    return name || '빌구독';
+    return name || '라떼 방구석';
   };
 
   return (
@@ -170,10 +170,10 @@ export default function PricingPage() {
         {/* 제목 */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            빌구독 요금제
+            라떼 방구석 요금제
           </h1>
           <p className="text-lg text-gray-600 mb-8">
-            레트로게임, 정보, 리뷰를 한 곳에서
+            그때 그 게임, 정보, 리뷰를 한 곳에서
           </p>
 
           {/* 월간/연간 토글 - 참고 사이트 스타일 */}
@@ -288,14 +288,14 @@ export default function PricingPage() {
                         <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>레트로게임 플레이</span>
+                        <span>그때 그 게임 플레이</span>
                       </div>
                       
                       <div className="flex items-center text-gray-700">
                         <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>레트로게임 구매</span>
+                        <span>구멍가게에서 구매</span>
                       </div>
                       
                       <div className="flex items-center text-gray-700">
@@ -309,7 +309,7 @@ export default function PricingPage() {
                         <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>레트로게임 굿즈 구매</span>
+                        <span>구멍가게 굿즈 구매</span>
                       </div>
                     </div>
 
@@ -378,7 +378,7 @@ export default function PricingPage() {
         {/* 하단 설명 */}
         <div className="mt-12 text-center">
           <p className="text-sm text-gray-600 max-w-3xl mx-auto">
-            레트로게임 플레이, 게임 구매, 정보 및 리뷰를 한 곳에서 즐기세요.
+            그때 그 게임 플레이, 구멍가게에서 구매, 정보 및 리뷰를 한 곳에서 즐기세요.
             <br />
             연간 구독 시 16% 할인 혜택을 받으실 수 있습니다.
           </p>

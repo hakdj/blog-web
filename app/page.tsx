@@ -74,7 +74,7 @@ export default async function HomePage() {
           대시보드
         </h1>
         <p className="text-gray-600">
-          안녕하세요, {displayName}님! 빌구독 서비스를 이용해보세요.
+          안녕하세요, {displayName}님! 라떼 방구석 서비스를 이용해보세요.
         </p>
         {!subscription && (
           <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -273,7 +273,7 @@ export default async function HomePage() {
                 <div className="flex items-start gap-4">
                   <div className="text-4xl group-hover:scale-110 transition-transform">🎮</div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">레트로게임</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">그때 그 게임</h3>
                     <p className="text-sm text-gray-600 mb-3">클래식 레트로 게임을 즐겨보세요</p>
                     <div className="flex flex-wrap gap-2">
                       <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded">테트리스</span>
@@ -294,7 +294,7 @@ export default async function HomePage() {
                 <div className="flex items-start gap-4">
                   <div className="text-4xl group-hover:scale-110 transition-transform">🛍️</div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">레트로제품판매</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">구멍가게</h3>
                     <p className="text-sm text-gray-600 mb-3">추억의 레트로 제품을 만나보세요</p>
                   </div>
                   <div className="text-gray-400 group-hover:text-orange-500">→</div>
@@ -345,7 +345,7 @@ export default async function HomePage() {
                 <div className="flex items-start gap-4">
                   <div className="text-4xl group-hover:scale-110 transition-transform">🤖</div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">개인비서</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">라떼 친구</h3>
                     <p className="text-sm text-gray-600 mb-3">일정 관리 및 세부 취미 정보를 제공합니다</p>
                     <div className="flex flex-wrap gap-2">
                       <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-800 rounded">일정 관리</span>

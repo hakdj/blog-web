@@ -6,10 +6,13 @@ import { User } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+const ADMIN_EMAILS = ['hakdjhakdj@naver.com'];
+
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [nickname, setNickname] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false); // 초기값을 false로 변경
+  const [isAdmin, setIsAdmin] = useState(false);
   const supabase = createClient();
   const router = useRouter();
 
@@ -21,6 +24,9 @@ export default function Header() {
         
         // 프로필에서 닉네임 가져오기
         if (user) {
+          // 관리자 체크
+          setIsAdmin(ADMIN_EMAILS.includes(user.email?.toLowerCase() || ''));
+          
           try {
             const { data: profile, error } = await supabase
               .from('profiles')
@@ -40,6 +46,7 @@ export default function Header() {
           }
         } else {
           setNickname(null);
+          setIsAdmin(false);
         }
       } catch (error) {
         // 에러 발생해도 사용자는 null로 설정하고 계속 진행
@@ -92,7 +99,7 @@ export default function Header() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="text-xl font-bold text-gray-900">
-            빌구독
+            라떼 방구석
           </Link>
 
           <nav className="flex items-center space-x-6">
@@ -117,6 +124,14 @@ export default function Header() {
                   <span className="text-sm text-gray-600">
                     {nickname || user?.email?.split('@')[0] || '사용자'}
                   </span>
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="text-sm text-red-600 hover:text-red-800 font-medium"
+                    >
+                      관리자
+                    </Link>
+                  )}
                   <Link
                     href="/settings"
                     className="text-sm text-gray-600 hover:text-gray-900 font-medium"
