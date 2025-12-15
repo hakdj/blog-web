@@ -57,8 +57,10 @@ export default function SettingsPage() {
         .single();
 
       // Set profile with email from user object (most reliable source)
+      // 닉네임이 없으면 이메일 앞부분을 기본값으로 사용
+      const defaultNickname = profileData?.nickname || user.email?.split('@')[0] || '사용자';
       setProfile({
-        nickname: profileData?.nickname || '',
+        nickname: defaultNickname,
         email: user.email || profileData?.email || '',
       });
 

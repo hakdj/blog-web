@@ -102,16 +102,16 @@ export default function Header() {
             라떼 방구석
           </Link>
 
-          <nav className="flex items-center space-x-6">
+          <nav className="flex items-center space-x-4">
             <Link
               href="/"
-              className="text-gray-600 hover:text-gray-900 font-medium"
+              className="text-gray-700 hover:text-gray-900 font-semibold px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
               홈
             </Link>
             <Link
               href="/pricing"
-              className="text-gray-600 hover:text-gray-900 font-medium"
+              className="text-gray-700 hover:text-gray-900 font-semibold px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
               가격
             </Link>
@@ -120,27 +120,27 @@ export default function Header() {
               <div className="w-20 h-8 bg-gray-200 rounded animate-pulse"></div>
             ) : user ? (
               <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm font-semibold text-gray-900 px-3 py-1.5 bg-gray-100 rounded-lg">
                     {nickname || user?.email?.split('@')[0] || '사용자'}
                   </span>
                   {isAdmin && (
                     <Link
                       href="/admin"
-                      className="text-sm text-red-600 hover:text-red-800 font-medium"
+                      className="text-sm font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg transition-colors"
                     >
                       관리자
                     </Link>
                   )}
                   <Link
                     href="/settings"
-                    className="text-sm text-gray-600 hover:text-gray-900 font-medium"
+                    className="text-sm font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors"
                   >
                     설정
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="text-sm text-gray-600 hover:text-gray-900 font-medium"
+                    className="text-sm font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors"
                   >
                     로그아웃
                   </button>
@@ -150,13 +150,13 @@ export default function Header() {
               <div className="flex items-center space-x-3">
                 <Link
                   href="/signup"
-                  className="text-gray-600 hover:text-gray-900 font-medium"
+                  className="text-gray-700 hover:text-gray-900 font-semibold px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   회원가입
                 </Link>
                 <Link
                   href="/login"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm"
                 >
                   로그인
                 </Link>
