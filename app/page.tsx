@@ -102,28 +102,30 @@ export default async function HomePage() {
         </Link>
 
         {/* 구멍가게 */}
-        <Link
-          href="/products"
-          className={`bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg p-6 hover:from-orange-600 hover:to-red-600 transition-all shadow-lg hover:shadow-xl ${
-            !subscription ? 'opacity-60 cursor-not-allowed' : ''
-          }`}
-          onClick={(e) => {
-            if (!subscription) {
-              e.preventDefault();
-              alert('구독 유저만 구멍가게에서 제품을 구매할 수 있습니다.');
-            }
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-bold mb-2">구멍가게</h3>
-              <p className="text-orange-100 text-sm">
-                {subscription ? '추억의 레트로 제품 구매' : '구독 필요'}
-              </p>
+        {subscription ? (
+          <Link
+            href="/products"
+            className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg p-6 hover:from-orange-600 hover:to-red-600 transition-all shadow-lg hover:shadow-xl"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold mb-2">구멍가게</h3>
+                <p className="text-orange-100 text-sm">추억의 레트로 제품 구매</p>
+              </div>
+              <div className="text-3xl">🛍️</div>
             </div>
-            <div className="text-3xl">🛍️</div>
+          </Link>
+        ) : (
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg p-6 opacity-60 cursor-not-allowed">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold mb-2">구멍가게</h3>
+                <p className="text-orange-100 text-sm">구독 필요</p>
+              </div>
+              <div className="text-3xl">🛍️</div>
+            </div>
           </div>
-        </Link>
+        )}
 
         {/* 요즘 뭐해? */}
         <Link
