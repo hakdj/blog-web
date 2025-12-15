@@ -16,7 +16,6 @@ export default function AdminPage() {
   const [agentUsage, setAgentUsage] = useState(0);
   const [bulkUsage, setBulkUsage] = useState(0);
   const [monthlyRevenue, setMonthlyRevenue] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [initPlansLoading, setInitPlansLoading] = useState(false);
   const [initPlansMessage, setInitPlansMessage] = useState<string | null>(null);
   const router = useRouter();
@@ -41,13 +40,11 @@ export default function AdminPage() {
         // 관리자 확인 완료 - 페이지 표시
         setUser(currentUser);
         setIsAdmin(true);
-        setLoading(false);
         
         // 데이터 로드 (에러가 발생해도 페이지는 표시)
         loadAdminData();
       } catch (error) {
         console.error('관리자 확인 오류:', error);
-        setLoading(false);
       }
     };
 
@@ -123,7 +120,7 @@ export default function AdminPage() {
     }
   };
 
-  if (loading) {
+  if (!isAdmin) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="text-center">
@@ -132,10 +129,6 @@ export default function AdminPage() {
         </div>
       </div>
     );
-  }
-
-  if (!isAdmin) {
-    return null;
   }
 
   return (
