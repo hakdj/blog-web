@@ -146,8 +146,13 @@ function LoginForm() {
             errorMessage += error.message;
           }
           setMessage(errorMessage);
-        } else if (data.user) {
-          router.push('/');
+          setIsLoading(false);
+        } else if (data.user && data.session) {
+          // 로그인 성공 시 홈으로 리다이렉트
+          setMessage('로그인 성공! 홈으로 이동합니다...');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 500);
         }
       } else {
         // 이메일 링크 로그인

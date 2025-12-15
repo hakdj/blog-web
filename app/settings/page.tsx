@@ -194,6 +194,10 @@ export default function SettingsPage() {
     }
   };
 
+  const formatPrice = (price: number) => {
+    return price.toLocaleString('ko-KR');
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="mb-6">
@@ -433,6 +437,19 @@ export default function SettingsPage() {
                         <span className="text-gray-600">플랜:</span>
                         <span className="font-medium">{subscription.plan?.name || '알 수 없음'}</span>
                       </div>
+                      {subscription.plan?.price !== undefined && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">가격:</span>
+                          <span className="font-medium">
+                            {formatPrice(subscription.plan.price)}원
+                            {subscription.plan.interval && (
+                              <span className="text-gray-500 text-sm ml-1">
+                                / {subscription.plan.interval === 'month' ? '월' : '년'}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-gray-600">상태:</span>
                         <span className="font-medium text-green-600">활성</span>
