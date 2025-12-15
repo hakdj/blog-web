@@ -43,34 +43,26 @@ export default function PricingPage() {
       }, 15000);
 
       try {
-        const supabase = createClient();
         const interval = isMonthly ? 'month' : 'year';
         
-        console.log('플랜 가져오기 시작:', { interval, isMonthly });
-        console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? '설정됨' : '없음');
+        console.log('플랜 가져오기 시작 (API 사용):', { interval, isMonthly });
         
-        // 먼저 간단한 쿼리로 연결 테스트
-        const testQuery = await supabase
-          .from('plans')
-          .select('id')
-          .limit(1);
+        // API를 통해 플랜 가져오기 (서버 사이드에서 처리하여 RLS 문제 우회)
+        const response = await fetch(`/api/plans?interval=${interval}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
         
-        console.log('연결 테스트 결과:', { data: testQuery.data, error: testQuery.error });
-        
-        if (testQuery.error) {
-          console.error('연결 테스트 실패:', testQuery.error);
-          setError(`데이터베이스 연결 오류: ${testQuery.error.message || '알 수 없는 오류'}`);
-          setPlans([]);
-          setIsLoading(false);
-          return;
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP ${response.status}`);
         }
         
-        const { data, error: fetchError } = await supabase
-          .from('plans')
-          .select('*')
-          .eq('interval', interval)
-          .eq('is_active', true)
-          .order('price', { ascending: true });
+        const result = await response.json();
+        const data = result.plans || [];
+        const fetchError = null;
         
         console.log('플랜 가져오기 결과:', { 
           dataLength: data?.length, 

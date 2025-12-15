@@ -24,12 +24,22 @@ export default function AdminPage() {
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout;
 
     const checkAdminAndLoadData = async () => {
       try {
+        // 타임아웃 설정 (10초 후 강제로 로딩 종료)
+        timeoutId = setTimeout(() => {
+          if (mounted) {
+            console.warn('관리자 페이지 로딩 타임아웃 - 강제 종료');
+            setLoading(false);
+          }
+        }, 10000);
+
         const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
         
         if (userError || !currentUser) {
+          clearTimeout(timeoutId);
           if (mounted) {
             router.push('/login');
           }
@@ -38,6 +48,7 @@ export default function AdminPage() {
 
         const isAdminUser = ADMIN_EMAILS.includes(currentUser.email?.toLowerCase() || '');
         if (!isAdminUser) {
+          clearTimeout(timeoutId);
           if (mounted) {
             router.push('/');
           }
@@ -51,13 +62,21 @@ export default function AdminPage() {
         
         // 데이터 로드 (에러가 발생해도 로딩은 끝나도록)
         try {
-          await loadAdminData();
+          await Promise.race([
+            loadAdminData(),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('데이터 로드 타임아웃')), 8000)
+            )
+          ]);
         } catch (dataError) {
           console.error('데이터 로드 오류:', dataError);
           // 데이터 로드 실패해도 페이지는 표시
+        } finally {
+          clearTimeout(timeoutId);
         }
       } catch (error) {
         console.error('관리자 확인 오류:', error);
+        clearTimeout(timeoutId);
         if (mounted) {
           router.push('/');
         }
@@ -72,6 +91,9 @@ export default function AdminPage() {
 
     return () => {
       mounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
