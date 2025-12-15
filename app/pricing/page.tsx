@@ -34,19 +34,36 @@ export default function PricingPage() {
       setIsLoading(true);
       setError(null);
       
-      // 타임아웃 설정 (30초로 증가)
+      // 타임아웃 설정 (15초)
       const timeoutId = setTimeout(() => {
-        console.error('플랜 가져오기 타임아웃');
-        setError('플랜을 불러오는 데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.');
+        console.error('플랜 가져오기 타임아웃 (15초 초과)');
+        setError('플랜을 불러오는 데 시간이 오래 걸립니다. RLS 정책이나 데이터베이스 연결을 확인해주세요. 관리자 페이지에서 "플랜 초기화" 버튼을 클릭하거나 Supabase에서 RLS 정책을 확인해주세요.');
         setPlans([]);
         setIsLoading(false);
-      }, 30000);
+      }, 15000);
 
       try {
         const supabase = createClient();
         const interval = isMonthly ? 'month' : 'year';
         
         console.log('플랜 가져오기 시작:', { interval, isMonthly });
+        console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? '설정됨' : '없음');
+        
+        // 먼저 간단한 쿼리로 연결 테스트
+        const testQuery = await supabase
+          .from('plans')
+          .select('id')
+          .limit(1);
+        
+        console.log('연결 테스트 결과:', { data: testQuery.data, error: testQuery.error });
+        
+        if (testQuery.error) {
+          console.error('연결 테스트 실패:', testQuery.error);
+          setError(`데이터베이스 연결 오류: ${testQuery.error.message || '알 수 없는 오류'}`);
+          setPlans([]);
+          setIsLoading(false);
+          return;
+        }
         
         const { data, error: fetchError } = await supabase
           .from('plans')
@@ -55,7 +72,13 @@ export default function PricingPage() {
           .eq('is_active', true)
           .order('price', { ascending: true });
         
-        console.log('플랜 가져오기 결과:', { data, error: fetchError });
+        console.log('플랜 가져오기 결과:', { 
+          dataLength: data?.length, 
+          data: data, 
+          error: fetchError,
+          errorCode: fetchError?.code,
+          errorMessage: fetchError?.message
+        });
 
         clearTimeout(timeoutId);
 
