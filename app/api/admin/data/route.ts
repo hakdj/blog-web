@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient, createClient } from '@/lib/supabase/server';
-import { isAdmin } from '@/lib/auth';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
 
 const ADMIN_EMAILS = ['hakdjhakdj@naver.com'];
 
@@ -8,36 +9,56 @@ const ADMIN_EMAILS = ['hakdjhakdj@naver.com'];
 // 서비스 클라이언트를 사용하여 RLS 정책을 완전히 우회
 export async function GET(request: NextRequest) {
   try {
-    // 관리자 권한 확인 (API 라우트에서는 redirect 대신 에러 반환)
-    const supabaseAuth = await createClient();
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    // 헤더에서 사용자 이메일 가져오기 (클라이언트에서 전달)
+    const userEmail = request.headers.get('X-User-Email');
     
-    console.log('관리자 데이터 API - 인증 확인:', {
-      hasUser: !!user,
-      userEmail: user?.email,
-      authError: authError?.message,
+    console.log('관리자 데이터 API - 요청 확인:', {
+      userEmail: userEmail,
+      hasEmailHeader: !!userEmail,
     });
     
-    if (authError || !user) {
-      console.error('관리자 데이터 API - 인증 실패:', authError);
-      return NextResponse.json(
-        { error: '인증이 필요합니다', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
-    }
-    
-    const adminCheck = isAdmin(user);
-    console.log('관리자 데이터 API - 관리자 확인:', {
-      email: user.email,
-      isAdmin: adminCheck,
-    });
-    
-    if (!adminCheck) {
-      console.warn('관리자 데이터 API - 권한 없음:', user.email);
-      return NextResponse.json(
-        { error: '관리자 권한이 필요합니다', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
+    // 이메일이 없으면 쿠키에서 인증 시도
+    if (!userEmail) {
+      const cookieStore = await cookies();
+      const supabaseAuth = await createClient();
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      
+      console.log('관리자 데이터 API - 쿠키 인증:', {
+        hasUser: !!user,
+        userEmail: user?.email,
+        authError: authError?.message,
+      });
+      
+      if (authError || !user) {
+        console.error('관리자 데이터 API - 인증 실패:', authError);
+        return NextResponse.json(
+          { error: '인증이 필요합니다', code: 'UNAUTHORIZED' },
+          { status: 401 }
+        );
+      }
+      
+      const adminCheck = ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
+      if (!adminCheck) {
+        return NextResponse.json(
+          { error: '관리자 권한이 필요합니다', code: 'FORBIDDEN' },
+          { status: 403 }
+        );
+      }
+    } else {
+      // 헤더에서 이메일을 받았으면 관리자 확인
+      const adminCheck = ADMIN_EMAILS.includes(userEmail.toLowerCase());
+      console.log('관리자 데이터 API - 헤더 인증:', {
+        email: userEmail,
+        isAdmin: adminCheck,
+      });
+      
+      if (!adminCheck) {
+        console.warn('관리자 데이터 API - 권한 없음:', userEmail);
+        return NextResponse.json(
+          { error: '관리자 권한이 필요합니다', code: 'FORBIDDEN' },
+          { status: 403 }
+        );
+      }
     }
     
     // 서비스 클라이언트 사용 (RLS 우회)

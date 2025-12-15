@@ -103,11 +103,15 @@ export default function AdminPage() {
       const timeoutId = setTimeout(() => controller.abort(), 15000);
       
       try {
+        // 현재 사용자 정보 가져오기
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
         // API를 통해 데이터 가져오기 (서비스 클라이언트 사용하여 RLS 우회)
         const response = await fetch('/api/admin/data', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            'X-User-Email': currentUser?.email || '', // 사용자 이메일을 헤더로 전달
           },
           credentials: 'include', // 쿠키 포함
           signal: controller.signal,
