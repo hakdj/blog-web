@@ -47,8 +47,14 @@ export default function AdminPage() {
         if (mounted) {
           setUser(currentUser);
           setIsAdmin(true);
-          // 데이터 로드
+        }
+        
+        // 데이터 로드 (에러가 발생해도 로딩은 끝나도록)
+        try {
           await loadAdminData();
+        } catch (dataError) {
+          console.error('데이터 로드 오류:', dataError);
+          // 데이터 로드 실패해도 페이지는 표시
         }
       } catch (error) {
         console.error('관리자 확인 오류:', error);
@@ -72,75 +78,107 @@ export default function AdminPage() {
 
   const loadAdminData = async () => {
     try {
-      // 전체 구독 통계
-      const { data: subsData, error: subsError } = await supabase
-        .from('subscriptions')
-        .select(`
-          *,
-          plan:plans(*),
-          user:profiles(email, nickname)
-        `)
-        .order('created_at', { ascending: false });
+      // Promise.all로 병렬 처리하여 속도 개선
+      const [subsResult, usersResult, usageResult, paymentsResult] = await Promise.allSettled([
+        // 전체 구독 통계
+        supabase
+          .from('subscriptions')
+          .select(`
+            *,
+            plan:plans(*),
+            user:profiles(email, nickname)
+          `)
+          .order('created_at', { ascending: false }),
+        
+        // 전체 사용자 수
+        supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true }),
+        
+        // 사용량 통계
+        (async () => {
+          const now = new Date();
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+          return supabase
+            .from('usage_logs')
+            .select('usage_type, count')
+            .gte('created_at', startOfMonth);
+        })(),
+        
+        // 결제 통계
+        (async () => {
+          const now = new Date();
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+          return supabase
+            .from('payments')
+            .select('amount, currency, status')
+            .eq('status', 'paid')
+            .gte('paid_at', startOfMonth);
+        })(),
+      ]);
 
-      if (subsError) {
-        console.error('구독 데이터 로드 오류:', subsError);
-      } else if (subsData) {
-        setSubscriptions(subsData);
-        const active = subsData.filter(
-          (sub: any) => sub.status === 'active' && new Date(sub.current_period_end) > new Date()
-        );
-        setActiveSubscriptions(active);
+      // 구독 데이터 처리
+      if (subsResult.status === 'fulfilled') {
+        const { data: subsData, error: subsError } = subsResult.value;
+        if (subsError) {
+          console.error('구독 데이터 로드 오류:', subsError);
+        } else if (subsData) {
+          setSubscriptions(subsData);
+          const active = subsData.filter(
+            (sub: any) => sub.status === 'active' && new Date(sub.current_period_end) > new Date()
+          );
+          setActiveSubscriptions(active);
+        }
+      } else {
+        console.error('구독 데이터 로드 실패:', subsResult.reason);
       }
 
-      // 전체 사용자 수
-      const { count, error: usersError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-      
-      if (usersError) {
-        console.error('사용자 수 로드 오류:', usersError);
+      // 사용자 수 처리
+      if (usersResult.status === 'fulfilled') {
+        const { count, error: usersError } = usersResult.value;
+        if (usersError) {
+          console.error('사용자 수 로드 오류:', usersError);
+        } else {
+          setTotalUsers(count || 0);
+        }
       } else {
-        setTotalUsers(count || 0);
+        console.error('사용자 수 로드 실패:', usersResult.reason);
       }
 
-      // 사용량 통계
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      
-      const { data: usageLogs, error: usageError } = await supabase
-        .from('usage_logs')
-        .select('usage_type, count')
-        .gte('created_at', startOfMonth);
+      // 사용량 통계 처리
+      if (usageResult.status === 'fulfilled') {
+        const { data: usageLogs, error: usageError } = usageResult.value;
+        if (usageError) {
+          console.error('사용량 로드 오류:', usageError);
+        } else {
+          const agent = usageLogs
+            ?.filter((log: any) => log.usage_type === 'agent')
+            .reduce((sum: number, log: any) => sum + (log.count || 1), 0) || 0;
+          setAgentUsage(agent);
 
-      if (usageError) {
-        console.error('사용량 로드 오류:', usageError);
+          const bulk = usageLogs
+            ?.filter((log: any) => log.usage_type === 'bulk')
+            .reduce((sum: number, log: any) => sum + (log.count || 1), 0) || 0;
+          setBulkUsage(bulk);
+        }
       } else {
-        const agent = usageLogs
-          ?.filter(log => log.usage_type === 'agent')
-          .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
-        setAgentUsage(agent);
-
-        const bulk = usageLogs
-          ?.filter(log => log.usage_type === 'bulk')
-          .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
-        setBulkUsage(bulk);
+        console.error('사용량 로드 실패:', usageResult.reason);
       }
 
-      // 결제 통계
-      const { data: payments, error: paymentsError } = await supabase
-        .from('payments')
-        .select('amount, currency, status')
-        .eq('status', 'paid')
-        .gte('paid_at', startOfMonth);
-
-      if (paymentsError) {
-        console.error('결제 데이터 로드 오류:', paymentsError);
+      // 결제 통계 처리
+      if (paymentsResult.status === 'fulfilled') {
+        const { data: payments, error: paymentsError } = paymentsResult.value;
+        if (paymentsError) {
+          console.error('결제 데이터 로드 오류:', paymentsError);
+        } else {
+          const revenue = payments?.reduce((sum: number, p: any) => sum + (p.amount || 0), 0) || 0;
+          setMonthlyRevenue(revenue);
+        }
       } else {
-        const revenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
-        setMonthlyRevenue(revenue);
+        console.error('결제 데이터 로드 실패:', paymentsResult.reason);
       }
     } catch (error) {
-      console.error('데이터 로드 오류:', error);
+      console.error('데이터 로드 중 예외:', error);
     }
   };
 

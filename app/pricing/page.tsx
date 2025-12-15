@@ -34,17 +34,19 @@ export default function PricingPage() {
       setIsLoading(true);
       setError(null);
       
-      // 타임아웃 설정 (10초)
+      // 타임아웃 설정 (30초로 증가)
       const timeoutId = setTimeout(() => {
         console.error('플랜 가져오기 타임아웃');
         setError('플랜을 불러오는 데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.');
         setPlans([]);
         setIsLoading(false);
-      }, 10000);
+      }, 30000);
 
       try {
         const supabase = createClient();
         const interval = isMonthly ? 'month' : 'year';
+        
+        console.log('플랜 가져오기 시작:', { interval, isMonthly });
         
         const { data, error: fetchError } = await supabase
           .from('plans')
@@ -52,6 +54,8 @@ export default function PricingPage() {
           .eq('interval', interval)
           .eq('is_active', true)
           .order('price', { ascending: true });
+        
+        console.log('플랜 가져오기 결과:', { data, error: fetchError });
 
         clearTimeout(timeoutId);
 
