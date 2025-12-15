@@ -56,11 +56,13 @@ export default function SettingsPage() {
         .eq('id', user.id)
         .single();
 
+      // Set profile with email from user object (most reliable source)
+      setProfile({
+        nickname: profileData?.nickname || '',
+        email: user.email || profileData?.email || '',
+      });
+
       if (profileData) {
-        setProfile({
-          nickname: profileData.nickname || '',
-          email: user.email || '',
-        });
         setAddress({
           postal_code: profileData.postal_code || '',
           address: profileData.address || '',
@@ -91,32 +93,8 @@ export default function SettingsPage() {
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setMessage({ type: 'error', text: '로그인이 필요합니다.' });
-        return;
-      }
-
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          nickname: profile.nickname.trim(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      setMessage({ type: 'success', text: '개인정보가 성공적으로 업데이트되었습니다.' });
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || '개인정보 업데이트에 실패했습니다.' });
-    } finally {
-      setLoading(false);
-    }
+    // 닉네임은 수정할 수 없으므로 이 함수는 더 이상 사용되지 않음
+    // 프로필 탭에서는 닉네임과 이메일이 모두 읽기 전용으로 표시됨
   };
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
@@ -240,7 +218,7 @@ export default function SettingsPage() {
         <div className="border-b border-gray-200">
           <nav className="flex -mb-px">
             {[
-              { id: 'profile', label: '개인정보', icon: '👤' },
+              { id: 'profile', label: '개인정보 수정', icon: '👤' },
               { id: 'password', label: '비밀번호', icon: '🔒' },
               { id: 'address', label: '주소', icon: '📍' },
               { id: 'subscription', label: '구독 관리', icon: '💳' },
@@ -265,7 +243,7 @@ export default function SettingsPage() {
         <div className="p-6">
           {/* Profile Tab */}
           {activeTab === 'profile' && (
-            <form onSubmit={handleProfileUpdate} className="space-y-6">
+            <div className="space-y-6">
               <div>
                 <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-2">
                   닉네임
@@ -274,11 +252,12 @@ export default function SettingsPage() {
                   type="text"
                   id="nickname"
                   value={profile.nickname}
-                  onChange={(e) => setProfile({ ...profile, nickname: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="닉네임을 입력하세요"
-                  required
+                  disabled
+                  readOnly
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
+                  placeholder="닉네임"
                 />
+                <p className="mt-1 text-xs text-gray-500">닉네임은 변경할 수 없습니다.</p>
               </div>
 
               <div>
@@ -290,19 +269,12 @@ export default function SettingsPage() {
                   id="email"
                   value={profile.email}
                   disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                  readOnly
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
                 />
                 <p className="mt-1 text-xs text-gray-500">이메일은 변경할 수 없습니다.</p>
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? '저장 중...' : '저장하기'}
-              </button>
-            </form>
+            </div>
           )}
 
           {/* Password Tab */}
@@ -505,4 +477,6 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+
 
