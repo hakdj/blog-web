@@ -27,8 +27,8 @@ END $$;
 -- 3. 기존 플랜이 없으면 새로 생성
 INSERT INTO plans (tier, interval, name, price, features, is_active)
 SELECT * FROM (VALUES
-  ('standard', 'month', '빌구독 월간', 14900, '{"subscription_type": "monthly", "rental_limit": 1, "rental_categories": ["all"], "delivery_fee": 0, "free_trial": false}'::jsonb, true),
-  ('standard', 'year', '빌구독 연간', 150000, '{"subscription_type": "yearly", "rental_limit": 1, "rental_categories": ["all"], "delivery_fee": 0, "free_trial": false, "discount_rate": 16}'::jsonb, true)
+  ('standard', 'month', '라떼 방구석 월간', 14900, '{"subscription_type": "monthly", "rental_limit": 1, "rental_categories": ["all"], "delivery_fee": 0, "free_trial": false}'::jsonb, true),
+  ('standard', 'year', '라떼 방구석 연간', 150000, '{"subscription_type": "yearly", "rental_limit": 1, "rental_categories": ["all"], "delivery_fee": 0, "free_trial": false, "discount_rate": 16}'::jsonb, true)
 ) AS v(tier, interval, name, price, features, is_active)
 WHERE NOT EXISTS (SELECT 1 FROM plans WHERE is_active = true);
 

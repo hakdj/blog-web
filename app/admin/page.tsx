@@ -1,56 +1,162 @@
-import { requireAdmin } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default async function AdminPage() {
-  const user = await requireAdmin();
-  const supabase = await createClient();
+const ADMIN_EMAILS = ['hakdjhakdj@naver.com'];
 
-  // 전체 구독 통계
-  const { data: subscriptions } = await supabase
-    .from('subscriptions')
-    .select(`
-      *,
-      plan:plans(*),
-      user:profiles(email, nickname)
-    `)
-    .order('created_at', { ascending: false });
+export default function AdminPage() {
+  const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [activeSubscriptions, setActiveSubscriptions] = useState<any[]>([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [agentUsage, setAgentUsage] = useState(0);
+  const [bulkUsage, setBulkUsage] = useState(0);
+  const [monthlyRevenue, setMonthlyRevenue] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [initPlansLoading, setInitPlansLoading] = useState(false);
+  const [initPlansMessage, setInitPlansMessage] = useState<string | null>(null);
+  const router = useRouter();
+  const supabase = createClient();
 
-  // 활성 구독만 필터링
-  const activeSubscriptions = subscriptions?.filter(
-    (sub) => sub.status === 'active' && new Date(sub.current_period_end) > new Date()
-  ) || [];
+  useEffect(() => {
+    const checkAdminAndLoadData = async () => {
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) {
+          router.push('/login');
+          return;
+        }
 
-  // 전체 사용자 수
-  const { count: totalUsers } = await supabase
-    .from('profiles')
-    .select('*', { count: 'exact', head: true });
+        const isAdminUser = ADMIN_EMAILS.includes(currentUser.email?.toLowerCase() || '');
+        if (!isAdminUser) {
+          router.push('/');
+          return;
+        }
 
-  // 전체 사용량 통계 (이번 달)
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  
-  const { data: usageLogs } = await supabase
-    .from('usage_logs')
-    .select('usage_type, count')
-    .gte('created_at', startOfMonth);
+        setUser(currentUser);
+        setIsAdmin(true);
 
-  const agentUsage = usageLogs
-    ?.filter(log => log.usage_type === 'agent')
-    .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
+        // 데이터 로드
+        await loadAdminData();
+      } catch (error) {
+        console.error('관리자 확인 오류:', error);
+        router.push('/');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const bulkUsage = usageLogs
-    ?.filter(log => log.usage_type === 'bulk')
-    .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
+    checkAdminAndLoadData();
+  }, []);
 
-  // 결제 통계 (이번 달)
-  const { data: payments } = await supabase
-    .from('payments')
-    .select('amount, currency, status')
-    .eq('status', 'paid')
-    .gte('paid_at', startOfMonth);
+  const loadAdminData = async () => {
+    try {
+      // 전체 구독 통계
+      const { data: subsData } = await supabase
+        .from('subscriptions')
+        .select(`
+          *,
+          plan:plans(*),
+          user:profiles(email, nickname)
+        `)
+        .order('created_at', { ascending: false });
 
-  const monthlyRevenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+      if (subsData) {
+        setSubscriptions(subsData);
+        const active = subsData.filter(
+          (sub: any) => sub.status === 'active' && new Date(sub.current_period_end) > new Date()
+        );
+        setActiveSubscriptions(active);
+      }
+
+      // 전체 사용자 수
+      const { count } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+      setTotalUsers(count || 0);
+
+      // 사용량 통계
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      
+      const { data: usageLogs } = await supabase
+        .from('usage_logs')
+        .select('usage_type, count')
+        .gte('created_at', startOfMonth);
+
+      const agent = usageLogs
+        ?.filter(log => log.usage_type === 'agent')
+        .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
+      setAgentUsage(agent);
+
+      const bulk = usageLogs
+        ?.filter(log => log.usage_type === 'bulk')
+        .reduce((sum, log) => sum + (log.count || 1), 0) || 0;
+      setBulkUsage(bulk);
+
+      // 결제 통계
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('amount, currency, status')
+        .eq('status', 'paid')
+        .gte('paid_at', startOfMonth);
+
+      const revenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+      setMonthlyRevenue(revenue);
+    } catch (error) {
+      console.error('데이터 로드 오류:', error);
+    }
+  };
+
+  const handleInitPlans = async () => {
+    if (!confirm('플랜을 초기화하시겠습니까? 기존 플랜이 있으면 추가되지 않습니다.')) {
+      return;
+    }
+
+    setInitPlansLoading(true);
+    setInitPlansMessage(null);
+
+    try {
+      const response = await fetch('/api/admin/init-plans', {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setInitPlansMessage(`✅ ${data.message}`);
+        // 페이지 새로고침
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        setInitPlansMessage(`❌ 오류: ${data.error}`);
+      }
+    } catch (error: any) {
+      setInitPlansMessage(`❌ 오류: ${error.message}`);
+    } finally {
+      setInitPlansLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -59,11 +165,33 @@ export default async function AdminPage() {
         <p className="text-gray-600">구독 상태 및 사용량 통계를 확인하세요.</p>
       </div>
 
+      {/* 플랜 초기화 버튼 */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-yellow-800 mb-1">요금제 플랜 초기화</h3>
+            <p className="text-xs text-yellow-700">플랜이 없거나 불러올 수 없을 때 이 버튼을 클릭하세요.</p>
+          </div>
+          <button
+            onClick={handleInitPlans}
+            disabled={initPlansLoading}
+            className="bg-yellow-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {initPlansLoading ? '처리 중...' : '플랜 초기화'}
+          </button>
+        </div>
+        {initPlansMessage && (
+          <p className={`mt-2 text-sm ${initPlansMessage.includes('✅') ? 'text-green-700' : 'text-red-700'}`}>
+            {initPlansMessage}
+          </p>
+        )}
+      </div>
+
       {/* 통계 카드 */}
       <div className="grid md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-sm font-medium text-gray-500 mb-2">전체 사용자</h3>
-          <p className="text-3xl font-bold text-gray-900">{totalUsers || 0}</p>
+          <p className="text-3xl font-bold text-gray-900">{totalUsers}</p>
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-sm font-medium text-gray-500 mb-2">활성 구독</h3>
@@ -171,4 +299,3 @@ export default async function AdminPage() {
     </div>
   );
 }
-
