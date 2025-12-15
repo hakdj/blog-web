@@ -58,28 +58,18 @@ export default function AdminPage() {
         if (mounted) {
           setUser(currentUser);
           setIsAdmin(true);
-        }
-        
-        // 데이터 로드 (에러가 발생해도 로딩은 끝나도록)
-        // API 호출에 타임아웃 설정 (8초)
-        const dataLoadPromise = Promise.race([
-          loadAdminData(),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('데이터 로드 타임아웃')), 8000)
-          ),
-        ]).catch((err) => {
-          console.error('데이터 로드 오류:', err);
-          // 에러가 발생해도 페이지는 표시
-        });
-
-        // 로딩 종료 (데이터 로드와 관계없이 즉시)
-        clearTimeout(timeoutId);
-        if (mounted) {
+          // 관리자 확인 후 즉시 로딩 종료하고 페이지 표시
           setLoading(false);
         }
-
-        // 데이터 로드는 백그라운드에서 계속 진행
-        await dataLoadPromise;
+        
+        // 타임아웃 클리어
+        clearTimeout(timeoutId);
+        
+        // 데이터 로드는 백그라운드에서 별도로 실행 (에러가 발생해도 페이지는 표시)
+        loadAdminData().catch((err) => {
+          console.error('데이터 로드 오류 (백그라운드):', err);
+          // 에러가 발생해도 페이지는 이미 표시됨
+        });
       } catch (error) {
         console.error('관리자 확인 오류:', error);
         clearTimeout(timeoutId);
@@ -108,53 +98,67 @@ export default function AdminPage() {
     try {
       console.log('관리자 데이터 로드 시작 (API 사용)');
       
-      // API를 통해 데이터 가져오기 (서비스 클라이언트 사용하여 RLS 우회)
-      // credentials: 'include'로 쿠키 포함
-      const response = await fetch('/api/admin/data', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // 쿠키 포함
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
-        console.error('관리자 데이터 API 오류:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
+      // API 호출에 타임아웃 설정 (15초)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      
+      try {
+        // API를 통해 데이터 가져오기 (서비스 클라이언트 사용하여 RLS 우회)
+        const response = await fetch('/api/admin/data', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include', // 쿠키 포함
+          signal: controller.signal,
         });
-        
-        // 401 또는 403 에러인 경우 권한 문제
-        if (response.status === 401 || response.status === 403) {
-          console.warn('관리자 권한이 없습니다. 홈으로 이동합니다.');
-          router.push('/');
-          return;
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
+          console.error('관리자 데이터 API 오류:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData,
+          });
+          
+          // 401 또는 403 에러인 경우 권한 문제 (하지만 이미 관리자 확인했으므로 로그만 출력)
+          if (response.status === 401 || response.status === 403) {
+            console.warn('관리자 데이터 API 권한 오류:', errorData);
+            return; // 페이지는 이미 표시되었으므로 리다이렉트하지 않음
+          }
+          
+          throw new Error(errorData.error || `데이터를 불러올 수 없습니다 (${response.status})`);
         }
-        
-        throw new Error(errorData.error || `데이터를 불러올 수 없습니다 (${response.status})`);
-      }
 
-      const data = await response.json();
-      console.log('관리자 데이터 로드 결과:', {
-        subscriptions: data.subscriptions?.length || 0,
-        activeSubscriptions: data.activeSubscriptions?.length || 0,
-        totalUsers: data.totalUsers || 0,
-        errors: data.errors?.length || 0,
-      });
+        const data = await response.json();
+        console.log('관리자 데이터 로드 결과:', {
+          subscriptions: data.subscriptions?.length || 0,
+          activeSubscriptions: data.activeSubscriptions?.length || 0,
+          totalUsers: data.totalUsers || 0,
+          errors: data.errors?.length || 0,
+        });
 
-      // 데이터 설정
-      setSubscriptions(data.subscriptions || []);
-      setActiveSubscriptions(data.activeSubscriptions || []);
-      setTotalUsers(data.totalUsers || 0);
-      setAgentUsage(data.agentUsage || 0);
-      setBulkUsage(data.bulkUsage || 0);
-      setMonthlyRevenue(data.monthlyRevenue || 0);
+        // 데이터 설정
+        setSubscriptions(data.subscriptions || []);
+        setActiveSubscriptions(data.activeSubscriptions || []);
+        setTotalUsers(data.totalUsers || 0);
+        setAgentUsage(data.agentUsage || 0);
+        setBulkUsage(data.bulkUsage || 0);
+        setMonthlyRevenue(data.monthlyRevenue || 0);
 
-      // 에러가 있으면 로그만 출력 (데이터는 표시)
-      if (data.errors && data.errors.length > 0) {
-        console.warn('일부 데이터 로드 실패:', data.errors);
+        // 에러가 있으면 로그만 출력 (데이터는 표시)
+        if (data.errors && data.errors.length > 0) {
+          console.warn('일부 데이터 로드 실패:', data.errors);
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          console.warn('관리자 데이터 로드 타임아웃 (15초)');
+        } else {
+          throw fetchError;
+        }
       }
     } catch (error) {
       console.error('데이터 로드 중 예외:', error);
