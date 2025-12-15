@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
-import { requireAdmin } from '@/lib/auth';
+import { createServiceClient, createClient } from '@/lib/supabase/server';
+import { isAdmin } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    // 관리자 권한 확인
-    await requireAdmin();
+    // 관리자 권한 확인 (API 라우트에서는 redirect 대신 에러 반환)
+    const supabaseAuth = await createClient();
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: '인증이 필요합니다', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      );
+    }
+    
+    if (!isAdmin(user)) {
+      return NextResponse.json(
+        { success: false, error: '관리자 권한이 필요합니다', code: 'FORBIDDEN' },
+        { status: 403 }
+      );
+    }
     
     const supabase = createServiceClient();
 
@@ -86,4 +101,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
 

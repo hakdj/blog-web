@@ -109,17 +109,31 @@ export default function AdminPage() {
       console.log('관리자 데이터 로드 시작 (API 사용)');
       
       // API를 통해 데이터 가져오기 (서비스 클라이언트 사용하여 RLS 우회)
+      // credentials: 'include'로 쿠키 포함
       const response = await fetch('/api/admin/data', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // 쿠키 포함
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('관리자 데이터 API 오류:', errorData);
-        throw new Error(errorData.error || '데이터를 불러올 수 없습니다');
+        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
+        console.error('관리자 데이터 API 오류:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+        });
+        
+        // 401 또는 403 에러인 경우 권한 문제
+        if (response.status === 401 || response.status === 403) {
+          console.warn('관리자 권한이 없습니다. 홈으로 이동합니다.');
+          router.push('/');
+          return;
+        }
+        
+        throw new Error(errorData.error || `데이터를 불러올 수 없습니다 (${response.status})`);
       }
 
       const data = await response.json();
@@ -159,6 +173,7 @@ export default function AdminPage() {
     try {
       const response = await fetch('/api/admin/init-plans', {
         method: 'POST',
+        credentials: 'include', // 쿠키 포함
       });
 
       const data = await response.json();

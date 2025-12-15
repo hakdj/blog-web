@@ -1,13 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
-import { requireAdmin } from '@/lib/auth';
+import { createServiceClient, createClient } from '@/lib/supabase/server';
+import { isAdmin } from '@/lib/auth';
+
+const ADMIN_EMAILS = ['hakdjhakdj@naver.com'];
 
 // 관리자 대시보드 데이터를 가져오는 API
 // 서비스 클라이언트를 사용하여 RLS 정책을 완전히 우회
 export async function GET(request: NextRequest) {
   try {
-    // 관리자 권한 확인
-    await requireAdmin();
+    // 관리자 권한 확인 (API 라우트에서는 redirect 대신 에러 반환)
+    const supabaseAuth = await createClient();
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    
+    console.log('관리자 데이터 API - 인증 확인:', {
+      hasUser: !!user,
+      userEmail: user?.email,
+      authError: authError?.message,
+    });
+    
+    if (authError || !user) {
+      console.error('관리자 데이터 API - 인증 실패:', authError);
+      return NextResponse.json(
+        { error: '인증이 필요합니다', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      );
+    }
+    
+    const adminCheck = isAdmin(user);
+    console.log('관리자 데이터 API - 관리자 확인:', {
+      email: user.email,
+      isAdmin: adminCheck,
+    });
+    
+    if (!adminCheck) {
+      console.warn('관리자 데이터 API - 권한 없음:', user.email);
+      return NextResponse.json(
+        { error: '관리자 권한이 필요합니다', code: 'FORBIDDEN' },
+        { status: 403 }
+      );
+    }
     
     // 서비스 클라이언트 사용 (RLS 우회)
     const supabase = createServiceClient();

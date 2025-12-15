@@ -18,3 +18,4 @@ git commit -F $tempFile
 # 임시 파일 삭제
 Remove-Item $tempFile
 
+
