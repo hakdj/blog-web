@@ -25,7 +25,13 @@ export default function Header() {
         // 프로필에서 닉네임 가져오기
         if (user) {
           // 관리자 체크
-          setIsAdmin(ADMIN_EMAILS.includes(user.email?.toLowerCase() || ''));
+          const adminCheck = ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
+          setIsAdmin(adminCheck);
+          console.log('관리자 체크 (초기):', {
+            email: user.email,
+            isAdmin: adminCheck,
+            adminEmails: ADMIN_EMAILS
+          });
           
           try {
             const { data: profile, error } = await supabase
@@ -63,6 +69,15 @@ export default function Header() {
         
         // 프로필에서 닉네임 가져오기
         if (session?.user) {
+          // 관리자 체크
+          const adminCheck = ADMIN_EMAILS.includes(session.user.email?.toLowerCase() || '');
+          setIsAdmin(adminCheck);
+          console.log('관리자 체크:', {
+            email: session.user.email,
+            isAdmin: adminCheck,
+            adminEmails: ADMIN_EMAILS
+          });
+          
           try {
             const { data: profile, error } = await supabase
               .from('profiles')
@@ -82,6 +97,7 @@ export default function Header() {
           }
         } else {
           setNickname(null);
+          setIsAdmin(false);
         }
       }
     );
