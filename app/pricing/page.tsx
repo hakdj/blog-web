@@ -26,15 +26,18 @@ export default function PricingPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const fetchPlans = async () => {
       setIsLoading(true);
+      setError(null);
       
       // 타임아웃 설정 (10초)
       const timeoutId = setTimeout(() => {
         console.error('플랜 가져오기 타임아웃');
+        setError('플랜을 불러오는 데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.');
         setPlans([]);
         setIsLoading(false);
       }, 10000);
@@ -43,7 +46,7 @@ export default function PricingPage() {
         const supabase = createClient();
         const interval = isMonthly ? 'month' : 'year';
         
-        const { data, error } = await supabase
+        const { data, error: fetchError } = await supabase
           .from('plans')
           .select('*')
           .eq('interval', interval)
@@ -52,21 +55,29 @@ export default function PricingPage() {
 
         clearTimeout(timeoutId);
 
-        if (error) {
-          console.error('플랜 가져오기 오류:', error);
+        if (fetchError) {
+          console.error('플랜 가져오기 오류:', fetchError);
+          setError(`플랜을 불러오는 중 오류가 발생했습니다: ${fetchError.message || '알 수 없는 오류'}`);
           setPlans([]);
           setIsLoading(false);
           return;
         }
 
         if (data && Array.isArray(data)) {
-          setPlans(data);
+          if (data.length === 0) {
+            setError('현재 활성화된 플랜이 없습니다.');
+          } else {
+            setPlans(data);
+            setError(null);
+          }
         } else {
+          setError('플랜 데이터 형식이 올바르지 않습니다.');
           setPlans([]);
         }
-      } catch (err) {
+      } catch (err: any) {
         clearTimeout(timeoutId);
         console.error('플랜 가져오기 중 예외:', err);
+        setError(`예상치 못한 오류가 발생했습니다: ${err?.message || '알 수 없는 오류'}`);
         setPlans([]);
       } finally {
         setIsLoading(false);
@@ -316,7 +327,51 @@ export default function PricingPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-600">플랜을 불러올 수 없습니다.</p>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+              <p className="text-red-800 font-semibold mb-2">플랜을 불러올 수 없습니다</p>
+              {error && (
+                <p className="text-red-600 text-sm mb-4">{error}</p>
+              )}
+              <button
+                onClick={() => {
+                  setIsLoading(true);
+                  setError(null);
+                  const fetchPlans = async () => {
+                    try {
+                      const supabase = createClient();
+                      const interval = isMonthly ? 'month' : 'year';
+                      const { data, error: fetchError } = await supabase
+                        .from('plans')
+                        .select('*')
+                        .eq('interval', interval)
+                        .eq('is_active', true)
+                        .order('price', { ascending: true });
+                      
+                      if (fetchError) {
+                        setError(`오류: ${fetchError.message}`);
+                        setIsLoading(false);
+                        return;
+                      }
+                      
+                      if (data && data.length > 0) {
+                        setPlans(data);
+                        setError(null);
+                      } else {
+                        setError('활성화된 플랜이 없습니다.');
+                      }
+                    } catch (err: any) {
+                      setError(`오류: ${err?.message || '알 수 없는 오류'}`);
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  };
+                  fetchPlans();
+                }}
+                className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                다시 시도
+              </button>
+            </div>
           </div>
         )}
 
