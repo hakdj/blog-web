@@ -79,50 +79,88 @@ export default async function HomePage() {
         {!subscription && (
           <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <p className="text-yellow-800 text-sm">
-              구독이 필요합니다. <Link href="/pricing" className="font-semibold underline">요금제를 선택하세요</Link>
+              구독하면 더 많은 게임과 제품을 이용할 수 있습니다. <Link href="/pricing" className="font-semibold underline">구독하기</Link>
             </p>
           </div>
         )}
       </div>
 
-      {/* Quick Actions */}
-      {subscription ? (
-        <div className="grid md:grid-cols-2 gap-4 mb-8">
-          <Link
-            href="/dashboard/create"
-            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg p-6 hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold mb-2">에이전트 모드</h3>
-                <p className="text-purple-100 text-sm">고품질 블로그 글 1개 생성</p>
-              </div>
-              <div className="text-3xl">✨</div>
+      {/* Quick Actions - 레트로 컨셉 */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {/* 그때 그 게임 */}
+        <Link
+          href="/games"
+          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg p-6 hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold mb-2">그때 그 게임</h3>
+              <p className="text-purple-100 text-sm">추억의 레트로 게임 플레이</p>
             </div>
-          </Link>
-          <Link
-            href="/dashboard/create?mode=bulk"
-            className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg p-6 hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg hover:shadow-xl"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold mb-2">대량생성 모드</h3>
-                <p className="text-blue-100 text-sm">SEO 블로그 글 30개 세트 생성</p>
-              </div>
-              <div className="text-3xl">🚀</div>
+            <div className="text-3xl">🎮</div>
+          </div>
+        </Link>
+
+        {/* 구멍가게 */}
+        <Link
+          href="/products"
+          className={`bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg p-6 hover:from-orange-600 hover:to-red-600 transition-all shadow-lg hover:shadow-xl ${
+            !subscription ? 'opacity-60 cursor-not-allowed' : ''
+          }`}
+          onClick={(e) => {
+            if (!subscription) {
+              e.preventDefault();
+              alert('구독 유저만 구멍가게에서 제품을 구매할 수 있습니다.');
+            }
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold mb-2">구멍가게</h3>
+              <p className="text-orange-100 text-sm">
+                {subscription ? '추억의 레트로 제품 구매' : '구독 필요'}
+              </p>
             </div>
-          </Link>
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow-md p-8 mb-8 text-center">
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">구독이 필요합니다</h3>
-          <p className="text-gray-600 mb-4">AI 블로그 글 생성 기능을 사용하려면 구독이 필요합니다.</p>
-          <Link
-            href="/pricing"
-            className="inline-block bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 transition-all"
-          >
-            요금제 보기
-          </Link>
+            <div className="text-3xl">🛍️</div>
+          </div>
+        </Link>
+
+        {/* 요즘 뭐해? */}
+        <Link
+          href="/events"
+          className="bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg p-6 hover:from-green-600 hover:to-teal-600 transition-all shadow-lg hover:shadow-xl"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold mb-2">요즘 뭐해?</h3>
+              <p className="text-green-100 text-sm">전국 축제와 이벤트 일정</p>
+            </div>
+            <div className="text-3xl">📅</div>
+          </div>
+        </Link>
+      </div>
+
+      {/* 구독 유저 전용 기능 */}
+      {subscription && (
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg p-6 mb-8 text-white">
+          <h3 className="text-xl font-bold mb-2">✨ 구독 유저 전용 혜택</h3>
+          <div className="grid md:grid-cols-3 gap-4 mt-4">
+            <div className="bg-white/20 rounded-lg p-4">
+              <div className="text-2xl mb-2">🎁</div>
+              <p className="font-semibold">프리미엄 게임</p>
+              <p className="text-sm text-indigo-100">구독 유저만 플레이 가능한 특별 게임</p>
+            </div>
+            <div className="bg-white/20 rounded-lg p-4">
+              <div className="text-2xl mb-2">🛒</div>
+              <p className="font-semibold">구멍가게 할인</p>
+              <p className="text-sm text-indigo-100">레트로 제품 구매 시 최대 20% 할인</p>
+            </div>
+            <div className="bg-white/20 rounded-lg p-4">
+              <div className="text-2xl mb-2">⭐</div>
+              <p className="font-semibold">우선 접근</p>
+              <p className="text-sm text-indigo-100">신규 게임 및 이벤트 우선 알림</p>
+            </div>
+          </div>
         </div>
       )}
 

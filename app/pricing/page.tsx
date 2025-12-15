@@ -57,7 +57,16 @@ export default function PricingPage() {
 
         if (fetchError) {
           console.error('플랜 가져오기 오류:', fetchError);
-          setError(`플랜을 불러오는 중 오류가 발생했습니다: ${fetchError.message || '알 수 없는 오류'}`);
+          console.error('에러 코드:', fetchError.code);
+          console.error('에러 상세:', fetchError.details);
+          console.error('에러 힌트:', fetchError.hint);
+          
+          // RLS 정책 오류인 경우 특별 메시지
+          if (fetchError.code === '42501' || fetchError.message?.includes('permission') || fetchError.message?.includes('policy')) {
+            setError('플랜을 불러올 권한이 없습니다. 관리자에게 문의하거나 Supabase에서 RLS 정책을 확인해주세요.');
+          } else {
+            setError(`플랜을 불러오는 중 오류가 발생했습니다: ${fetchError.message || '알 수 없는 오류'}`);
+          }
           setPlans([]);
           setIsLoading(false);
           return;

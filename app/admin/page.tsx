@@ -23,34 +23,50 @@ export default function AdminPage() {
   const supabase = createClient();
 
   useEffect(() => {
+    let mounted = true;
+
     const checkAdminAndLoadData = async () => {
       try {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        if (!currentUser) {
-          router.push('/login');
+        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !currentUser) {
+          if (mounted) {
+            router.push('/login');
+          }
           return;
         }
 
         const isAdminUser = ADMIN_EMAILS.includes(currentUser.email?.toLowerCase() || '');
         if (!isAdminUser) {
-          router.push('/');
+          if (mounted) {
+            router.push('/');
+          }
           return;
         }
 
-        setUser(currentUser);
-        setIsAdmin(true);
-
-        // 데이터 로드
-        await loadAdminData();
+        if (mounted) {
+          setUser(currentUser);
+          setIsAdmin(true);
+          // 데이터 로드
+          await loadAdminData();
+        }
       } catch (error) {
         console.error('관리자 확인 오류:', error);
-        router.push('/');
+        if (mounted) {
+          router.push('/');
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     checkAdminAndLoadData();
+
+    return () => {
+      mounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
