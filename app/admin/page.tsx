@@ -61,21 +61,25 @@ export default function AdminPage() {
         }
         
         // 데이터 로드 (에러가 발생해도 로딩은 끝나도록)
-        try {
-          // 타임아웃 없이 로드 시도 (각 쿼리가 독립적으로 실패해도 계속 진행)
-          loadAdminData().catch((err) => {
-            console.error('데이터 로드 백그라운드 오류:', err);
-          });
-        } catch (dataError) {
-          console.error('데이터 로드 오류:', dataError);
-          // 데이터 로드 실패해도 페이지는 표시
-        } finally {
-          clearTimeout(timeoutId);
-          // 데이터 로드와 관계없이 즉시 로딩 종료
-          if (mounted) {
-            setLoading(false);
-          }
+        // API 호출에 타임아웃 설정 (8초)
+        const dataLoadPromise = Promise.race([
+          loadAdminData(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('데이터 로드 타임아웃')), 8000)
+          ),
+        ]).catch((err) => {
+          console.error('데이터 로드 오류:', err);
+          // 에러가 발생해도 페이지는 표시
+        });
+
+        // 로딩 종료 (데이터 로드와 관계없이 즉시)
+        clearTimeout(timeoutId);
+        if (mounted) {
+          setLoading(false);
         }
+
+        // 데이터 로드는 백그라운드에서 계속 진행
+        await dataLoadPromise;
       } catch (error) {
         console.error('관리자 확인 오류:', error);
         clearTimeout(timeoutId);
@@ -102,107 +106,45 @@ export default function AdminPage() {
 
   const loadAdminData = async () => {
     try {
-      // Promise.all로 병렬 처리하여 속도 개선
-      const [subsResult, usersResult, usageResult, paymentsResult] = await Promise.allSettled([
-        // 전체 구독 통계
-        supabase
-          .from('subscriptions')
-          .select(`
-            *,
-            plan:plans(*),
-            user:profiles(email, nickname)
-          `)
-          .order('created_at', { ascending: false }),
-        
-        // 전체 사용자 수
-        supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true }),
-        
-        // 사용량 통계
-        (async () => {
-          const now = new Date();
-          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-          return supabase
-            .from('usage_logs')
-            .select('usage_type, count')
-            .gte('created_at', startOfMonth);
-        })(),
-        
-        // 결제 통계
-        (async () => {
-          const now = new Date();
-          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-          return supabase
-            .from('payments')
-            .select('amount, currency, status')
-            .eq('status', 'paid')
-            .gte('paid_at', startOfMonth);
-        })(),
-      ]);
+      console.log('관리자 데이터 로드 시작 (API 사용)');
+      
+      // API를 통해 데이터 가져오기 (서비스 클라이언트 사용하여 RLS 우회)
+      const response = await fetch('/api/admin/data', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      // 구독 데이터 처리
-      if (subsResult.status === 'fulfilled') {
-        const { data: subsData, error: subsError } = subsResult.value;
-        if (subsError) {
-          console.error('구독 데이터 로드 오류:', subsError);
-        } else if (subsData) {
-          setSubscriptions(subsData);
-          const active = subsData.filter(
-            (sub: any) => sub.status === 'active' && new Date(sub.current_period_end) > new Date()
-          );
-          setActiveSubscriptions(active);
-        }
-      } else {
-        console.error('구독 데이터 로드 실패:', subsResult.reason);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('관리자 데이터 API 오류:', errorData);
+        throw new Error(errorData.error || '데이터를 불러올 수 없습니다');
       }
 
-      // 사용자 수 처리
-      if (usersResult.status === 'fulfilled') {
-        const { count, error: usersError } = usersResult.value;
-        if (usersError) {
-          console.error('사용자 수 로드 오류:', usersError);
-        } else {
-          setTotalUsers(count || 0);
-        }
-      } else {
-        console.error('사용자 수 로드 실패:', usersResult.reason);
-      }
+      const data = await response.json();
+      console.log('관리자 데이터 로드 결과:', {
+        subscriptions: data.subscriptions?.length || 0,
+        activeSubscriptions: data.activeSubscriptions?.length || 0,
+        totalUsers: data.totalUsers || 0,
+        errors: data.errors?.length || 0,
+      });
 
-      // 사용량 통계 처리
-      if (usageResult.status === 'fulfilled') {
-        const { data: usageLogs, error: usageError } = usageResult.value;
-        if (usageError) {
-          console.error('사용량 로드 오류:', usageError);
-        } else {
-          const agent = usageLogs
-            ?.filter((log: any) => log.usage_type === 'agent')
-            .reduce((sum: number, log: any) => sum + (log.count || 1), 0) || 0;
-          setAgentUsage(agent);
+      // 데이터 설정
+      setSubscriptions(data.subscriptions || []);
+      setActiveSubscriptions(data.activeSubscriptions || []);
+      setTotalUsers(data.totalUsers || 0);
+      setAgentUsage(data.agentUsage || 0);
+      setBulkUsage(data.bulkUsage || 0);
+      setMonthlyRevenue(data.monthlyRevenue || 0);
 
-          const bulk = usageLogs
-            ?.filter((log: any) => log.usage_type === 'bulk')
-            .reduce((sum: number, log: any) => sum + (log.count || 1), 0) || 0;
-          setBulkUsage(bulk);
-        }
-      } else {
-        console.error('사용량 로드 실패:', usageResult.reason);
-      }
-
-      // 결제 통계 처리
-      if (paymentsResult.status === 'fulfilled') {
-        const { data: payments, error: paymentsError } = paymentsResult.value;
-        if (paymentsError) {
-          console.error('결제 데이터 로드 오류:', paymentsError);
-        } else {
-          const revenue = payments?.reduce((sum: number, p: any) => sum + (p.amount || 0), 0) || 0;
-          setMonthlyRevenue(revenue);
-        }
-      } else {
-        console.error('결제 데이터 로드 실패:', paymentsResult.reason);
+      // 에러가 있으면 로그만 출력 (데이터는 표시)
+      if (data.errors && data.errors.length > 0) {
+        console.warn('일부 데이터 로드 실패:', data.errors);
       }
     } catch (error) {
       console.error('데이터 로드 중 예외:', error);
+      // 에러가 발생해도 빈 데이터로 페이지는 표시
     }
   };
 
