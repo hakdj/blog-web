@@ -7,6 +7,7 @@ import Link from 'next/link';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const router = useRouter();
   const supabase = createClient();
@@ -43,7 +44,6 @@ export default function SettingsPage() {
   const loadUserData = async () => {
     try {
       console.log('🔵 설정 페이지 - 사용자 데이터 로드 시작');
-      setLoading(true);
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
@@ -123,7 +123,7 @@ export default function SettingsPage() {
       console.error('❌ 설정 페이지 - 데이터 로드 중 오류:', error);
       setMessage({ type: 'error', text: error.message || '데이터 로드 중 오류가 발생했습니다.' });
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -216,6 +216,19 @@ export default function SettingsPage() {
       setLoading(false);
     }
   };
+
+  if (initialLoading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">로딩 중...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
