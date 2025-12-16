@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'address' | 'subscription'>('profile');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const router = useRouter();
@@ -49,12 +48,16 @@ export default function SettingsPage() {
         return;
       }
 
+      console.log('User loaded:', user);
+
       // Load profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
+
+      console.log('Profile data:', profileData);
 
       // Set profile with email from user object (most reliable source)
       const defaultNickname = profileData?.nickname || user.email?.split('@')[0] || '사용자';
@@ -92,12 +95,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // 닉네임은 수정할 수 없으므로 여기서는 사용하지 않음
-    // 이전에는 닉네임과 이메일이 모두 수정 가능했지만, 이제는 읽기 전용으로 표시
-  };
-
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -115,7 +112,7 @@ export default function SettingsPage() {
       }
 
       const { error } = await supabase.auth.updateUser({
-        password: password.new,
+        password: password.new
       });
 
       if (error) throw error;
@@ -136,20 +133,16 @@ export default function SettingsPage() {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setMessage({ type: 'error', text: '로그인이 필요합니다.' });
-        return;
-      }
+      if (!user) throw new Error('사용자를 찾을 수 없습니다.');
 
       const { error } = await supabase
         .from('profiles')
         .update({
-          postal_code: address.postal_code.trim(),
-          address: address.address.trim(),
-          address_detail: address.address_detail.trim() || null,
-          recipient_name: address.recipient_name.trim(),
-          phone: address.phone.trim(),
-          updated_at: new Date().toISOString(),
+          postal_code: address.postal_code,
+          address: address.address,
+          address_detail: address.address_detail,
+          recipient_name: address.recipient_name,
+          phone: address.phone,
         })
         .eq('id', user.id);
 
@@ -163,8 +156,8 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSubscriptionCancel = async () => {
-    if (!confirm('정말 구독을 취소하시겠습니까? 취소 즉시 현재 기간이 끝날 때까지 사용할 수 없습니다.')) {
+  const handleCancelSubscription = async () => {
+    if (!confirm('정말로 구독을 취소하시겠습니까?')) {
       return;
     }
 
@@ -173,30 +166,23 @@ export default function SettingsPage() {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setMessage({ type: 'error', text: '로그인이 필요합니다.' });
-        return;
-      }
+      if (!user) throw new Error('사용자를 찾을 수 없습니다.');
 
       const { error } = await supabase
         .from('subscriptions')
-        .update({ status: 'canceled' })
+        .update({ status: 'cancelled' })
         .eq('user_id', user.id)
         .eq('status', 'active');
 
       if (error) throw error;
 
-      setMessage({ type: 'success', text: '구독이 성공적으로 취소되었습니다.' });
-      setSubscription(null);
+      setMessage({ type: 'success', text: '구독이 취소되었습니다.' });
+      loadUserData();
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || '구독 취소에 실패했습니다.' });
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatPrice = (price: number) => {
-    return price.toLocaleString('ko-KR');
   };
 
   return (
@@ -218,281 +204,217 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-md">
-        {/* Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px">
-            {[
-              { id: 'profile', label: '개인정보 수정', icon: '👤' },
-              { id: 'password', label: '비밀번호', icon: '🔒' },
-              { id: 'address', label: '주소', icon: '📍' },
-              { id: 'subscription', label: '구독 관리', icon: '💳' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+      {/* 개인정보 */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <span className="mr-2">👤</span>
+          개인정보
+        </h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              닉네임
+            </label>
+            <input
+              type="text"
+              value={profile.nickname}
+              disabled
+              readOnly
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+            />
+            <p className="mt-1 text-xs text-gray-500">닉네임은 변경할 수 없습니다.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              이메일
+            </label>
+            <input
+              type="email"
+              value={profile.email}
+              disabled
+              readOnly
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+            />
+            <p className="mt-1 text-xs text-gray-500">이메일은 변경할 수 없습니다.</p>
+          </div>
         </div>
+      </div>
 
-        {/* Tab Content */}
-        <div className="p-6">
-          {/* Profile Tab */}
-          {activeTab === 'profile' && (
-            <div className="space-y-6">
-              <div>
-                <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-2">
-                  닉네임
-                </label>
-                <input
-                  type="text"
-                  id="nickname"
-                  value={profile.nickname}
-                  disabled
-                  readOnly
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
-                  placeholder="닉네임"
-                />
-                <p className="mt-1 text-xs text-gray-500">닉네임은 변경할 수 없습니다.</p>
-              </div>
+      {/* 비밀번호 변경 */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <span className="mr-2">🔒</span>
+          비밀번호 변경
+        </h2>
+        <form onSubmit={handlePasswordUpdate} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              새 비밀번호
+            </label>
+            <input
+              type="password"
+              value={password.new}
+              onChange={(e) => setPassword({ ...password, new: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="새 비밀번호 (최소 6자)"
+              required
+              minLength={6}
+            />
+          </div>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  이메일
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={profile.email}
-                  disabled
-                  readOnly
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
-                />
-                <p className="mt-1 text-xs text-gray-500">이메일은 변경할 수 없습니다.</p>
-              </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              새 비밀번호 확인
+            </label>
+            <input
+              type="password"
+              value={password.confirm}
+              onChange={(e) => setPassword({ ...password, confirm: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="새 비밀번호 확인"
+              required
+              minLength={6}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            {loading ? '변경 중...' : '비밀번호 변경'}
+          </button>
+        </form>
+      </div>
+
+      {/* 주소 정보 */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <span className="mr-2">📍</span>
+          주소 정보
+        </h2>
+        <form onSubmit={handleAddressUpdate} className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                우편번호
+              </label>
+              <input
+                type="text"
+                value={address.postal_code}
+                onChange={(e) => setAddress({ ...address, postal_code: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="우편번호"
+              />
             </div>
-          )}
 
-          {/* Password Tab */}
-          {activeTab === 'password' && (
-            <form onSubmit={handlePasswordUpdate} className="space-y-6">
-              <div>
-                <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-2">
-                  현재 비밀번호
-                </label>
-                <input
-                  type="password"
-                  id="current-password"
-                  value={password.current}
-                  onChange={(e) => setPassword({ ...password, current: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="현재 비밀번호를 입력하세요"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-2">
-                  새 비밀번호
-                </label>
-                <input
-                  type="password"
-                  id="new-password"
-                  value={password.new}
-                  onChange={(e) => setPassword({ ...password, new: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="새 비밀번호를 입력하세요(최소 6자)"
-                  required
-                  minLength={6}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-2">
-                  새 비밀번호 확인
-                </label>
-                <input
-                  type="password"
-                  id="confirm-password"
-                  value={password.confirm}
-                  onChange={(e) => setPassword({ ...password, confirm: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="새 비밀번호를 다시 입력하세요"
-                  required
-                  minLength={6}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? '변경 중...' : '비밀번호 변경'}
-              </button>
-            </form>
-          )}
-
-          {/* Address Tab */}
-          {activeTab === 'address' && (
-            <form onSubmit={handleAddressUpdate} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="postal_code" className="block text-sm font-medium text-gray-700 mb-2">
-                    우편번호
-                  </label>
-                  <input
-                    type="text"
-                    id="postal_code"
-                    value={address.postal_code}
-                    onChange={(e) => setAddress({ ...address, postal_code: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="우편번호"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="recipient_name" className="block text-sm font-medium text-gray-700 mb-2">
-                    수령인 이름
-                  </label>
-                  <input
-                    type="text"
-                    id="recipient_name"
-                    value={address.recipient_name}
-                    onChange={(e) => setAddress({ ...address, recipient_name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="수령인 이름"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                  기본 주소
-                </label>
-                <input
-                  type="text"
-                  id="address"
-                  value={address.address}
-                  onChange={(e) => setAddress({ ...address, address: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="기본 주소를 입력하세요"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="address_detail" className="block text-sm font-medium text-gray-700 mb-2">
-                  상세 주소
-                </label>
-                <input
-                  type="text"
-                  id="address_detail"
-                  value={address.address_detail}
-                  onChange={(e) => setAddress({ ...address, address_detail: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="상세 주소를 입력하세요(선택)"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                  전화번호
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  value={address.phone}
-                  onChange={(e) => setAddress({ ...address, phone: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="전화번호를 입력하세요"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? '저장 중...' : '주소 저장'}
-              </button>
-            </form>
-          )}
-
-          {/* Subscription Tab */}
-          {activeTab === 'subscription' && (
-            <div className="space-y-6">
-              {subscription ? (
-                <>
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">현재 구독 플랜</h3>
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">플랜:</span>
-                        <span className="font-medium">{subscription.plan?.name || '알 수 없음'}</span>
-                      </div>
-                      {subscription.plan?.price !== undefined && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">가격:</span>
-                          <span className="font-medium">
-                            {formatPrice(subscription.plan.price)}원
-                            {subscription.plan.interval && (
-                              <span className="text-gray-500 text-sm ml-1">
-                                / {subscription.plan.interval === 'month' ? '월' : '년'}
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">상태:</span>
-                        <span className="font-medium text-green-600">활성</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">만료일:</span>
-                        <span className="font-medium">
-                          {new Date(subscription.current_period_end).toLocaleDateString('ko-KR')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <p className="text-sm text-yellow-800 mb-4">
-                      구독을 취소하면 현재 기간이 끝날 때까지 사용할 수 없습니다.
-                    </p>
-                    <button
-                      onClick={handleSubscriptionCancel}
-                      disabled={loading}
-                      className="w-full bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loading ? '처리 중...' : '구독 취소'}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-600 mb-4">현재 활성화된 구독이 없습니다.</p>
-                  <Link
-                    href="/pricing"
-                    className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    구독하기
-                  </Link>
-                </div>
-              )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                수령인
+              </label>
+              <input
+                type="text"
+                value={address.recipient_name}
+                onChange={(e) => setAddress({ ...address, recipient_name: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="수령인 이름"
+              />
             </div>
-          )}
-        </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              주소
+            </label>
+            <input
+              type="text"
+              value={address.address}
+              onChange={(e) => setAddress({ ...address, address: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="주소"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              상세 주소
+            </label>
+            <input
+              type="text"
+              value={address.address_detail}
+              onChange={(e) => setAddress({ ...address, address_detail: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="상세 주소"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              전화번호
+            </label>
+            <input
+              type="tel"
+              value={address.phone}
+              onChange={(e) => setAddress({ ...address, phone: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="전화번호"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            {loading ? '저장 중...' : '주소 저장'}
+          </button>
+        </form>
+      </div>
+
+      {/* 구독 관리 */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <span className="mr-2">💳</span>
+          구독 관리
+        </h2>
+        {subscription ? (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="font-semibold text-blue-900 mb-2">{subscription.plan?.name}</h3>
+              <p className="text-sm text-blue-700 mb-1">
+                {subscription.plan?.price?.toLocaleString()}원 / {subscription.plan?.interval === 'month' ? '월' : '년'}
+              </p>
+              <p className="text-sm text-blue-700">
+                다음 결제일: {new Date(subscription.current_period_end).toLocaleDateString('ko-KR')}
+              </p>
+            </div>
+            <button
+              onClick={handleCancelSubscription}
+              disabled={loading}
+              className="w-full bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              {loading ? '처리 중...' : '구독 취소'}
+            </button>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-500 mb-4">활성 구독이 없습니다.</p>
+            <Link
+              href="/pricing"
+              className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              구독하기
+            </Link>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6">
+        <Link href="/" className="text-blue-600 hover:text-blue-800 font-medium">
+          ← 홈으로 돌아가기
+        </Link>
       </div>
     </div>
   );
 }
-
