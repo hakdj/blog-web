@@ -8,9 +8,8 @@ import Link from 'next/link';
 const ADMIN_EMAILS = ['hakdjhakdj@naver.com'];
 
 export default function AdminPage() {
-  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [activeSubscriptions, setActiveSubscriptions] = useState<any[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -19,138 +18,76 @@ export default function AdminPage() {
   const [monthlyRevenue, setMonthlyRevenue] = useState(0);
   const [initPlansLoading, setInitPlansLoading] = useState(false);
   const [initPlansMessage, setInitPlansMessage] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string>('초기화 중...');
+  const [error, setError] = useState<string | null>(null);
+  
   const router = useRouter();
-  
-  // Supabase 환경 변수 확인
-  console.log('Supabase 환경 변수 확인:', {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    anonKeyLength: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length
-  });
-  
   const supabase = createClient();
 
   useEffect(() => {
-    const checkAdminAndLoadData = async () => {
-      try {
-        setIsChecking(true);
-        setDebugInfo('사용자 인증 확인 중...');
-        console.log('=== 관리자 페이지 인증 시작 ===');
-        
-        // 타임아웃 추가
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('인증 타임아웃 (10초 초과)')), 10000);
-        });
-        
-        const authPromise = supabase.auth.getUser();
-        
-        console.log('getUser() 호출 중...');
-        const { data: { user: currentUser }, error: userError } = await Promise.race([
-          authPromise,
-          timeoutPromise
-        ]) as any;
-        
-        console.log('인증 결과:', { user: currentUser, error: userError });
-        
-        if (userError || !currentUser) {
-          console.error('사용자 인증 오류:', userError);
-          setDebugInfo(`인증 오류: ${userError?.message || '사용자 없음'}`);
-          setTimeout(() => router.push('/login'), 2000);
-          return;
-        }
-        
-        setDebugInfo(`사용자 확인됨: ${currentUser.email}`);
-
-        const isAdminUser = ADMIN_EMAILS.includes(currentUser.email?.toLowerCase() || '');
-        console.log('관리자 확인:', {
-          email: currentUser.email,
-          isAdmin: isAdminUser,
-          adminEmails: ADMIN_EMAILS
-        });
-        
-        if (!isAdminUser) {
-          console.warn('관리자 권한 없음:', currentUser.email);
-          setDebugInfo(`권한 없음: ${currentUser.email}은(는) 관리자가 아닙니다.`);
-          setTimeout(() => router.push('/'), 2000);
-          return;
-        }
-
-        // 관리자 확인 완료 - 페이지 표시
-        console.log('=== 관리자 권한 확인 완료 ===');
-        setDebugInfo('관리자 권한 확인됨. 페이지 로드 중...');
-        setUser(currentUser);
-        setIsAdmin(true);
-        setIsChecking(false);
-        
-        console.log('페이지 상태 업데이트 완료, 데이터 로드 시작');
-        // 데이터 로드 (에러가 발생해도 페이지는 표시)
-        loadAdminData();
-      } catch (error: any) {
-        console.error('관리자 확인 오류:', error);
-        setDebugInfo(`오류 발생: ${error.message || '알 수 없는 오류'}`);
-        setIsChecking(false);
-        // 에러 발생 시에도 로그인 페이지로 리다이렉트
-        setTimeout(() => router.push('/login'), 2000);
-      }
-    };
-
     checkAdminAndLoadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const checkAdminAndLoadData = async () => {
+    try {
+      setLoading(true);
+      
+      // 사용자 확인
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      // 관리자 확인
+      if (!ADMIN_EMAILS.includes(user.email?.toLowerCase() || '')) {
+        router.push('/');
+        return;
+      }
+
+      setIsAdmin(true);
+      setLoading(false);
+      
+      // 데이터 로드
+      loadAdminData();
+    } catch (err: any) {
+      console.error('Error:', err);
+      setError(err.message);
+      setLoading(false);
+    }
+  };
 
   const loadAdminData = async () => {
     try {
-      // 현재 사용자 정보 가져오기
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       
-      console.log('관리자 데이터 로드 시작:', currentUser?.email);
-      
-      // API를 통해 데이터 가져오기
       const response = await fetch('/api/admin/data', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-Email': currentUser?.email || '',
+          'X-User-Email': user?.email || '',
         },
         credentials: 'include',
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
-        console.error('관리자 데이터 API 오류:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData
-        });
-        
-        // 오류 메시지 설정
-        const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
-        setLoadError(errorMessage);
-        
-        // 환경 변수 오류인 경우 사용자에게 알림
-        if (errorData.code === 'MISSING_ENV_VAR') {
-          alert(`환경 변수 오류: ${errorData.error}\n\n.env.local 파일을 확인하세요.`);
-        }
-        return; // 에러가 발생해도 페이지는 표시
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        setError(errorData.error || `HTTP ${response.status}`);
+        return;
       }
 
       const data = await response.json();
-      console.log('관리자 데이터 로드 완료:', data);
-
-      // 데이터 설정
+      
       setSubscriptions(data.subscriptions || []);
       setActiveSubscriptions(data.activeSubscriptions || []);
       setTotalUsers(data.totalUsers || 0);
       setAgentUsage(data.agentUsage || 0);
       setBulkUsage(data.bulkUsage || 0);
       setMonthlyRevenue(data.monthlyRevenue || 0);
-      setLoadError(null); // 성공 시 에러 메시지 초기화
-    } catch (error: any) {
-      console.error('데이터 로드 중 예외:', error);
-      setLoadError(error.message || '데이터를 불러오는 중 오류가 발생했습니다.');
-      // 에러가 발생해도 빈 데이터로 페이지는 표시
+      setError(null);
+    } catch (err: any) {
+      console.error('Data load error:', err);
+      setError(err.message);
     }
   };
 
@@ -165,14 +102,13 @@ export default function AdminPage() {
     try {
       const response = await fetch('/api/admin/init-plans', {
         method: 'POST',
-        credentials: 'include', // 쿠키 포함
+        credentials: 'include',
       });
 
       const data = await response.json();
 
       if (data.success) {
         setInitPlansMessage(`✅ ${data.message}`);
-        // 페이지 새로고침
         setTimeout(() => {
           window.location.reload();
         }, 2000);
@@ -186,20 +122,22 @@ export default function AdminPage() {
     }
   };
 
-  if (isChecking || !isAdmin) {
+  if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           <p className="mt-4 text-gray-600">로딩 중...</p>
-          <p className="mt-2 text-sm text-gray-500">{debugInfo}</p>
-          {!isChecking && !isAdmin && (
-            <p className="mt-2 text-sm text-red-600">관리자 권한이 없습니다.</p>
-          )}
-          <div className="mt-4 text-xs text-gray-400">
-            <p>현재 URL: {typeof window !== 'undefined' ? window.location.href : ''}</p>
-            <p>관리자 이메일: {ADMIN_EMAILS.join(', ')}</p>
-          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="text-center">
+          <p className="text-red-600">관리자 권한이 없습니다.</p>
         </div>
       </div>
     );
@@ -212,8 +150,8 @@ export default function AdminPage() {
         <p className="text-gray-600">구독 상태 및 사용량 통계를 확인하세요.</p>
       </div>
 
-      {/* 에러 메시지 표시 */}
-      {loadError && (
+      {/* 에러 메시지 */}
+      {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <div className="flex items-start">
             <div className="flex-shrink-0">
@@ -223,7 +161,7 @@ export default function AdminPage() {
             </div>
             <div className="ml-3 flex-1">
               <h3 className="text-sm font-semibold text-red-800 mb-1">데이터 로드 오류</h3>
-              <p className="text-sm text-red-700">{loadError}</p>
+              <p className="text-sm text-red-700">{error}</p>
               <button
                 onClick={loadAdminData}
                 className="mt-2 text-sm text-red-800 underline hover:text-red-900"
