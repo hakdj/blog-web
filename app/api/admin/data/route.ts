@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
     
     // 이메일이 없으면 쿠키에서 인증 시도
     if (!userEmail) {
-      const cookieStore = await cookies();
       const supabaseAuth = await createClient();
       const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
       
@@ -62,7 +61,28 @@ export async function GET(request: NextRequest) {
     }
     
     // 서비스 클라이언트 사용 (RLS 우회)
+    console.log('서비스 클라이언트 생성 시도...');
+    
+    // 환경 변수 확인
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('SUPABASE_SERVICE_ROLE_KEY 환경 변수가 설정되지 않았습니다!');
+      return NextResponse.json(
+        { 
+          error: 'SUPABASE_SERVICE_ROLE_KEY 환경 변수가 설정되지 않았습니다. .env.local 파일을 확인하세요.',
+          code: 'MISSING_ENV_VAR',
+          subscriptions: [],
+          activeSubscriptions: [],
+          totalUsers: 0,
+          agentUsage: 0,
+          bulkUsage: 0,
+          monthlyRevenue: 0,
+        },
+        { status: 500 }
+      );
+    }
+    
     const supabase = createServiceClient();
+    console.log('서비스 클라이언트 생성 완료');
     
     // 병렬로 모든 데이터 가져오기
     const [subsResult, usersResult, usageResult, paymentsResult] = await Promise.allSettled([
