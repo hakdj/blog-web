@@ -20,6 +20,7 @@ export default function AdminPage() {
   const [initPlansLoading, setInitPlansLoading] = useState(false);
   const [initPlansMessage, setInitPlansMessage] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('초기화 중...');
   const router = useRouter();
   const supabase = createClient();
 
@@ -29,15 +30,19 @@ export default function AdminPage() {
     const checkAdminAndLoadData = async () => {
       try {
         setIsChecking(true);
+        setDebugInfo('사용자 인증 확인 중...');
         const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
         
         if (userError || !currentUser) {
           console.error('사용자 인증 오류:', userError);
+          setDebugInfo(`인증 오류: ${userError?.message || '사용자 없음'}`);
           if (isMounted) {
-            router.push('/login');
+            setTimeout(() => router.push('/login'), 2000);
           }
           return;
         }
+        
+        setDebugInfo(`사용자 확인됨: ${currentUser.email}`);
 
         const isAdminUser = ADMIN_EMAILS.includes(currentUser.email?.toLowerCase() || '');
         console.log('관리자 확인:', {
@@ -48,13 +53,15 @@ export default function AdminPage() {
         
         if (!isAdminUser) {
           console.warn('관리자 권한 없음:', currentUser.email);
+          setDebugInfo(`권한 없음: ${currentUser.email}은(는) 관리자가 아닙니다.`);
           if (isMounted) {
-            router.push('/');
+            setTimeout(() => router.push('/'), 2000);
           }
           return;
         }
 
         // 관리자 확인 완료 - 페이지 표시
+        setDebugInfo('관리자 권한 확인됨. 페이지 로드 중...');
         if (isMounted) {
           setUser(currentUser);
           setIsAdmin(true);
@@ -63,12 +70,13 @@ export default function AdminPage() {
           // 데이터 로드 (에러가 발생해도 페이지는 표시)
           loadAdminData();
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('관리자 확인 오류:', error);
+        setDebugInfo(`오류 발생: ${error.message || '알 수 없는 오류'}`);
         if (isMounted) {
           setIsChecking(false);
           // 에러 발생 시에도 로그인 페이지로 리다이렉트
-          router.push('/login');
+          setTimeout(() => router.push('/login'), 2000);
         }
       }
     };
@@ -173,9 +181,14 @@ export default function AdminPage() {
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           <p className="mt-4 text-gray-600">로딩 중...</p>
+          <p className="mt-2 text-sm text-gray-500">{debugInfo}</p>
           {!isChecking && !isAdmin && (
             <p className="mt-2 text-sm text-red-600">관리자 권한이 없습니다.</p>
           )}
+          <div className="mt-4 text-xs text-gray-400">
+            <p>현재 URL: {typeof window !== 'undefined' ? window.location.href : ''}</p>
+            <p>관리자 이메일: {ADMIN_EMAILS.join(', ')}</p>
+          </div>
         </div>
       </div>
     );
