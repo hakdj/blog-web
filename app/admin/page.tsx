@@ -22,6 +22,14 @@ export default function AdminPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('초기화 중...');
   const router = useRouter();
+  
+  // Supabase 환경 변수 확인
+  console.log('Supabase 환경 변수 확인:', {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    anonKeyLength: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length
+  });
+  
   const supabase = createClient();
 
   useEffect(() => {
@@ -31,7 +39,18 @@ export default function AdminPage() {
         setDebugInfo('사용자 인증 확인 중...');
         console.log('=== 관리자 페이지 인증 시작 ===');
         
-        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+        // 타임아웃 추가
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('인증 타임아웃 (10초 초과)')), 10000);
+        });
+        
+        const authPromise = supabase.auth.getUser();
+        
+        console.log('getUser() 호출 중...');
+        const { data: { user: currentUser }, error: userError } = await Promise.race([
+          authPromise,
+          timeoutPromise
+        ]) as any;
         
         console.log('인증 결과:', { user: currentUser, error: userError });
         
