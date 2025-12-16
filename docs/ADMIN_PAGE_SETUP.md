@@ -103,6 +103,35 @@ const ADMIN_EMAILS = ['hakdjhakdj@naver.com', 'your-email@example.com'];
 3. 브라우저 캐시 및 쿠키 삭제 후 다시 로그인
 4. 다른 브라우저에서 테스트
 
+## Supabase 비밀번호 재설정 URL 설정
+
+비밀번호 재설정 기능이 제대로 작동하려면 Supabase에서 리다이렉트 URL을 설정해야 합니다:
+
+### 로컬 개발 환경
+
+1. [Supabase Dashboard](https://app.supabase.com)에 로그인
+2. 프로젝트 선택
+3. **Authentication** → **URL Configuration** 클릭
+4. **Redirect URLs**에 다음 URL 추가:
+   ```
+   http://localhost:3000/reset-password
+   ```
+5. **Save** 클릭
+
+### 프로덕션 환경 (Vercel)
+
+1. 같은 **Redirect URLs** 섹션에 프로덕션 URL 추가:
+   ```
+   https://your-domain.vercel.app/reset-password
+   ```
+2. **Save** 클릭
+
+### 이메일 템플릿 확인
+
+1. **Authentication** → **Email Templates** 클릭
+2. **Reset Password** 템플릿 선택
+3. 링크가 `{{ .ConfirmationURL }}`을 사용하는지 확인
+
 ## 보안 주의사항
 
 ⚠️ **절대 하지 말아야 할 것:**

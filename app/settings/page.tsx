@@ -43,20 +43,13 @@ export default function SettingsPage() {
   const loadUserData = async () => {
     try {
       console.log('🔵 설정 페이지 - 사용자 데이터 로드 시작');
+      setLoading(true);
       
-      // 타임아웃 추가 (10초)
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('인증 타임아웃')), 10000);
-      });
-      
-      const authPromise = supabase.auth.getUser();
-      
-      const result = await Promise.race([authPromise, timeoutPromise]) as any;
-      const { data: { user }, error: userError } = result;
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError) {
         console.error('❌ 사용자 로드 오류:', userError);
-        alert(`인증 오류: ${userError.message}`);
+        setMessage({ type: 'error', text: userError.message || '사용자 인증에 실패했습니다.' });
         return;
       }
       
@@ -128,7 +121,9 @@ export default function SettingsPage() {
       console.log('✅ 설정 페이지 - 모든 데이터 로드 완료');
     } catch (error: any) {
       console.error('❌ 설정 페이지 - 데이터 로드 중 오류:', error);
-      alert(`데이터 로드 오류: ${error.message}`);
+      setMessage({ type: 'error', text: error.message || '데이터 로드 중 오류가 발생했습니다.' });
+    } finally {
+      setLoading(false);
     }
   };
 
