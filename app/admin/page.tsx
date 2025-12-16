@@ -10,6 +10,7 @@ const ADMIN_EMAILS = ['hakdjhakdj@naver.com'];
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [activeSubscriptions, setActiveSubscriptions] = useState<any[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -22,33 +23,60 @@ export default function AdminPage() {
   const supabase = createClient();
 
   useEffect(() => {
+    let isMounted = true;
+    
     const checkAdminAndLoadData = async () => {
       try {
+        setIsChecking(true);
         const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
         
         if (userError || !currentUser) {
-          router.push('/login');
+          console.error('사용자 인증 오류:', userError);
+          if (isMounted) {
+            router.push('/login');
+          }
           return;
         }
 
         const isAdminUser = ADMIN_EMAILS.includes(currentUser.email?.toLowerCase() || '');
+        console.log('관리자 확인:', {
+          email: currentUser.email,
+          isAdmin: isAdminUser,
+          adminEmails: ADMIN_EMAILS
+        });
+        
         if (!isAdminUser) {
-          router.push('/');
+          console.warn('관리자 권한 없음:', currentUser.email);
+          if (isMounted) {
+            router.push('/');
+          }
           return;
         }
 
         // 관리자 확인 완료 - 페이지 표시
-        setUser(currentUser);
-        setIsAdmin(true);
-        
-        // 데이터 로드 (에러가 발생해도 페이지는 표시)
-        loadAdminData();
+        if (isMounted) {
+          setUser(currentUser);
+          setIsAdmin(true);
+          setIsChecking(false);
+          
+          // 데이터 로드 (에러가 발생해도 페이지는 표시)
+          loadAdminData();
+        }
       } catch (error) {
         console.error('관리자 확인 오류:', error);
+        if (isMounted) {
+          setIsChecking(false);
+          // 에러 발생 시에도 로그인 페이지로 리다이렉트
+          router.push('/login');
+        }
       }
     };
 
     checkAdminAndLoadData();
+    
+    return () => {
+      isMounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -120,12 +148,15 @@ export default function AdminPage() {
     }
   };
 
-  if (!isAdmin) {
+  if (isChecking || !isAdmin) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           <p className="mt-4 text-gray-600">로딩 중...</p>
+          {!isChecking && !isAdmin && (
+            <p className="mt-2 text-sm text-red-600">관리자 권한이 없습니다.</p>
+          )}
         </div>
       </div>
     );
