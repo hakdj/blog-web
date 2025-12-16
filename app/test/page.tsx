@@ -82,6 +82,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY: ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '�
     try {
       const testPlan = {
         name: '테스트 플랜',
+        tier: 'basic',
         price: 1000,
         interval: 'month',
         features: ['테스트 기능 1', '테스트 기능 2']

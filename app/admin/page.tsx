@@ -21,6 +21,7 @@ export default function AdminPage() {
   const [showAddPlan, setShowAddPlan] = useState(false);
   const [newPlan, setNewPlan] = useState({
     name: '',
+    tier: '',
     price: '',
     interval: 'month',
     features: '',
@@ -143,6 +144,7 @@ export default function AdminPage() {
         .from('plans')
         .insert([{
           name: newPlan.name,
+          tier: newPlan.tier || 'custom',
           price: price,
           interval: newPlan.interval,
           features: newPlan.features.split(',').map(f => f.trim()).filter(f => f),
@@ -152,7 +154,7 @@ export default function AdminPage() {
 
       alert('✅ 플랜이 추가되었습니다.');
       setShowAddPlan(false);
-      setNewPlan({ name: '', price: '', interval: 'month', features: '' });
+      setNewPlan({ name: '', tier: '', price: '', interval: 'month', features: '' });
       loadPlans();
     } catch (error: any) {
       console.error('플랜 추가 오류:', error);
@@ -171,6 +173,7 @@ export default function AdminPage() {
         .from('plans')
         .update({
           name: editingPlan.name,
+          tier: editingPlan.tier || 'custom',
           price: editingPlan.price,
           interval: editingPlan.interval,
           features: typeof editingPlan.features === 'string' 
@@ -272,6 +275,16 @@ export default function AdminPage() {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">플랜 등급 (tier)</label>
+                <input
+                  type="text"
+                  value={newPlan.tier}
+                  onChange={(e) => setNewPlan({ ...newPlan, tier: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="예: basic, premium"
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">가격 (원)</label>
                 <input
                   type="number"
@@ -335,6 +348,17 @@ export default function AdminPage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">플랜 등급 (tier)</label>
+                      <input
+                        type="text"
+                        value={editingPlan.tier || ''}
+                        onChange={(e) => setEditingPlan({ ...editingPlan, tier: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">가격 (원)</label>
                       <input

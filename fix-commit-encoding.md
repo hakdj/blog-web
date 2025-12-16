@@ -29,3 +29,6 @@ git config --global i18n.logoutputencoding
 - GitHub 웹사이트에서도 깨져 보이면 이미 잘못된 인코딩으로 저장된 것입니다.
 
 
+
+
+
