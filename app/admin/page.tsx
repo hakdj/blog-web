@@ -25,20 +25,20 @@ export default function AdminPage() {
   const supabase = createClient();
 
   useEffect(() => {
-    let isMounted = true;
-    
     const checkAdminAndLoadData = async () => {
       try {
         setIsChecking(true);
         setDebugInfo('사용자 인증 확인 중...');
+        console.log('=== 관리자 페이지 인증 시작 ===');
+        
         const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+        
+        console.log('인증 결과:', { user: currentUser, error: userError });
         
         if (userError || !currentUser) {
           console.error('사용자 인증 오류:', userError);
           setDebugInfo(`인증 오류: ${userError?.message || '사용자 없음'}`);
-          if (isMounted) {
-            setTimeout(() => router.push('/login'), 2000);
-          }
+          setTimeout(() => router.push('/login'), 2000);
           return;
         }
         
@@ -54,38 +54,30 @@ export default function AdminPage() {
         if (!isAdminUser) {
           console.warn('관리자 권한 없음:', currentUser.email);
           setDebugInfo(`권한 없음: ${currentUser.email}은(는) 관리자가 아닙니다.`);
-          if (isMounted) {
-            setTimeout(() => router.push('/'), 2000);
-          }
+          setTimeout(() => router.push('/'), 2000);
           return;
         }
 
         // 관리자 확인 완료 - 페이지 표시
+        console.log('=== 관리자 권한 확인 완료 ===');
         setDebugInfo('관리자 권한 확인됨. 페이지 로드 중...');
-        if (isMounted) {
-          setUser(currentUser);
-          setIsAdmin(true);
-          setIsChecking(false);
-          
-          // 데이터 로드 (에러가 발생해도 페이지는 표시)
-          loadAdminData();
-        }
+        setUser(currentUser);
+        setIsAdmin(true);
+        setIsChecking(false);
+        
+        console.log('페이지 상태 업데이트 완료, 데이터 로드 시작');
+        // 데이터 로드 (에러가 발생해도 페이지는 표시)
+        loadAdminData();
       } catch (error: any) {
         console.error('관리자 확인 오류:', error);
         setDebugInfo(`오류 발생: ${error.message || '알 수 없는 오류'}`);
-        if (isMounted) {
-          setIsChecking(false);
-          // 에러 발생 시에도 로그인 페이지로 리다이렉트
-          setTimeout(() => router.push('/login'), 2000);
-        }
+        setIsChecking(false);
+        // 에러 발생 시에도 로그인 페이지로 리다이렉트
+        setTimeout(() => router.push('/login'), 2000);
       }
     };
 
     checkAdminAndLoadData();
-    
-    return () => {
-      isMounted = false;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
