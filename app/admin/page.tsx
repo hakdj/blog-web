@@ -57,43 +57,55 @@ export default function AdminPage() {
         return;
       }
       
+      console.log('✅ 관리자 확인 완료');
+      console.log('🔵 setLoading(true) 호출');
       setLoading(true);
+      console.log('🔵 로딩 상태 설정 완료');
       
-      console.log('✅ 관리자 확인 완료, API 호출 시작');
+      console.log('✅ API 호출 준비 시작');
 
       // Load admin data
-      console.log('🔵 API 호출 중...');
-      const response = await fetch('/api/admin/data', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Email': user.email || '',
-        },
-        credentials: 'include',
-      });
-
-      console.log('🔵 API 응답:', response.status, response.statusText);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.log('❌ API 오류:', errorData);
-        setError(errorData.error || `HTTP ${response.status}`);
-        return;
-      }
-
-      const data = await response.json();
-      console.log('✅ API 데이터 수신:', data);
+      console.log('🔵 API 호출 시작 - URL:', '/api/admin/data');
+      console.log('🔵 사용자 이메일:', user.email);
       
-      setSubscriptions(data.subscriptions || []);
-      setActiveSubscriptions(data.activeSubscriptions || []);
-      setTotalUsers(data.totalUsers || 0);
-      setAgentUsage(data.agentUsage || 0);
-      setBulkUsage(data.bulkUsage || 0);
-      setMonthlyRevenue(data.monthlyRevenue || 0);
-      setError(null);
-      console.log('✅ 관리자 페이지 로드 완료');
+      try {
+        const response = await fetch('/api/admin/data', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-Email': user.email || '',
+          },
+          credentials: 'include',
+        });
+        
+        console.log('🔵 fetch 완료, 응답 받음');
+
+        console.log('🔵 API 응답:', response.status, response.statusText);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.log('❌ API 오류:', errorData);
+          setError(errorData.error || `HTTP ${response.status}`);
+          return;
+        }
+
+        const data = await response.json();
+        console.log('✅ API 데이터 수신:', data);
+      
+        setSubscriptions(data.subscriptions || []);
+        setActiveSubscriptions(data.activeSubscriptions || []);
+        setTotalUsers(data.totalUsers || 0);
+        setAgentUsage(data.agentUsage || 0);
+        setBulkUsage(data.bulkUsage || 0);
+        setMonthlyRevenue(data.monthlyRevenue || 0);
+        setError(null);
+        console.log('✅ 관리자 페이지 로드 완료');
+      } catch (fetchError: any) {
+        console.error('❌ Fetch 오류:', fetchError);
+        setError(fetchError.message || 'API 호출 실패');
+      }
     } catch (err: any) {
-      console.error('❌ 오류 발생:', err);
+      console.error('❌ 전체 오류 발생:', err);
       setError(err.message);
     } finally {
       console.log('🔵 로딩 상태 해제');
