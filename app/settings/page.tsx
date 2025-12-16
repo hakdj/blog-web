@@ -42,29 +42,54 @@ export default function SettingsPage() {
 
   const loadUserData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      console.log('🔵 설정 페이지 - 사용자 데이터 로드 시작');
+      
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('❌ 사용자 로드 오류:', userError);
+        return;
+      }
+      
       if (!user) {
+        console.log('❌ 사용자 없음, 로그인 페이지로 이동');
         router.push('/login');
         return;
       }
 
-      console.log('User loaded:', user);
+      console.log('✅ User loaded:', {
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at
+      });
 
       // Load profile
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
 
-      console.log('Profile data:', profileData);
+      if (profileError) {
+        console.error('❌ 프로필 로드 오류:', profileError);
+      }
+
+      console.log('✅ Profile data:', profileData);
 
       // Set profile with email from user object (most reliable source)
       const defaultNickname = profileData?.nickname || user.email?.split('@')[0] || '사용자';
+      
+      console.log('🔵 프로필 설정:', {
+        nickname: defaultNickname,
+        email: user.email
+      });
+      
       setProfile({
         nickname: defaultNickname,
         email: user.email || profileData?.email || '',
       });
+      
+      console.log('✅ 프로필 state 업데이트 완료');
 
       if (profileData) {
         setAddress({
@@ -90,8 +115,11 @@ export default function SettingsPage() {
       if (subscriptionData) {
         setSubscription(subscriptionData);
       }
-    } catch (error) {
-      console.error('Error loading user data:', error);
+      
+      console.log('✅ 설정 페이지 - 모든 데이터 로드 완료');
+    } catch (error: any) {
+      console.error('❌ 설정 페이지 - 데이터 로드 중 오류:', error);
+      alert(`데이터 로드 오류: ${error.message}`);
     }
   };
 
