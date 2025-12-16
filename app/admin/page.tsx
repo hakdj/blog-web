@@ -21,7 +21,7 @@ export default function AdminPage() {
   const [showAddPlan, setShowAddPlan] = useState(false);
   const [newPlan, setNewPlan] = useState({
     name: '',
-    price: 0,
+    price: '',
     interval: 'month',
     features: '',
   });
@@ -120,22 +120,30 @@ export default function AdminPage() {
     setLoading(true);
 
     try {
+      const price = parseInt(newPlan.price as string);
+      if (isNaN(price) || price < 0) {
+        alert('❌ 올바른 가격을 입력하세요.');
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('plans')
         .insert([{
           name: newPlan.name,
-          price: newPlan.price,
+          price: price,
           interval: newPlan.interval,
-          features: newPlan.features.split(',').map(f => f.trim()),
+          features: newPlan.features.split(',').map(f => f.trim()).filter(f => f),
         }]);
 
       if (error) throw error;
 
       alert('✅ 플랜이 추가되었습니다.');
       setShowAddPlan(false);
-      setNewPlan({ name: '', price: 0, interval: 'month', features: '' });
+      setNewPlan({ name: '', price: '', interval: 'month', features: '' });
       loadPlans();
     } catch (error: any) {
+      console.error('플랜 추가 오류:', error);
       alert(`❌ 오류: ${error.message}`);
     } finally {
       setLoading(false);
@@ -256,9 +264,10 @@ export default function AdminPage() {
                 <input
                   type="number"
                   value={newPlan.price}
-                  onChange={(e) => setNewPlan({ ...newPlan, price: parseInt(e.target.value) })}
+                  onChange={(e) => setNewPlan({ ...newPlan, price: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   placeholder="9900"
+                  min="0"
                   required
                 />
               </div>
@@ -373,13 +382,14 @@ export default function AdminPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setEditingPlan({ ...plan, features: Array.isArray(plan.features) ? plan.features.join(', ') : plan.features })}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        className="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 text-sm font-medium"
                       >
                         수정
                       </button>
                       <button
                         onClick={() => handleDeletePlan(plan.id, plan.name)}
-                        className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        disabled={loading}
+                        className="bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 text-sm font-medium disabled:opacity-50"
                       >
                         삭제
                       </button>
