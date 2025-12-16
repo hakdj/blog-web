@@ -50,11 +50,13 @@ export default function SettingsPage() {
       if (userError) {
         console.error('❌ 사용자 로드 오류:', userError);
         setMessage({ type: 'error', text: userError.message || '사용자 인증에 실패했습니다.' });
+        setInitialLoading(false);
         return;
       }
       
       if (!user) {
         console.log('❌ 사용자 없음, 로그인 페이지로 이동');
+        setInitialLoading(false);
         router.push('/login');
         return;
       }
