@@ -44,10 +44,19 @@ export default function SettingsPage() {
     try {
       console.log('🔵 설정 페이지 - 사용자 데이터 로드 시작');
       
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      // 타임아웃 추가 (10초)
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('인증 타임아웃')), 10000);
+      });
+      
+      const authPromise = supabase.auth.getUser();
+      
+      const result = await Promise.race([authPromise, timeoutPromise]) as any;
+      const { data: { user }, error: userError } = result;
       
       if (userError) {
         console.error('❌ 사용자 로드 오류:', userError);
+        alert(`인증 오류: ${userError.message}`);
         return;
       }
       
