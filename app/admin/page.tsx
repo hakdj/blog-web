@@ -26,7 +26,6 @@ export default function AdminPage() {
 
   const loadAdminData = async () => {
     try {
-      setLoading(true);
       console.log('🔵 관리자 페이지 로드 시작');
       
       const { data: { user } } = await supabase.auth.getUser();
@@ -47,6 +46,8 @@ export default function AdminPage() {
         router.push('/');
         return;
       }
+      
+      setLoading(true);
       
       console.log('✅ 관리자 확인 완료, API 호출 시작');
 
