@@ -27,20 +27,31 @@ export default function AdminPage() {
   const loadAdminData = async () => {
     try {
       setLoading(true);
+      console.log('🔵 관리자 페이지 로드 시작');
       
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('🔵 사용자 확인:', user?.email);
+      
       if (!user) {
+        console.log('❌ 사용자 없음, 로그인 페이지로 이동');
         router.push('/login');
         return;
       }
 
       // Check admin
-      if (!ADMIN_EMAILS.includes(user.email?.toLowerCase() || '')) {
+      const isAdmin = ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
+      console.log('🔵 관리자 체크:', { email: user.email, isAdmin, adminEmails: ADMIN_EMAILS });
+      
+      if (!isAdmin) {
+        console.log('❌ 관리자 아님, 홈으로 이동');
         router.push('/');
         return;
       }
+      
+      console.log('✅ 관리자 확인 완료, API 호출 시작');
 
       // Load admin data
+      console.log('🔵 API 호출 중...');
       const response = await fetch('/api/admin/data', {
         method: 'GET',
         headers: {
@@ -50,13 +61,17 @@ export default function AdminPage() {
         credentials: 'include',
       });
 
+      console.log('🔵 API 응답:', response.status, response.statusText);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.log('❌ API 오류:', errorData);
         setError(errorData.error || `HTTP ${response.status}`);
         return;
       }
 
       const data = await response.json();
+      console.log('✅ API 데이터 수신:', data);
       
       setSubscriptions(data.subscriptions || []);
       setActiveSubscriptions(data.activeSubscriptions || []);
@@ -65,10 +80,12 @@ export default function AdminPage() {
       setBulkUsage(data.bulkUsage || 0);
       setMonthlyRevenue(data.monthlyRevenue || 0);
       setError(null);
+      console.log('✅ 관리자 페이지 로드 완료');
     } catch (err: any) {
-      console.error('Error:', err);
+      console.error('❌ 오류 발생:', err);
       setError(err.message);
     } finally {
+      console.log('🔵 로딩 상태 해제');
       setLoading(false);
     }
   };
