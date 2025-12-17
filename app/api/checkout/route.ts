@@ -93,7 +93,6 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           plan_id: planId,
           status: 'active',
-          start_date: new Date().toISOString(),
           current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           auto_renew: true,
         });
