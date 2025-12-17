@@ -3,533 +3,438 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 
-const ADMIN_EMAILS = ['hakdjhakdj@naver.com'];
+const ADMIN_EMAILS = ['hakdjhakdj@naver.com', 'hakdjhakdj@gmail.com'];
+
+interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  tier: string;
+  features: string[];
+}
+
+interface AdminData {
+  totalUsers: number;
+  activeSubscriptions: number;
+  totalRevenue: number;
+  recentUsers: Array<{
+    email: string;
+    created_at: string;
+  }>;
+}
 
 export default function AdminPage() {
-  const [loading, setLoading] = useState(false);
-  const [subscriptions, setSubscriptions] = useState<any[]>([]);
-  const [activeSubscriptions, setActiveSubscriptions] = useState<any[]>([]);
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [agentUsage, setAgentUsage] = useState(0);
-  const [bulkUsage, setBulkUsage] = useState(0);
-  const [monthlyRevenue, setMonthlyRevenue] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminData, setAdminData] = useState<AdminData | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [plans, setPlans] = useState<any[]>([]);
-  const [editingPlan, setEditingPlan] = useState<any>(null);
-  const [showAddPlan, setShowAddPlan] = useState(false);
-  const [newPlan, setNewPlan] = useState({
-    name: '',
-    tier: '',
-    price: '',
-    interval: 'month',
-    features: '',
-  });
-  
-  const router = useRouter();
+  const [newPlan, setNewPlan] = useState({ name: '', price: '', tier: 'custom', features: '' });
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const supabase = createClient();
+  const router = useRouter();
 
   useEffect(() => {
-    loadAdminData();
-    loadPlans();
+    checkAdminAndLoadData();
   }, []);
 
-  const loadAdminData = async () => {
+  const checkAdminAndLoadData = async () => {
     try {
-      console.log('🔵 관리자 페이지 로드 시작');
+      console.log('Admin - Starting admin check...');
       
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('🔵 사용자 확인:', user?.email);
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
+      if (userError) {
+        console.error('Admin - Error getting user:', userError);
+        setError('인증 오류가 발생했습니다.');
+        setLoading(false);
+        return;
+      }
+
       if (!user) {
-        console.log('❌ 사용자 없음, 로그인 페이지로 이동');
+        console.log('Admin - No user found, redirecting to login');
         router.push('/login');
         return;
       }
 
-      // Check admin
-      const isAdmin = ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
-      console.log('🔵 관리자 체크:', { email: user.email, isAdmin, adminEmails: ADMIN_EMAILS });
+      console.log('Admin - User email:', user.email);
       
-      if (!isAdmin) {
-        console.log('❌ 관리자 아님, 홈으로 이동');
-        router.push('/');
+      const adminCheck = ADMIN_EMAILS.includes(user.email || '');
+      console.log('Admin - Is admin:', adminCheck);
+      
+      setIsAdmin(adminCheck);
+
+      if (!adminCheck) {
+        console.log('Admin - Not an admin, redirecting');
+        setError('관리자 권한이 없습니다.');
+        setLoading(false);
         return;
       }
-      
-      console.log('✅ 관리자 확인 완료');
-      console.log('🔵 setLoading(true) 호출');
+
+      // Admin confirmed, now load data
       setLoading(true);
-      console.log('🔵 로딩 상태 설정 완료');
+      await Promise.all([loadAdminData(), loadPlans()]);
       
-      console.log('✅ API 호출 준비 시작');
-
-      // Load admin data
-      console.log('🔵 API 호출 시작 - URL:', '/api/admin/data');
-      console.log('🔵 사용자 이메일:', user.email);
-      
-      try {
-        const response = await fetch('/api/admin/data', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-Email': user.email || '',
-          },
-          credentials: 'include',
-        });
-        
-        console.log('🔵 fetch 완료, 응답 받음');
-
-        console.log('🔵 API 응답:', response.status, response.statusText);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-          console.log('❌ API 오류:', errorData);
-          setError(errorData.error || `HTTP ${response.status}`);
-          return;
-        }
-
-        const data = await response.json();
-        console.log('✅ API 데이터 수신:', data);
-      
-        setSubscriptions(data.subscriptions || []);
-        setActiveSubscriptions(data.activeSubscriptions || []);
-        setTotalUsers(data.totalUsers || 0);
-        setAgentUsage(data.agentUsage || 0);
-        setBulkUsage(data.bulkUsage || 0);
-        setMonthlyRevenue(data.monthlyRevenue || 0);
-        setError(null);
-        console.log('✅ 관리자 페이지 로드 완료');
-      } catch (fetchError: any) {
-        console.error('❌ Fetch 오류:', fetchError);
-        setError(fetchError.message || 'API 호출 실패');
-      }
-    } catch (err: any) {
-      console.error('❌ 전체 오류 발생:', err);
-      setError(err.message);
+    } catch (error) {
+      console.error('Admin - Exception in checkAdminAndLoadData:', error);
+      setError('오류가 발생했습니다: ' + (error as Error).message);
     } finally {
-      console.log('🔵 로딩 상태 해제');
       setLoading(false);
+    }
+  };
+
+  const loadAdminData = async () => {
+    try {
+      console.log('Admin - Loading admin data...');
+      const response = await fetch('/api/admin/data');
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Admin - API error:', errorText);
+        throw new Error(`API 오류: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Admin - Data loaded:', data);
+      setAdminData(data);
+    } catch (error) {
+      console.error('Admin - Error loading data:', error);
+      setError('데이터 로드 실패: ' + (error as Error).message);
     }
   };
 
   const loadPlans = async () => {
     try {
+      console.log('Admin - Loading plans...');
       const { data, error } = await supabase
         .from('plans')
         .select('*')
         .order('price', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Admin - Error loading plans:', error);
+        throw error;
+      }
+
+      console.log('Admin - Plans loaded:', data);
       setPlans(data || []);
-    } catch (error: any) {
-      console.error('플랜 로드 오류:', error);
+    } catch (error) {
+      console.error('Admin - Exception loading plans:', error);
+      setError('플랜 로드 실패: ' + (error as Error).message);
     }
   };
 
-  const handleAddPlan = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleAddPlan = async () => {
+    if (!newPlan.name || !newPlan.price || !newPlan.tier) {
+      alert('모든 필드를 입력해주세요.');
+      return;
+    }
 
     try {
-      const price = parseInt(newPlan.price as string);
-      if (isNaN(price) || price < 0) {
-        alert('❌ 올바른 가격을 입력하세요.');
-        setLoading(false);
+      console.log('Admin - Adding plan:', newPlan);
+      
+      const priceValue = parseInt(newPlan.price);
+      if (isNaN(priceValue) || priceValue < 0) {
+        alert('올바른 가격을 입력해주세요.');
         return;
       }
 
-      const { error } = await supabase
+      const features = newPlan.features
+        .split('\n')
+        .map(f => f.trim())
+        .filter(f => f.length > 0);
+
+      const { data, error } = await supabase
         .from('plans')
-        .insert([{
-          name: newPlan.name,
-          tier: newPlan.tier || 'custom',
-          price: price,
-          interval: newPlan.interval,
-          features: newPlan.features.split(',').map(f => f.trim()).filter(f => f),
-        }]);
+        .insert([
+          {
+            name: newPlan.name,
+            price: priceValue,
+            tier: newPlan.tier,
+            features: features
+          }
+        ])
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Admin - Error adding plan:', error);
+        alert('플랜 추가 실패: ' + error.message);
+        return;
+      }
 
-      alert('✅ 플랜이 추가되었습니다.');
-      setShowAddPlan(false);
-      setNewPlan({ name: '', tier: '', price: '', interval: 'month', features: '' });
-      loadPlans();
-    } catch (error: any) {
-      console.error('플랜 추가 오류:', error);
-      alert(`❌ 오류: ${error.message}`);
-    } finally {
-      setLoading(false);
+      console.log('Admin - Plan added successfully:', data);
+      alert('플랜이 추가되었습니다.');
+      setNewPlan({ name: '', price: '', tier: 'custom', features: '' });
+      await loadPlans();
+    } catch (error) {
+      console.error('Admin - Exception adding plan:', error);
+      alert('플랜 추가 중 오류가 발생했습니다: ' + (error as Error).message);
     }
   };
 
-  const handleUpdatePlan = async (planId: string) => {
+  const handleUpdatePlan = async () => {
     if (!editingPlan) return;
 
-    setLoading(true);
     try {
+      console.log('Admin - Updating plan:', editingPlan);
+      
       const { error } = await supabase
         .from('plans')
         .update({
           name: editingPlan.name,
-          tier: editingPlan.tier || 'custom',
           price: editingPlan.price,
-          interval: editingPlan.interval,
-          features: typeof editingPlan.features === 'string' 
-            ? editingPlan.features.split(',').map((f: string) => f.trim())
-            : editingPlan.features,
+          tier: editingPlan.tier,
+          features: editingPlan.features
         })
-        .eq('id', planId);
+        .eq('id', editingPlan.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Admin - Error updating plan:', error);
+        alert('플랜 수정 실패: ' + error.message);
+        return;
+      }
 
-      alert('✅ 플랜이 수정되었습니다.');
+      console.log('Admin - Plan updated successfully');
+      alert('플랜이 수정되었습니다.');
       setEditingPlan(null);
-      loadPlans();
-    } catch (error: any) {
-      alert(`❌ 오류: ${error.message}`);
-    } finally {
-      setLoading(false);
+      await loadPlans();
+    } catch (error) {
+      console.error('Admin - Exception updating plan:', error);
+      alert('플랜 수정 중 오류가 발생했습니다: ' + (error as Error).message);
     }
   };
 
-  const handleDeletePlan = async (planId: string, planName: string) => {
-    if (!confirm(`"${planName}" 플랜을 삭제하시겠습니까?`)) {
-      return;
-    }
+  const handleDeletePlan = async (planId: string) => {
+    if (!confirm('정말 이 플랜을 삭제하시겠습니까?')) return;
 
-    setLoading(true);
     try {
+      console.log('Admin - Deleting plan:', planId);
+      
       const { error } = await supabase
         .from('plans')
         .delete()
         .eq('id', planId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Admin - Error deleting plan:', error);
+        alert('플랜 삭제 실패: ' + error.message);
+        return;
+      }
 
-      alert('✅ 플랜이 삭제되었습니다.');
-      loadPlans();
-    } catch (error: any) {
-      alert(`❌ 오류: ${error.message}`);
-    } finally {
-      setLoading(false);
+      console.log('Admin - Plan deleted successfully');
+      alert('플랜이 삭제되었습니다.');
+      await loadPlans();
+    } catch (error) {
+      console.error('Admin - Exception deleting plan:', error);
+      alert('플랜 삭제 중 오류가 발생했습니다: ' + (error as Error).message);
     }
   };
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">로딩 중...</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">관리자 대시보드</h1>
-        <p className="text-gray-600">구독 상태 및 사용량 통계</p>
+  if (error || !isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">접근 거부</h1>
+          <p className="text-gray-600">{error || '관리자 권한이 필요합니다.'}</p>
+          <button
+            onClick={() => router.push('/')}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            홈으로 돌아가기
+          </button>
+        </div>
       </div>
+    );
+  }
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-red-700">{error}</p>
-          <button
-            onClick={loadAdminData}
-            className="mt-2 text-sm text-red-800 underline"
-          >
-            다시 시도
-          </button>
-        </div>
-      )}
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">관리자 대시보드</h1>
 
-      {/* 플랜 관리 */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">플랜 관리</h2>
-          <button
-            onClick={() => setShowAddPlan(!showAddPlan)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-          >
-            {showAddPlan ? '취소' : '+ 플랜 추가'}
-          </button>
-        </div>
-
-        {/* 플랜 추가 폼 */}
-        {showAddPlan && (
-          <form onSubmit={handleAddPlan} className="bg-gray-50 p-4 rounded-lg mb-4">
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">플랜 이름</label>
-                <input
-                  type="text"
-                  value={newPlan.name}
-                  onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="예: 베이직"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">플랜 등급 (tier)</label>
-                <input
-                  type="text"
-                  value={newPlan.tier}
-                  onChange={(e) => setNewPlan({ ...newPlan, tier: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="예: basic, premium"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">가격 (원)</label>
-                <input
-                  type="number"
-                  value={newPlan.price}
-                  onChange={(e) => setNewPlan({ ...newPlan, price: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="9900"
-                  min="0"
-                  required
-                />
-              </div>
+        {/* Stats Grid */}
+        {adminData && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-sm font-medium text-gray-500">총 사용자</h3>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{adminData.totalUsers}</p>
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">결제 주기</label>
-              <select
-                value={newPlan.interval}
-                onChange={(e) => setNewPlan({ ...newPlan, interval: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              >
-                <option value="month">월간</option>
-                <option value="year">연간</option>
-              </select>
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-sm font-medium text-gray-500">활성 구독</h3>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{adminData.activeSubscriptions}</p>
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                기능 (쉼표로 구분)
-              </label>
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-sm font-medium text-gray-500">총 수익</h3>
+              <p className="text-3xl font-bold text-gray-900 mt-2">
+                ₩{adminData.totalRevenue.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Plan Management */}
+        <div className="bg-white rounded-lg shadow mb-8">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900">플랜 관리</h2>
+          </div>
+          
+          {/* Add New Plan */}
+          <div className="p-6 border-b border-gray-200 bg-gray-50">
+            <h3 className="text-lg font-semibold mb-4">새 플랜 추가</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="플랜 이름"
+                value={newPlan.name}
+                onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <input
+                type="number"
+                placeholder="가격"
+                value={newPlan.price}
+                onChange={(e) => setNewPlan({ ...newPlan, price: e.target.value })}
+                min="0"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <input
+                type="text"
+                placeholder="티어 (예: basic, premium, custom)"
+                value={newPlan.tier}
+                onChange={(e) => setNewPlan({ ...newPlan, tier: e.target.value })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
               <textarea
+                placeholder="기능 (한 줄에 하나씩)"
                 value={newPlan.features}
                 onChange={(e) => setNewPlan({ ...newPlan, features: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="기능1, 기능2, 기능3"
                 rows={3}
-                required
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent md:col-span-2"
               />
             </div>
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              onClick={handleAddPlan}
+              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              {loading ? '추가 중...' : '플랜 추가'}
+              플랜 추가
             </button>
-          </form>
-        )}
+          </div>
 
-        {/* 플랜 목록 */}
-        <div className="space-y-4">
-          {plans.map((plan) => (
-            <div key={plan.id} className="border border-gray-200 rounded-lg p-4">
-              {editingPlan?.id === plan.id ? (
-                // 수정 모드
-                <div className="space-y-3">
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">플랜 이름</label>
+          {/* Existing Plans */}
+          <div className="p-6">
+            <h3 className="text-lg font-semibold mb-4">기존 플랜</h3>
+            <div className="space-y-4">
+              {plans.map((plan) => (
+                <div key={plan.id} className="border border-gray-200 rounded-lg p-4">
+                  {editingPlan?.id === plan.id ? (
+                    <div className="space-y-3">
                       <input
                         type="text"
                         value={editingPlan.name}
                         onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">플랜 등급 (tier)</label>
-                      <input
-                        type="text"
-                        value={editingPlan.tier || ''}
-                        onChange={(e) => setEditingPlan({ ...editingPlan, tier: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">가격 (원)</label>
                       <input
                         type="number"
                         value={editingPlan.price}
                         onChange={(e) => setEditingPlan({ ...editingPlan, price: parseInt(e.target.value) })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                       />
+                      <input
+                        type="text"
+                        value={editingPlan.tier}
+                        onChange={(e) => setEditingPlan({ ...editingPlan, tier: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                      <textarea
+                        value={editingPlan.features.join('\n')}
+                        onChange={(e) => setEditingPlan({ ...editingPlan, features: e.target.value.split('\n') })}
+                        rows={3}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      />
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={handleUpdatePlan}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
+                          저장
+                        </button>
+                        <button
+                          onClick={() => setEditingPlan(null)}
+                          className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                        >
+                          취소
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">결제 주기</label>
-                    <select
-                      value={editingPlan.interval}
-                      onChange={(e) => setEditingPlan({ ...editingPlan, interval: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    >
-                      <option value="month">월간</option>
-                      <option value="year">연간</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">기능 (쉼표로 구분)</label>
-                    <textarea
-                      value={Array.isArray(editingPlan.features) ? editingPlan.features.join(', ') : editingPlan.features}
-                      onChange={(e) => setEditingPlan({ ...editingPlan, features: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      rows={2}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleUpdatePlan(plan.id)}
-                      disabled={loading}
-                      className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      저장
-                    </button>
-                    <button
-                      onClick={() => setEditingPlan(null)}
-                      className="flex-1 bg-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-400"
-                    >
-                      취소
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // 보기 모드
-                <div>
-                  <div className="flex items-start justify-between mb-2">
+                  ) : (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
-                      <p className="text-sm text-gray-600">
-                        {plan.price.toLocaleString()}원 / {plan.interval === 'month' ? '월' : '년'}
-                      </p>
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h4 className="text-lg font-semibold">{plan.name}</h4>
+                          <p className="text-2xl font-bold text-blue-600">₩{plan.price.toLocaleString()}/월</p>
+                          <p className="text-sm text-gray-500">티어: {plan.tier}</p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => setEditingPlan(plan)}
+                            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                          >
+                            수정
+                          </button>
+                          <button
+                            onClick={() => handleDeletePlan(plan.id)}
+                            className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 font-medium"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </div>
+                      <ul className="list-disc list-inside text-gray-600 space-y-1">
+                        {plan.features.map((feature, idx) => (
+                          <li key={idx}>{feature}</li>
+                        ))}
+                      </ul>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setEditingPlan({ ...plan, features: Array.isArray(plan.features) ? plan.features.join(', ') : plan.features })}
-                        className="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 text-sm font-medium"
-                      >
-                        수정
-                      </button>
-                      <button
-                        onClick={() => handleDeletePlan(plan.id, plan.name)}
-                        disabled={loading}
-                        className="bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 text-sm font-medium disabled:opacity-50"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  </div>
-                  {plan.features && (
-                    <ul className="text-sm text-gray-600 space-y-1">
-                      {(Array.isArray(plan.features) ? plan.features : []).map((feature: string, idx: number) => (
-                        <li key={idx}>• {feature}</li>
-                      ))}
-                    </ul>
                   )}
                 </div>
-              )}
+              ))}
             </div>
-          ))}
+          </div>
         </div>
-      </div>
 
-      <div className="grid md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">전체 사용자</h3>
-          <p className="text-3xl font-bold text-gray-900">{totalUsers}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">활성 구독</h3>
-          <p className="text-3xl font-bold text-green-600">{activeSubscriptions.length}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">이번 달 수익</h3>
-          <p className="text-3xl font-bold text-blue-600">{monthlyRevenue.toLocaleString()}원</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">이번 달 사용량</h3>
-          <p className="text-lg font-semibold text-gray-900">
-            에이전트: {agentUsage}회<br />대량생성: {bulkUsage}회
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-md">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">구독 목록</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">사용자</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">플랜</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">시작일</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">만료일</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {subscriptions.length > 0 ? (
-                subscriptions.map((sub: any) => (
-                  <tr key={sub.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {sub.user?.nickname || sub.user?.email || '알 수 없음'}
-                      </div>
-                      <div className="text-sm text-gray-500">{sub.user?.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{sub.plan?.name || '알 수 없음'}</div>
-                      <div className="text-sm text-gray-500">
-                        {sub.plan?.price?.toLocaleString()}원 / {sub.plan?.interval === 'month' ? '월' : '년'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        sub.status === 'active' && new Date(sub.current_period_end) > new Date()
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {sub.status === 'active' && new Date(sub.current_period_end) > new Date() ? '활성' : '비활성'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(sub.current_period_start).toLocaleDateString('ko-KR')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(sub.current_period_end).toLocaleDateString('ko-KR')}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                    구독이 없습니다.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="mt-6">
-        <Link href="/" className="text-blue-600 hover:text-blue-800 font-medium">
-          ← 홈으로 돌아가기
-        </Link>
+        {/* Recent Users */}
+        {adminData && adminData.recentUsers.length > 0 && (
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">최근 가입 사용자</h2>
+            </div>
+            <div className="p-6">
+              <div className="space-y-3">
+                {adminData.recentUsers.map((user, idx) => (
+                  <div key={idx} className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-900">{user.email}</span>
+                    <span className="text-sm text-gray-500">
+                      {new Date(user.created_at).toLocaleDateString('ko-KR')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

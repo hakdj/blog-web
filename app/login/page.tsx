@@ -64,7 +64,7 @@ function LoginForm() {
 
               if (data.session && data.user) {
                 window.history.replaceState(null, '', window.location.pathname);
-                router.push('/');
+                router.push('/dashboard');
                 return;
               }
             }
@@ -87,7 +87,7 @@ function LoginForm() {
           
           // 이메일 링크나 토큰이 없는 경우에만 자동 리다이렉트
           if (!hasHash && !hasToken) {
-            router.push('/');
+            router.push('/dashboard');
             return;
           }
         }
@@ -130,53 +130,31 @@ function LoginForm() {
         }
 
         // 이메일/비밀번호 로그인
-        console.log('🔵 로그인 시도:', { email: email.trim() });
-        
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password: password.trim(),
         });
 
-        console.log('🔵 로그인 결과:', { 
-          hasUser: !!data?.user, 
-          hasSession: !!data?.session,
-          error: error?.message 
-        });
-
         if (error) {
-          console.error('❌ 로그인 오류:', error);
-          
           // 에러 메시지를 더 친절하게 표시
           let errorMessage = '로그인에 실패했습니다. ';
           if (error.message.includes('Invalid login credentials')) {
-            errorMessage = '이메일 또는 비밀번호가 올바르지 않습니다. ';
-            errorMessage += '비밀번호를 잊으셨다면 "비밀번호를 잊으셨나요?" 링크를 클릭하세요.';
-          } else if (error.message.includes('Email not confirmed')) {
-            errorMessage = '이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요.';
+            errorMessage += '이메일 또는 비밀번호가 올바르지 않습니다. ';
+            errorMessage += '이메일 인증이 완료되지 않았을 수 있습니다. ';
+            errorMessage += '이메일 링크 로그인을 사용하시거나 이메일을 확인해주세요.';
           } else {
             errorMessage += error.message;
           }
           setMessage(errorMessage);
-          setIsLoading(false);
-        } else if (data.user && data.session) {
-          console.log('✅ 로그인 성공:', data.user.email);
-          
-          // 로그인 성공 시 홈으로 리다이렉트
-          setMessage('로그인 성공! 홈으로 이동합니다...');
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 500);
-        } else {
-          console.warn('⚠️ 로그인 응답이 이상합니다:', { data, error });
-          setMessage('로그인 중 알 수 없는 오류가 발생했습니다.');
-          setIsLoading(false);
+        } else if (data.user) {
+          router.push('/dashboard');
         }
       } else {
         // 이메일 링크 로그인
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         });
 
@@ -267,29 +245,22 @@ function LoginForm() {
           </div>
 
           {loginMode === 'password' && (
-            <>
-              <div>
-                <label htmlFor="password" className="sr-only">
-                  비밀번호
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="비밀번호"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <div className="text-right">
-                <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-500">
-                  비밀번호를 잊으셨나요?
-                </Link>
-              </div>
-            </>
+            <div>
+              <label htmlFor="password" className="sr-only">
+                비밀번호
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="비밀번호"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
           )}
 
           <div>
