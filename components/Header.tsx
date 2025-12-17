@@ -104,12 +104,6 @@ export default function Header() {
               <div className="w-20 h-8 bg-gray-200 rounded animate-pulse"></div>
             ) : user ? (
               <div className="flex items-center space-x-4">
-                <Link
-                  href="/dashboard"
-                  className="text-gray-600 hover:text-gray-900 font-medium"
-                >
-                  대시보드
-                </Link>
                 {isAdmin && (
                   <Link
                     href="/admin"

@@ -17,11 +17,6 @@ export default function SettingsPage() {
     new: '',
     confirm: ''
   });
-  const [address, setAddress] = useState({
-    street: '',
-    city: '',
-    zipCode: ''
-  });
   const [subscription, setSubscription] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,11 +66,6 @@ export default function SettingsPage() {
           nickname: profileData.nickname || '',
           email: user.email || ''
         });
-        setAddress({
-          street: profileData.address_street || '',
-          city: profileData.address_city || '',
-          zipCode: profileData.address_zip_code || ''
-        });
       } else {
         // Profile doesn't exist, set email from user
         setProfile({
@@ -123,9 +113,6 @@ export default function SettingsPage() {
         .upsert({
           id: user.id,
           nickname: profile.nickname,
-          address_street: address.street,
-          address_city: address.city,
-          address_zip_code: address.zipCode,
           updated_at: new Date().toISOString()
         });
 
@@ -315,58 +302,6 @@ export default function SettingsPage() {
               className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? '변경 중...' : '비밀번호 변경'}
-            </button>
-          </form>
-        </div>
-
-        {/* Address Section */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">주소</h2>
-          </div>
-          <form onSubmit={handleProfileUpdate} className="p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                도로명 주소
-              </label>
-              <input
-                type="text"
-                value={address.street}
-                onChange={(e) => setAddress({ ...address, street: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="도로명 주소"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                도시
-              </label>
-              <input
-                type="text"
-                value={address.city}
-                onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="도시"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                우편번호
-              </label>
-              <input
-                type="text"
-                value={address.zipCode}
-                onChange={(e) => setAddress({ ...address, zipCode: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="우편번호"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? '저장 중...' : '주소 저장'}
             </button>
           </form>
         </div>
