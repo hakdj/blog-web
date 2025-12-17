@@ -6,10 +6,13 @@ import { User } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+const ADMIN_EMAILS = ['hakdjhakdj@naver.com', 'hakdjhakdj@gmail.com'];
+
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const supabase = createClient();
   const router = useRouter();
 
@@ -21,6 +24,7 @@ export default function Header() {
           console.error('Header - Error getting user:', error);
         }
         setUser(user);
+        setIsAdmin(ADMIN_EMAILS.includes(user?.email || ''));
       } catch (error) {
         console.error('Header - Exception getting user:', error);
       } finally {
@@ -33,7 +37,9 @@ export default function Header() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Header - Auth state changed:', event);
-        setUser(session?.user ?? null);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        setIsAdmin(ADMIN_EMAILS.includes(currentUser?.email || ''));
         setIsLoading(false);
         
         if (event === 'SIGNED_OUT') {
@@ -103,6 +109,20 @@ export default function Header() {
                   className="text-gray-600 hover:text-gray-900 font-medium"
                 >
                   대시보드
+                </Link>
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="text-purple-600 hover:text-purple-900 font-medium"
+                  >
+                    관리자
+                  </Link>
+                )}
+                <Link
+                  href="/settings"
+                  className="text-gray-600 hover:text-gray-900 font-medium"
+                >
+                  설정
                 </Link>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">
