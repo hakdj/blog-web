@@ -131,7 +131,14 @@ export default function AdminPage() {
       }
 
       console.log('Admin - Plans loaded:', data);
-      setPlans(data || []);
+      
+      // Ensure features is always an array
+      const normalizedPlans = (data || []).map(plan => ({
+        ...plan,
+        features: Array.isArray(plan.features) ? plan.features : []
+      }));
+      
+      setPlans(normalizedPlans);
     } catch (error) {
       console.error('Admin - Exception loading plans:', error);
       // Set empty array instead of showing error
@@ -373,7 +380,7 @@ export default function AdminPage() {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                       />
                       <textarea
-                        value={editingPlan.features.join('\n')}
+                        value={Array.isArray(editingPlan.features) ? editingPlan.features.join('\n') : editingPlan.features || ''}
                         onChange={(e) => setEditingPlan({ ...editingPlan, features: e.target.value.split('\n') })}
                         rows={3}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg"
@@ -417,9 +424,12 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <ul className="list-disc list-inside text-gray-600 space-y-1">
-                        {plan.features.map((feature, idx) => (
+                        {Array.isArray(plan.features) && plan.features.map((feature, idx) => (
                           <li key={idx}>{feature}</li>
                         ))}
+                        {!Array.isArray(plan.features) && plan.features && (
+                          <li>{plan.features}</li>
+                        )}
                       </ul>
                     </div>
                   )}
