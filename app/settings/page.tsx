@@ -112,8 +112,7 @@ export default function SettingsPage() {
         .from('profiles')
         .upsert({
           id: user.id,
-          nickname: profile.nickname,
-          updated_at: new Date().toISOString()
+          nickname: profile.nickname
         });
 
       if (error) throw error;

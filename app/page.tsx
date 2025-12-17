@@ -341,7 +341,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              {/* 이벤트 일정 */}
+              {/* 요즘 뭐해? */}
               <Link
                 href="/events"
                 className="border-2 border-gray-200 rounded-lg p-6 hover:border-green-500 hover:shadow-lg transition-all group"
@@ -349,7 +349,7 @@ export default async function HomePage() {
                 <div className="flex items-start gap-4">
                   <div className="text-4xl group-hover:scale-110 transition-transform">📅</div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">이벤트 일정</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">요즘 뭐해?</h3>
                     <p className="text-sm text-gray-600 mb-3">전국 축제, 지역 특색, 지역 광고 정보를 확인하세요</p>
                     <div className="flex flex-wrap gap-2">
                       <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">축제</span>
