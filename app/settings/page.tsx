@@ -19,6 +19,7 @@ export default function SettingsPage() {
   });
   const [subscription, setSubscription] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showPaymentMethodForm, setShowPaymentMethodForm] = useState(false);
 
   const supabase = createClient();
   const router = useRouter();
@@ -160,6 +161,59 @@ export default function SettingsPage() {
     }
   };
 
+  const handleToggleAutoRenew = async () => {
+    if (!subscription) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const newAutoRenew = !subscription.auto_renew;
+      
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ auto_renew: newAutoRenew })
+        .eq('id', subscription.id);
+
+      if (error) throw error;
+
+      alert(newAutoRenew ? '자동 갱신이 활성화되었습니다.' : '자동 갱신이 비활성화되었습니다.');
+      await loadUserData();
+    } catch (error) {
+      console.error('Error toggling auto renew:', error);
+      setError('자동 갱신 설정 실패: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePaymentMethod = async () => {
+    if (!confirm('결제 수단을 삭제하시겠습니까? 자동 갱신이 비활성화됩니다.')) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/billing/payment-method', {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '결제 수단 삭제 실패');
+      }
+
+      alert(data.message);
+      await loadUserData();
+    } catch (error) {
+      console.error('Error deleting payment method:', error);
+      setError('결제 수단 삭제 실패: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCancelSubscription = async () => {
     if (!confirm('정말 구독을 취소하시겠습니까?')) return;
 
@@ -171,7 +225,11 @@ export default function SettingsPage() {
 
       const { error } = await supabase
         .from('subscriptions')
-        .update({ status: 'cancelled' })
+        .update({ 
+          status: 'cancelled',
+          auto_renew: false,
+          cancelled_at: new Date().toISOString()
+        })
         .eq('id', subscription.id);
 
       if (error) throw error;
@@ -312,37 +370,131 @@ export default function SettingsPage() {
           </div>
           <div className="p-6">
             {subscription ? (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold text-lg">{subscription.plans?.name}</p>
-                    <p className="text-gray-600">₩{subscription.plans?.price?.toLocaleString()}/월</p>
-                    <p className="text-sm text-gray-500 mt-2">
-                      시작일: {new Date(subscription.start_date).toLocaleDateString('ko-KR')}
-                    </p>
-                    {subscription.end_date && (
-                      <p className="text-sm text-gray-500">
-                        종료일: {new Date(subscription.end_date).toLocaleDateString('ko-KR')}
-                      </p>
-                    )}
+              <div className="space-y-6">
+                {/* 구독 정보 */}
+                <div className="border-b border-gray-200 pb-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold text-lg">{subscription.plans?.name}</p>
+                      <p className="text-gray-600">₩{subscription.plans?.price?.toLocaleString()}/월</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      subscription.status === 'active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {subscription.status === 'active' ? '활성' : subscription.status}
+                    </span>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    subscription.status === 'active' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {subscription.status === 'active' ? '활성' : subscription.status}
-                  </span>
                 </div>
-                {subscription.status === 'active' && (
-                  <button
-                    onClick={handleCancelSubscription}
-                    disabled={loading}
-                    className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? '취소 중...' : '구독 취소'}
-                  </button>
+
+                {/* 결제 정보 */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600">시작일</span>
+                    <span className="text-sm font-medium">
+                      {new Date(subscription.start_date).toLocaleDateString('ko-KR')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600">다음 결제일</span>
+                    <span className="text-sm font-medium text-blue-600">
+                      {new Date(subscription.current_period_end).toLocaleDateString('ko-KR')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600">자동 갱신</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={subscription.auto_renew ?? true}
+                        onChange={handleToggleAutoRenew}
+                        disabled={loading}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                  {subscription.billing_key && (
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-sm text-gray-600">결제 수단</span>
+                      <span className="text-sm font-medium">
+                        등록된 카드 ••••
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 자동 갱신 안내 */}
+                {subscription.auto_renew && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <div className="text-blue-600 mr-3">ℹ️</div>
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">자동 갱신이 활성화되어 있습니다</p>
+                        <p className="text-blue-700">
+                          다음 결제일에 등록된 결제 수단으로 자동으로 결제됩니다.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 )}
+
+                {/* 결제 수단 관리 */}
+                {subscription.billing_key ? (
+                  <div className="border-t border-gray-200 pt-4">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">결제 수단</h3>
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="text-2xl mr-3">💳</div>
+                        <div>
+                          <p className="text-sm font-medium">등록된 카드</p>
+                          <p className="text-xs text-gray-500">•••• •••• •••• ••••</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleDeletePaymentMethod}
+                        disabled={loading}
+                        className="text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-3">
+                      <p className="text-sm text-yellow-800">
+                        자동 갱신을 위해 결제 수단을 등록해주세요.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowPaymentMethodForm(true)}
+                      className="w-full bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      결제 수단 등록
+                    </button>
+                  </div>
+                )}
+
+                {/* 액션 버튼 */}
+                <div className="space-y-2 border-t border-gray-200 pt-4">
+                  <button
+                    onClick={() => router.push('/pricing')}
+                    className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    플랜 변경
+                  </button>
+                  {subscription.status === 'active' && (
+                    <button
+                      onClick={handleCancelSubscription}
+                      disabled={loading}
+                      className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? '취소 중...' : '구독 취소'}
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="text-center py-8">
