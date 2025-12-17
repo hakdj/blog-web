@@ -30,7 +30,7 @@ export default function AdminPage() {
   const [adminData, setAdminData] = useState<AdminData | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [newPlan, setNewPlan] = useState({ name: '', price: '', tier: 'custom', features: '' });
+  const [newPlan, setNewPlan] = useState({ name: '', price: '', tier: 'custom', interval: 'month', features: '' });
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const supabase = createClient();
   const router = useRouter();
@@ -173,6 +173,8 @@ export default function AdminPage() {
             name: newPlan.name,
             price: priceValue,
             tier: newPlan.tier,
+            interval: newPlan.interval,
+            is_active: true,
             features: features
           }
         ])
@@ -186,7 +188,7 @@ export default function AdminPage() {
 
       console.log('Admin - Plan added successfully:', data);
       alert('플랜이 추가되었습니다.');
-      setNewPlan({ name: '', price: '', tier: 'custom', features: '' });
+      setNewPlan({ name: '', price: '', tier: 'custom', interval: 'month', features: '' });
       await loadPlans();
     } catch (error) {
       console.error('Admin - Exception adding plan:', error);
@@ -337,6 +339,14 @@ export default function AdminPage() {
                 onChange={(e) => setNewPlan({ ...newPlan, tier: e.target.value })}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+              <select
+                value={newPlan.interval}
+                onChange={(e) => setNewPlan({ ...newPlan, interval: e.target.value })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="month">월간</option>
+                <option value="year">연간</option>
+              </select>
               <textarea
                 placeholder="기능 (한 줄에 하나씩)"
                 value={newPlan.features}
