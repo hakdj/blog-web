@@ -67,15 +67,16 @@ export default function EventsPage() {
 
   const loadEvents = async () => {
     try {
-      // 오늘 날짜
+      // 오늘 날짜 (한국 시간 기준)
       const today = new Date().toISOString().split('T')[0];
       
       const { data, error } = await supabase
         .from('events')
         .select('*')
         .eq('is_active', true)
-        .gte('end_date', today) // 종료일이 오늘 이후인 이벤트만
-        .order('start_date', { ascending: true });
+        .lte('start_date', today) // 시작일이 오늘 이전 (이미 시작함)
+        .gte('end_date', today)   // 종료일이 오늘 이후 (아직 안 끝남)
+        .order('end_date', { ascending: true }); // 종료일 빠른 순
 
       if (error) throw error;
 
