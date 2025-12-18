@@ -1,83 +1,150 @@
-import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 
-export default async function HomePage() {
-  const supabase = await createClient();
-  
-  // Get public blog posts (published status)
-  const { data: posts } = await supabase
-    .from('blog_posts')
-    .select('id, title, content, status, created_at, generated_by')
-    .eq('status', 'published')
-    .order('created_at', { ascending: false })
-    .limit(5);
-
+export default function HomePage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          구독형 블로그에 오신 것을 환영합니다
-        </h1>
-        <p className="text-xl text-gray-600 mb-8">
-          프리미엄 콘텐츠를 구독하고 독점적인 글을 읽어보세요
-        </p>
-        <div className="space-x-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">
+      {/* Hero Section - 레트로 감성 */}
+      <div className="max-w-7xl mx-auto px-4 py-16">
+        <div className="text-center mb-16">
+          <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent">
+            라떼 방구석
+          </h1>
+          <p className="text-2xl text-gray-700 mb-4">
+            그때 그 시절, 추억을 되살리다
+          </p>
+          <p className="text-lg text-gray-600 mb-8">
+            90년대 감성 게임, 제품, 이벤트를 한 곳에서
+          </p>
           <Link
             href="/pricing"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
           >
-            구독 시작하기
-          </Link>
-          <Link
-            href="/login"
-            className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
-          >
-            로그인
+            🎮 지금 시작하기
           </Link>
         </div>
-      </div>
 
-      <div className="grid gap-8">
-        <h2 className="text-2xl font-bold text-gray-900">최신 포스트</h2>
-        {posts && posts.length > 0 ? (
-          <div className="grid gap-6">
-            {posts.map((post) => (
-              <article
-                key={post.id}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    {post.title || '제목 없음'}
-                  </h3>
-                  {post.generated_by && (
-                    <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                      {post.generated_by === 'agent' ? 'AI 에이전트' : 'AI 대량생성'}
-                    </span>
-                  )}
-                </div>
-                <p className="text-gray-600 mb-4 line-clamp-3">
-                  {post.content?.substring(0, 300) || '내용 없음'}...
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">
-                    {new Date(post.created_at).toLocaleDateString('ko-KR')}
-                  </span>
-                  <Link
-                    href={`/dashboard/posts/${post.id}`}
-                    className="text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    읽기 →
-                  </Link>
-                </div>
-              </article>
-            ))}
+        {/* Features Grid - 레트로 카테고리 */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6 mb-16">
+          {/* 그때 그 게임 */}
+          <Link href="/games">
+            <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer border-4 border-purple-200">
+              <div className="text-6xl mb-4 text-center">🎮</div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+                그때 그 게임
+              </h3>
+              <p className="text-gray-600 text-center">
+                추억의 레트로 게임
+              </p>
+            </div>
+          </Link>
+
+          {/* 요즘 뭐해? */}
+          <Link href="/events">
+            <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer border-4 border-pink-200">
+              <div className="text-6xl mb-4 text-center">📅</div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+                요즘 뭐해?
+              </h3>
+              <p className="text-gray-600 text-center">
+                레트로 이벤트 모임
+              </p>
+            </div>
+          </Link>
+
+          {/* 구멍가게 */}
+          <Link href="/products">
+            <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer border-4 border-yellow-200">
+              <div className="text-6xl mb-4 text-center">🏪</div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+                구멍가게
+              </h3>
+              <p className="text-gray-600 text-center">
+                추억의 물건 대여
+              </p>
+            </div>
+          </Link>
+
+          {/* 추억의 일기장 */}
+          <Link href="/diary">
+            <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer border-4 border-green-200">
+              <div className="text-6xl mb-4 text-center">📔</div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+                추억의 일기장
+              </h3>
+              <p className="text-gray-600 text-center">
+                나만의 일기 쓰기
+              </p>
+            </div>
+          </Link>
+
+          {/* 라떼 친구 */}
+          <Link href="/assistant">
+            <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer border-4 border-orange-200">
+              <div className="text-6xl mb-4 text-center">🤖</div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+                라떼 친구
+              </h3>
+              <p className="text-gray-600 text-center">
+                AI 어시스턴트
+              </p>
+            </div>
+          </Link>
+        </div>
+
+        {/* CTA Section */}
+        <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 rounded-3xl shadow-2xl p-12 text-center text-white">
+          <h2 className="text-4xl font-bold mb-4">
+            🎉 지금 구독하고 추억을 되살려보세요!
+          </h2>
+          <p className="text-xl mb-8 opacity-90">
+            월 14,900원으로 모든 콘텐츠 무제한 이용
+          </p>
+          <div className="flex justify-center gap-4">
+            <Link
+              href="/pricing"
+              className="bg-white text-purple-600 px-8 py-4 rounded-full text-lg font-bold hover:bg-gray-100 transition-colors"
+            >
+              요금제 보기
+            </Link>
+            <Link
+              href="/login"
+              className="bg-purple-800 text-white px-8 py-4 rounded-full text-lg font-bold hover:bg-purple-900 transition-colors"
+            >
+              로그인
+            </Link>
           </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500">아직 포스트가 없습니다.</p>
+        </div>
+
+        {/* Features List */}
+        <div className="mt-16 grid md:grid-cols-3 gap-8">
+          <div className="text-center">
+            <div className="text-5xl mb-4">✨</div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              90년대 감성
+            </h3>
+            <p className="text-gray-600">
+              그때 그 시절의 향수를 느껴보세요
+            </p>
           </div>
-        )}
+          <div className="text-center">
+            <div className="text-5xl mb-4">🎯</div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              다양한 콘텐츠
+            </h3>
+            <p className="text-gray-600">
+              게임, 제품, 이벤트를 한 곳에서
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="text-5xl mb-4">💝</div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              합리적인 가격
+            </h3>
+            <p className="text-gray-600">
+              월 14,900원으로 무제한 이용
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
