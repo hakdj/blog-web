@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createPaymentSession } from '@/lib/portone';
-import { requireAuth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const supabase = await createClient();
+    
+    // 사용자 인증 확인
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { planId } = await request.json();
 
     if (!planId) {
@@ -14,8 +23,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const supabase = await createClient();
     
     // Get plan details
     const { data: plan, error: planError } = await supabase
@@ -32,39 +39,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user profile
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('id', user.id)
+    // 이미 활성 구독이 있는지 확인
+    const { data: existingSubscription } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
       .single();
 
-    if (profileError || !profile) {
+    if (existingSubscription) {
       return NextResponse.json(
-        { error: 'User profile not found' },
-        { status: 404 }
+        { error: '이미 활성 구독이 있습니다. 설정 페이지에서 플랜을 변경하세요.' },
+        { status: 400 }
       );
     }
 
-    // Create payment session
-    const paymentSession = await createPaymentSession({
-      planId,
-      userId: user.id,
-      userEmail: profile.email,
-      amount: plan.price,
-      interval: plan.interval as 'month' | 'year',
-    });
+    // 테스트 모드: 직접 구독 생성 (실제 PortOne 연동 전)
+    const currentPeriodEnd = new Date();
+    if (plan.interval === 'year') {
+      currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+    } else {
+      currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+    }
 
-    if (!paymentSession.success) {
+    const { error: insertError } = await supabase
+      .from('subscriptions')
+      .insert({
+        user_id: user.id,
+        plan_id: planId,
+        status: 'active',
+        current_period_end: currentPeriodEnd.toISOString(),
+        auto_renew: false, // 테스트 모드에서는 자동 갱신 비활성화
+      });
+
+    if (insertError) {
+      console.error('Subscription creation error:', insertError);
       return NextResponse.json(
-        { error: paymentSession.error },
+        { error: '구독 생성 실패: ' + insertError.message },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      paymentUrl: paymentSession.paymentUrl,
+      message: '구독이 활성화되었습니다!',
     });
   } catch (error) {
     console.error('Checkout error:', error);

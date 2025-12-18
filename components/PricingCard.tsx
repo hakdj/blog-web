@@ -39,10 +39,17 @@ export default function PricingCard({ plan, isLoggedIn }: PricingCardProps) {
 
       const data = await response.json();
 
-      if (data.success && data.paymentUrl) {
-        window.location.href = data.paymentUrl;
+      if (!response.ok) {
+        alert(data.error || '구독 처리 실패');
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.success) {
+        alert(data.message || '구독이 활성화되었습니다!');
+        router.push('/settings');
       } else {
-        alert('결제 세션 생성에 실패했습니다: ' + (data.error || '알 수 없는 오류'));
+        alert(data.error || '알 수 없는 오류');
       }
     } catch (error) {
       console.error('Subscription error:', error);

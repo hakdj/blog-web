@@ -323,8 +323,7 @@ export default function SettingsPage() {
         .from('subscriptions')
         .update({ 
           status: 'canceled',  // DB에서는 'canceled' (l 하나)
-          auto_renew: false,
-          canceled_at: new Date().toISOString()
+          auto_renew: false
         })
         .eq('id', subscription.id);
 
