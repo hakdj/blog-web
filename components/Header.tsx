@@ -68,6 +68,20 @@ export default function Header() {
                 >
                   대시보드
                 </Link>
+                <Link
+                  href="/settings"
+                  className="text-gray-600 hover:text-gray-900 font-medium"
+                >
+                  설정
+                </Link>
+                {['hakdjhakdj@naver.com', 'hakdjhakdj@gmail.com'].includes(user.email || '') && (
+                  <Link
+                    href="/admin"
+                    className="text-purple-600 hover:text-purple-800 font-bold"
+                  >
+                    관리자
+                  </Link>
+                )}
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">
                     {user.email}
