@@ -1,6 +1,10 @@
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">
       {/* Hero Section - 레트로 감성 */}
@@ -15,12 +19,14 @@ export default function HomePage() {
           <p className="text-lg text-gray-600 mb-8">
             90년대 감성 게임, 제품, 이벤트를 한 곳에서
           </p>
-          <Link
-            href="/pricing"
-            className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-          >
-            🎮 지금 시작하기
-          </Link>
+          {!user && (
+            <Link
+              href="/pricing"
+              className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+            >
+              🎮 지금 시작하기
+            </Link>
+          )}
         </div>
 
         {/* Features Grid - 레트로 카테고리 */}
@@ -91,29 +97,31 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* CTA Section */}
-        <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 rounded-3xl shadow-2xl p-12 text-center text-white">
-          <h2 className="text-4xl font-bold mb-4">
-            🎉 지금 구독하고 추억을 되살려보세요!
-          </h2>
-          <p className="text-xl mb-8 opacity-90">
-            월 14,900원으로 모든 콘텐츠 무제한 이용
-          </p>
-          <div className="flex justify-center gap-4">
-            <Link
-              href="/pricing"
-              className="bg-white text-purple-600 px-8 py-4 rounded-full text-lg font-bold hover:bg-gray-100 transition-colors"
-            >
-              요금제 보기
-            </Link>
-            <Link
-              href="/login"
-              className="bg-purple-800 text-white px-8 py-4 rounded-full text-lg font-bold hover:bg-purple-900 transition-colors"
-            >
-              로그인
-            </Link>
+        {/* CTA Section - 로그인 안 한 사용자만 표시 */}
+        {!user && (
+          <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 rounded-3xl shadow-2xl p-12 text-center text-white">
+            <h2 className="text-4xl font-bold mb-4">
+              🎉 지금 구독하고 추억을 되살려보세요!
+            </h2>
+            <p className="text-xl mb-8 opacity-90">
+              월 14,900원으로 모든 콘텐츠 무제한 이용
+            </p>
+            <div className="flex justify-center gap-4">
+              <Link
+                href="/pricing"
+                className="bg-white text-purple-600 px-8 py-4 rounded-full text-lg font-bold hover:bg-gray-100 transition-colors"
+              >
+                요금제 보기
+              </Link>
+              <Link
+                href="/login"
+                className="bg-purple-800 text-white px-8 py-4 rounded-full text-lg font-bold hover:bg-purple-900 transition-colors"
+              >
+                로그인
+              </Link>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Features List */}
         <div className="mt-16 grid md:grid-cols-3 gap-8">

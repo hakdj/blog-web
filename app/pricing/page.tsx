@@ -355,15 +355,15 @@ export default function PricingPage() {
 
                     {/* 시작하기 버튼 */}
                     {currentSubscription && currentSubscription.plan_id === plan.id ? (
-                      <div className="w-full py-4 px-6 rounded-lg font-semibold text-center bg-gray-100 text-gray-600 border-2 border-gray-300">
-                        현재 구독 중
+                      <div className="w-full py-4 px-6 rounded-lg font-semibold text-center bg-green-100 text-green-700 border-2 border-green-300">
+                        ✓ 현재 구독 중
                       </div>
                     ) : currentSubscription ? (
                       <button
-                        onClick={() => router.push('/settings')}
+                        onClick={() => handleSubscribe(plan.id)}
                         className="w-full py-4 px-6 rounded-lg font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 shadow-md hover:shadow-lg text-lg"
                       >
-                        플랜 변경하기
+                        이 플랜으로 변경
                       </button>
                     ) : (
                       <button

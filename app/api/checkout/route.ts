@@ -42,16 +42,41 @@ export async function POST(request: NextRequest) {
     // 이미 활성 구독이 있는지 확인
     const { data: existingSubscription } = await supabase
       .from('subscriptions')
-      .select('id')
+      .select('id, plan_id')
       .eq('user_id', user.id)
       .eq('status', 'active')
       .single();
 
     if (existingSubscription) {
-      return NextResponse.json(
-        { error: '이미 활성 구독이 있습니다. 설정 페이지에서 플랜을 변경하세요.' },
-        { status: 400 }
-      );
+      // 같은 플랜인지 확인
+      if (existingSubscription.plan_id === planId) {
+        return NextResponse.json(
+          { error: '이미 해당 플랜을 구독 중입니다.' },
+          { status: 400 }
+        );
+      }
+
+      // 다른 플랜으로 변경
+      const { error: updateError } = await supabase
+        .from('subscriptions')
+        .update({
+          plan_id: planId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingSubscription.id);
+
+      if (updateError) {
+        console.error('Plan change error:', updateError);
+        return NextResponse.json(
+          { error: '플랜 변경 실패: ' + updateError.message },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: '플랜이 변경되었습니다!',
+      });
     }
 
     // 테스트 모드: 직접 구독 생성 (실제 PortOne 연동 전)
