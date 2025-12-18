@@ -68,7 +68,7 @@ export async function GET() {
     }
 
     // Get user emails and plan details for subscriptions
-    let subscribers = [];
+    let subscribers: any[] = [];
     let totalRevenue = 0;
     
     if (activeSubsData && activeSubsData.length > 0) {
