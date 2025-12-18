@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createPaymentSession } from '@/lib/portone';
-import { requireAuth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
     console.log('Checkout API - Start');
-    const user = await requireAuth();
+    
+    // Get authenticated user
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('Checkout API - Auth error:', authError);
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
     console.log('Checkout API - User:', user.id);
     
     const { planId } = await request.json();
@@ -19,8 +30,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const supabase = await createClient();
     
     // Get plan details
     const { data: plan, error: planError } = await supabase
