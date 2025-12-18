@@ -79,7 +79,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 테스트 모드: 직접 구독 생성 (실제 PortOne 연동 전)
+    // ============================================
+    // 🧪 테스트 모드: 결제 없이 바로 구독 생성
+    // ============================================
+    // 실제 운영 시에는 아래 코드를 주석 처리하고
+    // PortOne 결제 연동 코드를 활성화해야 합니다.
+    // 
+    // 실제 운영 흐름:
+    // 1. PortOne 결제창 열기
+    // 2. 사용자 결제 완료
+    // 3. PortOne 웹훅으로 결제 확인
+    // 4. 웹훅에서 구독 생성
+    // ============================================
+    
     const currentPeriodEnd = new Date();
     if (plan.interval === 'year') {
       currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
@@ -107,7 +119,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: '구독이 활성화되었습니다!',
+      message: '구독이 활성화되었습니다! (테스트 모드)',
     });
   } catch (error) {
     console.error('Checkout error:', error);

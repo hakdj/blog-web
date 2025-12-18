@@ -7,29 +7,29 @@ export default async function HomePage() {
   
   // 구독 상태 확인
   let hasSubscription = false;
-  let subscriptionInfo = null;
+  let subscriptionInfo: any = null;
   
   if (user) {
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select(`
-        id,
-        current_period_end,
-        status,
-        plan_id,
-        plans:plan_id (
-          name,
-          price,
-          interval
-        )
-      `)
+      .select('id, current_period_end, status, plan_id')
       .eq('user_id', user.id)
       .eq('status', 'active')
       .maybeSingle();
     
     if (subscription) {
+      // 플랜 정보 별도로 가져오기
+      const { data: plan } = await supabase
+        .from('plans')
+        .select('name, price, interval')
+        .eq('id', subscription.plan_id)
+        .single();
+      
       hasSubscription = true;
-      subscriptionInfo = subscription;
+      subscriptionInfo = {
+        ...subscription,
+        plan: plan
+      };
     }
   }
 
@@ -55,7 +55,7 @@ export default async function HomePage() {
               <span className="text-2xl">✨</span>
               <div>
                 <p className="font-bold text-lg">
-                  {subscriptionInfo.plans?.name || '구독 중'}
+                  {subscriptionInfo.plan?.name || '구독 중'}
                 </p>
                 <p className="text-sm opacity-90">
                   {getDaysRemaining(subscriptionInfo.current_period_end)}일 남음 · 
