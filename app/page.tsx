@@ -4,6 +4,22 @@ import { createClient } from '@/lib/supabase/server';
 export default async function HomePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  
+  // 구독 상태 확인
+  let hasSubscription = false;
+  if (user) {
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+    
+    hasSubscription = !!subscription;
+  }
+
+  // 로그인 안 했거나, 로그인했지만 구독 없으면 CTA 표시
+  const showCTA = !user || !hasSubscription;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">
@@ -19,7 +35,7 @@ export default async function HomePage() {
           <p className="text-lg text-gray-600 mb-8">
             90년대 감성 게임, 제품, 이벤트를 한 곳에서
           </p>
-          {!user && (
+          {showCTA && (
             <Link
               href="/pricing"
               className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
@@ -97,8 +113,8 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        {/* CTA Section - 로그인 안 한 사용자만 표시 */}
-        {!user && (
+        {/* CTA Section - 로그인 안 했거나 구독 없을 때만 표시 */}
+        {showCTA && (
           <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 rounded-3xl shadow-2xl p-12 text-center text-white">
             <h2 className="text-4xl font-bold mb-4">
               🎉 지금 구독하고 추억을 되살려보세요!
@@ -113,12 +129,14 @@ export default async function HomePage() {
               >
                 요금제 보기
               </Link>
-              <Link
-                href="/login"
-                className="bg-purple-800 text-white px-8 py-4 rounded-full text-lg font-bold hover:bg-purple-900 transition-colors"
-              >
-                로그인
-              </Link>
+              {!user && (
+                <Link
+                  href="/login"
+                  className="bg-purple-800 text-white px-8 py-4 rounded-full text-lg font-bold hover:bg-purple-900 transition-colors"
+                >
+                  로그인
+                </Link>
+              )}
             </div>
           </div>
         )}
