@@ -7,22 +7,72 @@ export default async function HomePage() {
   
   // 구독 상태 확인
   let hasSubscription = false;
+  let subscriptionInfo = null;
+  
   if (user) {
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select('id')
+      .select(`
+        id,
+        current_period_end,
+        status,
+        plan_id,
+        plans:plan_id (
+          name,
+          price,
+          interval
+        )
+      `)
       .eq('user_id', user.id)
       .eq('status', 'active')
       .maybeSingle();
     
-    hasSubscription = !!subscription;
+    if (subscription) {
+      hasSubscription = true;
+      subscriptionInfo = subscription;
+    }
   }
 
   // 로그인 안 했거나, 로그인했지만 구독 없으면 CTA 표시
   const showCTA = !user || !hasSubscription;
 
+  // 남은 일수 계산
+  const getDaysRemaining = (endDate: string) => {
+    const now = new Date();
+    const end = new Date(endDate);
+    const diffTime = end.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">
+      {/* 구독 정보 배너 */}
+      {subscriptionInfo && (
+        <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-4 shadow-lg">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-2xl">✨</span>
+              <div>
+                <p className="font-bold text-lg">
+                  {subscriptionInfo.plans?.name || '구독 중'}
+                </p>
+                <p className="text-sm opacity-90">
+                  {getDaysRemaining(subscriptionInfo.current_period_end)}일 남음 · 
+                  다음 결제일: {new Date(subscriptionInfo.current_period_end).toLocaleDateString('ko-KR')}
+                </p>
+              </div>
+            </div>
+            <a
+              href="/settings"
+              className="bg-white text-purple-600 px-4 py-2 rounded-full text-sm font-bold hover:bg-gray-100 transition-colors"
+            >
+              구독 관리
+            </a>
+          </div>
+        </div>
+      )}
+      
       {/* Hero Section - 레트로 감성 */}
       <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="text-center mb-16">
