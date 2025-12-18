@@ -121,7 +121,8 @@ export default function AdminPage() {
         totalUsers: 0,
         activeSubscriptions: 0,
         totalRevenue: 0,
-        recentUsers: []
+        recentUsers: [],
+        subscribers: []
       });
     }
   };
