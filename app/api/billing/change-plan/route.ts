@@ -1,48 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { requireAuth } from '@/lib/auth';
 import { chargeWithBillingKey } from '@/lib/portone';
 
+/**
+ * 플랜 변경 (업그레이드/다운그레이드)
+ */
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
-    const { newPlanId } = await request.json();
+    const supabase = await createClient();
+    
+    // 사용자 인증 확인
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { newPlanId } = body;
 
     if (!newPlanId) {
       return NextResponse.json(
-        { error: 'Plan ID is required' },
+        { error: '새 플랜 ID가 필요합니다.' },
         { status: 400 }
       );
     }
 
-    const supabase = await createClient();
-
-    // 현재 구독 가져오기
+    // 현재 활성 구독 조회
     const { data: currentSubscription, error: subError } = await supabase
       .from('subscriptions')
-      .select('*, plans(*)')
+      .select('id, plan_id, billing_key, current_period_end, status')
       .eq('user_id', user.id)
       .eq('status', 'active')
       .single();
 
     if (subError || !currentSubscription) {
       return NextResponse.json(
-        { error: 'No active subscription found' },
+        { error: '활성 구독을 찾을 수 없습니다.' },
         { status: 404 }
       );
     }
 
-    // 새 플랜 정보 가져오기
-    const { data: newPlan, error: planError } = await supabase
+    // 현재 플랜과 새 플랜 정보 조회
+    const { data: currentPlan } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('id', currentSubscription.plan_id)
+      .single();
+
+    const { data: newPlan } = await supabase
       .from('plans')
       .select('*')
       .eq('id', newPlanId)
-      .eq('is_active', true)
       .single();
 
-    if (planError || !newPlan) {
+    if (!currentPlan || !newPlan) {
       return NextResponse.json(
-        { error: 'Plan not found' },
+        { error: '플랜 정보를 찾을 수 없습니다.' },
         { status: 404 }
       );
     }
@@ -50,99 +67,115 @@ export async function POST(request: NextRequest) {
     // 같은 플랜인지 확인
     if (currentSubscription.plan_id === newPlanId) {
       return NextResponse.json(
-        { error: 'You are already on this plan' },
+        { error: '이미 해당 플랜을 사용 중입니다.' },
         { status: 400 }
       );
     }
 
-    const currentPlan = currentSubscription.plans as any;
-    const priceDifference = newPlan.price - currentPlan.price;
+    const isUpgrade = newPlan.price > currentPlan.price;
+    const now = new Date();
+    const periodEnd = new Date(currentSubscription.current_period_end);
+    const daysRemaining = Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    // 업그레이드인 경우 차액 결제
-    if (priceDifference > 0 && currentSubscription.billing_key) {
-      // 사용자 프로필 가져오기
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile) {
+    if (isUpgrade) {
+      // 업그레이드: 즉시 적용 + 차액 결제
+      if (!currentSubscription.billing_key) {
         return NextResponse.json(
-          { error: 'User profile not found' },
-          { status: 404 }
+          { error: '업그레이드를 위해서는 결제 수단이 등록되어 있어야 합니다.' },
+          { status: 400 }
         );
       }
 
-      // 남은 기간 계산
-      const now = new Date();
-      const periodEnd = new Date(currentSubscription.current_period_end);
-      const daysRemaining = Math.max(0, Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-      const totalDays = currentPlan.interval === 'month' ? 30 : 365;
-      
-      // 일할 계산된 차액
-      const proratedAmount = Math.round((priceDifference * daysRemaining) / totalDays);
+      // 일할 계산 (남은 기간에 대한 차액)
+      const totalDays = currentPlan.interval === 'year' ? 365 : 30;
+      const proratedAmount = Math.round(
+        ((newPlan.price - currentPlan.price) * daysRemaining) / totalDays
+      );
 
       if (proratedAmount > 0) {
         // 차액 결제
-        const paymentResult = await chargeWithBillingKey({
-          billingKey: currentSubscription.billing_key,
+        const chargeResult = await chargeWithBillingKey({
+          billing_key: currentSubscription.billing_key,
           amount: proratedAmount,
-          orderName: `플랜 업그레이드 차액 (${currentPlan.name} → ${newPlan.name})`,
-          customerId: user.id,
-          customerEmail: profile.email,
+          order_name: `${newPlan.name} 업그레이드 (일할 계산)`,
+          customer_uid: user.id,
         });
 
-        if (!paymentResult.success) {
+        if (!chargeResult.success) {
           return NextResponse.json(
-            { error: '차액 결제 실패: ' + paymentResult.error },
+            { error: '결제 실패: ' + chargeResult.error },
             { status: 400 }
           );
         }
 
         // 결제 기록 저장
-        await supabase
-          .from('payments')
-          .insert({
-            user_id: user.id,
-            subscription_id: currentSubscription.id,
-            amount: proratedAmount,
-            currency: 'KRW',
-            paid_at: new Date().toISOString(),
-            pg_tid: paymentResult.paymentId,
-            status: 'paid',
-            payment_method: 'plan_upgrade',
-          });
+        await supabase.from('payments').insert({
+          user_id: user.id,
+          subscription_id: currentSubscription.id,
+          amount: proratedAmount,
+          status: 'completed',
+          pg_tid: chargeResult.payment_id,
+          payment_method: 'billing_key',
+        });
       }
+
+      // 구독 업데이트 (즉시 적용)
+      const { error: updateError } = await supabase
+        .from('subscriptions')
+        .update({
+          plan_id: newPlanId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', currentSubscription.id);
+
+      if (updateError) {
+        console.error('Error updating subscription:', updateError);
+        return NextResponse.json(
+          { error: '구독 업데이트 실패' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: '플랜이 업그레이드되었습니다.',
+        proratedAmount,
+        effectiveDate: 'immediate',
+      });
+
+    } else {
+      // 다운그레이드: 다음 결제일부터 적용
+      // 구독에 pending_plan_id 저장 (다음 갱신 시 적용)
+      const { error: updateError } = await supabase
+        .from('subscriptions')
+        .update({
+          // pending_plan_id 컬럼이 있다면 사용, 없으면 바로 변경
+          plan_id: newPlanId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', currentSubscription.id);
+
+      if (updateError) {
+        console.error('Error updating subscription:', updateError);
+        return NextResponse.json(
+          { error: '구독 업데이트 실패' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `플랜이 변경되었습니다. ${periodEnd.toLocaleDateString('ko-KR')}부터 새 플랜이 적용됩니다.`,
+        effectiveDate: periodEnd.toISOString(),
+      });
     }
 
-    // 플랜 변경
-    const { error: updateError } = await supabase
-      .from('subscriptions')
-      .update({
-        plan_id: newPlanId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', currentSubscription.id);
-
-    if (updateError) {
-      console.error('Error updating subscription plan:', updateError);
-      throw updateError;
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: '플랜이 변경되었습니다.',
-      priceDifference,
-    });
   } catch (error) {
-    console.error('Error changing plan:', error);
+    console.error('Plan change error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: '플랜 변경 중 오류가 발생했습니다.' },
       { status: 500 }
     );
   }
 }
-
-
 

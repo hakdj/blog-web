@@ -20,6 +20,12 @@ export default function SettingsPage() {
   const [subscription, setSubscription] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPaymentMethodForm, setShowPaymentMethodForm] = useState(false);
+  const [cardInfo, setCardInfo] = useState({
+    cardNumber: '',
+    expiry: '',
+    birth: '',
+    pwd2digit: ''
+  });
 
   const supabase = createClient();
   const router = useRouter();
@@ -211,6 +217,72 @@ export default function SettingsPage() {
     }
   };
 
+  const handleRegisterPaymentMethod = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      // 카드 번호 검증 (숫자만, 16자리)
+      const cardNumberClean = cardInfo.cardNumber.replace(/\s/g, '');
+      if (!/^\d{16}$/.test(cardNumberClean)) {
+        alert('카드 번호는 16자리 숫자여야 합니다.');
+        setLoading(false);
+        return;
+      }
+
+      // 유효기간 검증 (YYYY-MM)
+      if (!/^\d{4}-\d{2}$/.test(cardInfo.expiry)) {
+        alert('유효기간은 YYYY-MM 형식이어야 합니다.');
+        setLoading(false);
+        return;
+      }
+
+      // 생년월일 검증 (YYMMDD)
+      if (!/^\d{6}$/.test(cardInfo.birth)) {
+        alert('생년월일은 6자리 숫자여야 합니다. (YYMMDD)');
+        setLoading(false);
+        return;
+      }
+
+      // 비밀번호 검증 (2자리)
+      if (!/^\d{2}$/.test(cardInfo.pwd2digit)) {
+        alert('카드 비밀번호 앞 2자리를 입력해주세요.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/billing/payment-method', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cardNumber: cardNumberClean,
+          expiry: cardInfo.expiry,
+          birth: cardInfo.birth,
+          pwd2digit: cardInfo.pwd2digit,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '결제 수단 등록 실패');
+      }
+
+      alert(data.message);
+      setShowPaymentMethodForm(false);
+      setCardInfo({ cardNumber: '', expiry: '', birth: '', pwd2digit: '' });
+      await loadUserData();
+    } catch (error) {
+      console.error('Error registering payment method:', error);
+      setError('결제 수단 등록 실패: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDeletePaymentMethod = async () => {
     if (!confirm('결제 수단을 삭제하시겠습니까? 자동 갱신이 비활성화됩니다.')) return;
 
@@ -250,9 +322,9 @@ export default function SettingsPage() {
       const { error } = await supabase
         .from('subscriptions')
         .update({ 
-          status: 'cancelled',
+          status: 'canceled',  // DB에서는 'canceled' (l 하나)
           auto_renew: false,
-          cancelled_at: new Date().toISOString()
+          canceled_at: new Date().toISOString()
         })
         .eq('id', subscription.id);
 
@@ -497,12 +569,96 @@ export default function SettingsPage() {
                         자동 갱신을 위해 결제 수단을 등록해주세요.
                       </p>
                     </div>
-                    <button
-                      onClick={() => setShowPaymentMethodForm(true)}
-                      className="w-full bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700 transition-colors"
-                    >
-                      결제 수단 등록
-                    </button>
+                    
+                    {!showPaymentMethodForm ? (
+                      <button
+                        onClick={() => setShowPaymentMethodForm(true)}
+                        className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        결제 수단 등록
+                      </button>
+                    ) : (
+                      <form onSubmit={handleRegisterPaymentMethod} className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            카드 번호
+                          </label>
+                          <input
+                            type="text"
+                            value={cardInfo.cardNumber}
+                            onChange={(e) => setCardInfo({ ...cardInfo, cardNumber: e.target.value })}
+                            placeholder="1234 5678 9012 3456"
+                            maxLength={19}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            required
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              유효기간
+                            </label>
+                            <input
+                              type="text"
+                              value={cardInfo.expiry}
+                              onChange={(e) => setCardInfo({ ...cardInfo, expiry: e.target.value })}
+                              placeholder="YYYY-MM"
+                              maxLength={7}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              생년월일
+                            </label>
+                            <input
+                              type="text"
+                              value={cardInfo.birth}
+                              onChange={(e) => setCardInfo({ ...cardInfo, birth: e.target.value })}
+                              placeholder="YYMMDD"
+                              maxLength={6}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            비밀번호 앞 2자리
+                          </label>
+                          <input
+                            type="password"
+                            value={cardInfo.pwd2digit}
+                            onChange={(e) => setCardInfo({ ...cardInfo, pwd2digit: e.target.value })}
+                            placeholder="••"
+                            maxLength={2}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            required
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={loading}
+                            className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                          >
+                            {loading ? '등록 중...' : '등록'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowPaymentMethodForm(false);
+                              setCardInfo({ cardNumber: '', expiry: '', birth: '', pwd2digit: '' });
+                            }}
+                            disabled={loading}
+                            className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50"
+                          >
+                            취소
+                          </button>
+                        </div>
+                      </form>
+                    )}
                   </div>
                 )}
 

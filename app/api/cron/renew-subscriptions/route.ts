@@ -2,24 +2,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { chargeWithBillingKey } from '@/lib/portone';
 
-// Vercel Cron Job으로 매일 실행
-// vercel.json에 설정 필요
+/**
+ * 자동 구독 갱신 Cron Job
+ * Vercel Cron으로 매일 실행
+ */
 export async function GET(request: NextRequest) {
   try {
-    // Cron secret 검증 (보안)
+    // Cron Secret 검증 (보안)
     const authHeader = request.headers.get('authorization');
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
     const supabase = createServiceClient();
     const today = new Date();
-    const threeDaysFromNow = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-    console.log('Cron: Checking subscriptions to renew...');
+    console.log('🔄 Running subscription renewal cron job...');
 
-    // 만료 예정인 구독 찾기 (3일 이내 + 자동갱신 활성화)
-    const { data: subscriptions, error } = await supabase
+    // 만료 예정 구독 조회 (오늘 ~ 내일 사이)
+    const { data: expiringSubscriptions, error: fetchError } = await supabase
       .from('subscriptions')
       .select(`
         id,
@@ -29,163 +35,173 @@ export async function GET(request: NextRequest) {
         current_period_end,
         auto_renew,
         plans (
+          id,
           name,
           price,
           interval
-        ),
-        profiles (
-          email
         )
       `)
       .eq('status', 'active')
       .eq('auto_renew', true)
-      .not('billing_key', 'is', null)
-      .lte('current_period_end', threeDaysFromNow.toISOString());
+      .lte('current_period_end', tomorrow.toISOString())
+      .gte('current_period_end', today.toISOString());
 
-    if (error) {
-      console.error('Cron: Error fetching subscriptions:', error);
-      throw error;
+    if (fetchError) {
+      console.error('Error fetching expiring subscriptions:', fetchError);
+      return NextResponse.json(
+        { error: 'Failed to fetch subscriptions' },
+        { status: 500 }
+      );
     }
 
-    if (!subscriptions || subscriptions.length === 0) {
-      console.log('Cron: No subscriptions to renew');
-      return NextResponse.json({ 
-        success: true, 
+    if (!expiringSubscriptions || expiringSubscriptions.length === 0) {
+      console.log('✅ No subscriptions to renew today');
+      return NextResponse.json({
+        success: true,
         message: 'No subscriptions to renew',
-        renewed: 0 
+        renewed: 0,
       });
     }
 
-    console.log(`Cron: Found ${subscriptions.length} subscriptions to renew`);
+    console.log(`📋 Found ${expiringSubscriptions.length} subscription(s) to renew`);
 
+    let successCount = 0;
+    let failCount = 0;
     const results = [];
 
-    for (const subscription of subscriptions) {
+    for (const subscription of expiringSubscriptions) {
       try {
-        const plan = subscription.plans as any;
-        const profile = subscription.profiles as any;
-
-        console.log(`Cron: Processing subscription ${subscription.id} for user ${subscription.user_id}`);
-
-        // 빌링키로 자동 결제
-        const paymentResult = await chargeWithBillingKey({
-          billingKey: subscription.billing_key!,
-          amount: plan.price,
-          orderName: `${plan.name} - ${plan.interval === 'month' ? '월간' : '연간'} 구독 갱신`,
-          customerId: subscription.user_id,
-          customerEmail: profile.email,
-        });
-
-        if (paymentResult.success) {
-          // 결제 성공: 구독 기간 연장
-          const intervalDays = plan.interval === 'month' ? 30 : 365;
-          const newPeriodEnd = new Date(
-            new Date(subscription.current_period_end).getTime() + intervalDays * 24 * 60 * 60 * 1000
-          );
-
+        // 빌링키 확인
+        if (!subscription.billing_key) {
+          console.log(`⚠️ No billing key for subscription ${subscription.id}, skipping auto-renewal`);
+          
+          // 자동 갱신 비활성화
           await supabase
             .from('subscriptions')
-            .update({
-              current_period_end: newPeriodEnd.toISOString(),
-              updated_at: new Date().toISOString(),
-            })
+            .update({ auto_renew: false })
             .eq('id', subscription.id);
 
-          // 결제 기록 저장
-          await supabase
-            .from('payments')
-            .insert({
-              user_id: subscription.user_id,
-              subscription_id: subscription.id,
-              amount: plan.price,
-              currency: 'KRW',
-              paid_at: new Date().toISOString(),
-              pg_tid: paymentResult.paymentId,
-              status: 'paid',
-              payment_method: 'auto_billing',
-            });
-
-          console.log(`Cron: Successfully renewed subscription ${subscription.id}`);
+          failCount++;
           results.push({
-            subscriptionId: subscription.id,
-            userId: subscription.user_id,
-            status: 'success',
+            subscription_id: subscription.id,
+            success: false,
+            reason: 'No billing key',
           });
-        } else {
-          // 결제 실패: 재시도 카운트 증가
-          console.error(`Cron: Payment failed for subscription ${subscription.id}:`, paymentResult.error);
-
-          // 실패 기록
-          await supabase
-            .from('payments')
-            .insert({
-              user_id: subscription.user_id,
-              subscription_id: subscription.id,
-              amount: plan.price,
-              currency: 'KRW',
-              status: 'failed',
-              payment_method: 'auto_billing',
-              error_message: paymentResult.error,
-            });
-
-          // 3회 실패 시 구독 취소
-          const { data: failedPayments } = await supabase
-            .from('payments')
-            .select('id')
-            .eq('subscription_id', subscription.id)
-            .eq('status', 'failed')
-            .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
-
-          if (failedPayments && failedPayments.length >= 3) {
-            await supabase
-              .from('subscriptions')
-              .update({
-                status: 'cancelled',
-                auto_renew: false,
-                cancelled_at: new Date().toISOString(),
-              })
-              .eq('id', subscription.id);
-
-            console.log(`Cron: Cancelled subscription ${subscription.id} due to repeated failures`);
-          }
-
-          results.push({
-            subscriptionId: subscription.id,
-            userId: subscription.user_id,
-            status: 'failed',
-            error: paymentResult.error,
-          });
+          continue;
         }
-      } catch (error) {
-        console.error(`Cron: Error processing subscription ${subscription.id}:`, error);
+
+        const plan = subscription.plans as any;
+        if (!plan) {
+          console.error(`❌ No plan found for subscription ${subscription.id}`);
+          failCount++;
+          continue;
+        }
+
+        // 빌링키로 결제
+        console.log(`💳 Charging subscription ${subscription.id} for ${plan.price} KRW`);
+        
+        const chargeResult = await chargeWithBillingKey({
+          billing_key: subscription.billing_key,
+          amount: plan.price,
+          order_name: `${plan.name} 자동 갱신`,
+          customer_uid: subscription.user_id,
+        });
+
+        if (!chargeResult.success) {
+          console.error(`❌ Payment failed for subscription ${subscription.id}:`, chargeResult.error);
+          
+          // 결제 실패 기록
+          await supabase.from('payments').insert({
+            user_id: subscription.user_id,
+            subscription_id: subscription.id,
+            amount: plan.price,
+            status: 'failed',
+            payment_method: 'billing_key',
+            error_message: chargeResult.error,
+          });
+
+          // 자동 갱신 비활성화 (결제 실패 시)
+          await supabase
+            .from('subscriptions')
+            .update({ auto_renew: false })
+            .eq('id', subscription.id);
+
+          failCount++;
+          results.push({
+            subscription_id: subscription.id,
+            success: false,
+            reason: chargeResult.error,
+          });
+          continue;
+        }
+
+        // 결제 성공: 구독 기간 연장
+        const newPeriodEnd = new Date(subscription.current_period_end);
+        if (plan.interval === 'year') {
+          newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
+        } else {
+          newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
+        }
+
+        const { error: updateError } = await supabase
+          .from('subscriptions')
+          .update({
+            current_period_end: newPeriodEnd.toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', subscription.id);
+
+        if (updateError) {
+          console.error(`❌ Failed to update subscription ${subscription.id}:`, updateError);
+          failCount++;
+          continue;
+        }
+
+        // 결제 성공 기록
+        await supabase.from('payments').insert({
+          user_id: subscription.user_id,
+          subscription_id: subscription.id,
+          amount: plan.price,
+          status: 'completed',
+          pg_tid: chargeResult.payment_id,
+          payment_method: 'billing_key',
+        });
+
+        console.log(`✅ Successfully renewed subscription ${subscription.id}`);
+        successCount++;
         results.push({
-          subscriptionId: subscription.id,
-          userId: subscription.user_id,
-          status: 'error',
-          error: (error as Error).message,
+          subscription_id: subscription.id,
+          success: true,
+          new_period_end: newPeriodEnd.toISOString(),
+        });
+
+      } catch (error) {
+        console.error(`❌ Error processing subscription ${subscription.id}:`, error);
+        failCount++;
+        results.push({
+          subscription_id: subscription.id,
+          success: false,
+          reason: (error as Error).message,
         });
       }
     }
 
-    const successCount = results.filter(r => r.status === 'success').length;
-    const failedCount = results.filter(r => r.status === 'failed' || r.status === 'error').length;
-
-    console.log(`Cron: Completed. Success: ${successCount}, Failed: ${failedCount}`);
+    console.log(`🎉 Renewal complete: ${successCount} success, ${failCount} failed`);
 
     return NextResponse.json({
       success: true,
+      message: `Processed ${expiringSubscriptions.length} subscription(s)`,
       renewed: successCount,
-      failed: failedCount,
+      failed: failCount,
       results,
     });
+
   } catch (error) {
-    console.error('Cron: Fatal error:', error);
+    console.error('Cron job error:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: (error as Error).message },
+      { error: 'Cron job failed', details: (error as Error).message },
       { status: 500 }
     );
   }
 }
-
-
 

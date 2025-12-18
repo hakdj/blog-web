@@ -106,90 +106,28 @@ export interface WebhookEvent {
   };
 }
 
-// 빌링키로 정기결제 요청
-export interface RecurringPaymentRequest {
-  billingKey: string;
-  amount: number;
-  orderName: string;
-  customerId: string;
-  customerEmail: string;
-}
-
-export interface RecurringPaymentResponse {
-  success: boolean;
-  paymentId?: string;
-  error?: string;
-}
-
-export async function chargeWithBillingKey({
-  billingKey,
-  amount,
-  orderName,
-  customerId,
-  customerEmail,
-}: RecurringPaymentRequest): Promise<RecurringPaymentResponse> {
-  try {
-    const response = await fetch(`https://api.portone.io/v2/billing-keys/${billingKey}/charge`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.apiKey}`,
-      },
-      body: JSON.stringify({
-        amount,
-        currency: 'KRW',
-        orderName,
-        customerId,
-        customerEmail,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Recurring payment failed');
-    }
-
-    return {
-      success: true,
-      paymentId: data.paymentId,
-    };
-  } catch (error) {
-    console.error('Error charging with billing key:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-}
-
-// 빌링키 발급 (카드 등록)
+/**
+ * 빌링키 발급 (결제 수단 등록)
+ */
 export interface IssueBillingKeyRequest {
-  userId: string;
-  userEmail: string;
-  cardNumber: string;
-  expiryYear: string;
-  expiryMonth: string;
-  birthOrBusinessNumber: string;
-  passwordTwoDigits: string;
+  customer_uid: string;  // 고객 고유 ID (user.id)
+  card_number: string;   // 카드 번호
+  expiry: string;        // 유효기간 (YYYY-MM)
+  birth: string;         // 생년월일 (YYMMDD)
+  pwd_2digit: string;    // 카드 비밀번호 앞 2자리
 }
 
 export interface IssueBillingKeyResponse {
   success: boolean;
-  billingKey?: string;
+  billing_key?: string;
   error?: string;
 }
 
-export async function issueBillingKey({
-  userId,
-  userEmail,
-  cardNumber,
-  expiryYear,
-  expiryMonth,
-  birthOrBusinessNumber,
-  passwordTwoDigits,
-}: IssueBillingKeyRequest): Promise<IssueBillingKeyResponse> {
+export async function issueBillingKey(
+  request: IssueBillingKeyRequest
+): Promise<IssueBillingKeyResponse> {
   try {
+    // PortOne API 호출
     const response = await fetch('https://api.portone.io/v2/billing-keys', {
       method: 'POST',
       headers: {
@@ -197,27 +135,23 @@ export async function issueBillingKey({
         'Authorization': `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
-        customerId: userId,
-        customerEmail: userEmail,
-        card: {
-          number: cardNumber,
-          expiryYear,
-          expiryMonth,
-          birthOrBusinessNumber,
-          passwordTwoDigits,
-        },
+        customer_uid: request.customer_uid,
+        card_number: request.card_number,
+        expiry: request.expiry,
+        birth: request.birth,
+        pwd_2digit: request.pwd_2digit,
       }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || 'Billing key issuance failed');
+      throw new Error(data.message || '빌링키 발급 실패');
     }
 
     return {
       success: true,
-      billingKey: data.billingKey,
+      billing_key: data.billing_key || data.customer_uid,
     };
   } catch (error) {
     console.error('Error issuing billing key:', error);
@@ -228,10 +162,73 @@ export async function issueBillingKey({
   }
 }
 
-// 빌링키 삭제
-export async function deleteBillingKey(billingKey: string): Promise<{ success: boolean; error?: string }> {
+/**
+ * 빌링키로 결제 (자동 갱신용)
+ */
+export interface ChargeWithBillingKeyRequest {
+  billing_key: string;
+  amount: number;
+  order_name: string;
+  customer_uid: string;
+}
+
+export interface ChargeWithBillingKeyResponse {
+  success: boolean;
+  payment_id?: string;
+  error?: string;
+}
+
+export async function chargeWithBillingKey(
+  request: ChargeWithBillingKeyRequest
+): Promise<ChargeWithBillingKeyResponse> {
   try {
-    const response = await fetch(`https://api.portone.io/v2/billing-keys/${billingKey}`, {
+    const response = await fetch('https://api.portone.io/v2/payments/billing-key', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        billing_key: request.billing_key,
+        amount: request.amount,
+        currency: 'KRW',
+        order_name: request.order_name,
+        customer_uid: request.customer_uid,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || '결제 실패');
+    }
+
+    return {
+      success: true,
+      payment_id: data.payment_id,
+    };
+  } catch (error) {
+    console.error('Error charging with billing key:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * 빌링키 삭제 (결제 수단 삭제)
+ */
+export interface DeleteBillingKeyResponse {
+  success: boolean;
+  error?: string;
+}
+
+export async function deleteBillingKey(
+  billing_key: string
+): Promise<DeleteBillingKeyResponse> {
+  try {
+    const response = await fetch(`https://api.portone.io/v2/billing-keys/${billing_key}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${config.apiKey}`,
@@ -240,10 +237,12 @@ export async function deleteBillingKey(billingKey: string): Promise<{ success: b
 
     if (!response.ok) {
       const data = await response.json();
-      throw new Error(data.message || 'Billing key deletion failed');
+      throw new Error(data.message || '빌링키 삭제 실패');
     }
 
-    return { success: true };
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error('Error deleting billing key:', error);
     return {

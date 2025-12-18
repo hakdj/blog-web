@@ -29,8 +29,6 @@ export default function PricingCard({ plan, isLoggedIn }: PricingCardProps) {
     setIsLoading(true);
 
     try {
-      console.log('구독 시작 - planId:', plan.id);
-      
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: {
@@ -39,27 +37,17 @@ export default function PricingCard({ plan, isLoggedIn }: PricingCardProps) {
         body: JSON.stringify({ planId: plan.id }),
       });
 
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const data = await response.json();
-      console.log('Response data:', data);
 
-      if (data.success) {
-        // 테스트 모드: 바로 구독 활성화됨
-        alert(data.message || '구독이 활성화되었습니다!');
-        // 페이지 새로고침 후 설정 페이지로 이동
-        window.location.href = '/settings';
+      if (data.success && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
       } else {
-        alert('구독 처리에 실패했습니다: ' + (data.error || '알 수 없는 오류'));
-        setIsLoading(false);
+        alert('결제 세션 생성에 실패했습니다: ' + (data.error || '알 수 없는 오류'));
       }
     } catch (error) {
       console.error('Subscription error:', error);
-      alert('구독 처리 중 오류가 발생했습니다: ' + error);
+      alert('구독 처리 중 오류가 발생했습니다.');
+    } finally {
       setIsLoading(false);
     }
   };
