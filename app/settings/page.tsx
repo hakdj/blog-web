@@ -82,15 +82,27 @@ export default function SettingsPage() {
           *,
           plans (
             name,
-            price
+            price,
+            interval
           )
         `)
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
+
+      console.log('Settings - Subscription data:', subData);
+      console.log('Settings - Subscription error:', subError);
+
+      if (subError) {
+        console.error('Settings - Error loading subscription:', subError);
+      }
 
       if (subData) {
+        console.log('Settings - Setting subscription state:', subData);
         setSubscription(subData);
+      } else {
+        console.log('Settings - No active subscription found');
+        setSubscription(null);
       }
 
       setInitialLoading(false);
@@ -375,8 +387,13 @@ export default function SettingsPage() {
                 <div className="border-b border-gray-200 pb-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-semibold text-lg">{subscription.plans?.name}</p>
-                      <p className="text-gray-600">₩{subscription.plans?.price?.toLocaleString()}/월</p>
+                      <p className="font-semibold text-lg">
+                        {subscription.plans?.name || '플랜 정보 없음'}
+                      </p>
+                      <p className="text-gray-600">
+                        ₩{(subscription.plans?.price || 0).toLocaleString()}
+                        {subscription.plans?.interval === 'year' ? '/년' : '/월'}
+                      </p>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                       subscription.status === 'active' 
@@ -391,9 +408,9 @@ export default function SettingsPage() {
                 {/* 결제 정보 */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center py-2">
-                    <span className="text-sm text-gray-600">시작일</span>
+                    <span className="text-sm text-gray-600">구독 시작일</span>
                     <span className="text-sm font-medium">
-                      {new Date(subscription.start_date).toLocaleDateString('ko-KR')}
+                      {new Date(subscription.created_at).toLocaleDateString('ko-KR')}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2">
