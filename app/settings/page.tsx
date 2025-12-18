@@ -55,7 +55,6 @@ export default function SettingsPage() {
         return;
       }
 
-      console.log('Settings - User loaded:', user.email);
       setUser(user);
 
       // Load profile
@@ -65,8 +64,10 @@ export default function SettingsPage() {
         .eq('id', user.id)
         .single();
 
-      console.log('Settings - Profile data:', profileData);
-      console.log('Settings - Profile error:', profileError);
+      if (profileError && profileError.code !== 'PGRST116') {
+        // PGRST116 = no rows returned (정상)
+        console.error('Settings - Profile error:', profileError);
+      }
 
       if (profileData) {
         setProfile({
@@ -89,14 +90,10 @@ export default function SettingsPage() {
         .eq('status', 'active')
         .maybeSingle();
 
-      console.log('Settings - Subscription data:', subData);
-      console.log('Settings - Subscription error:', subError);
-
       if (subError) {
-        console.error('Settings - Error loading subscription:', subError);
-      }
-
-      if (subData) {
+        console.error('Settings - Subscription error:', subError);
+        setSubscription(null);
+      } else if (subData) {
         // Load plan details separately
         const { data: planData, error: planError } = await supabase
           .from('plans')
@@ -104,22 +101,19 @@ export default function SettingsPage() {
           .eq('id', subData.plan_id)
           .single();
 
-        console.log('Settings - Plan data:', planData);
-        
-        if (planData) {
+        if (planError) {
+          console.error('Settings - Plan error:', planError);
+          setSubscription(subData);
+        } else if (planData) {
           // Combine subscription and plan data
-          const combinedData = {
+          setSubscription({
             ...subData,
             plans: planData
-          };
-          console.log('Settings - Setting subscription state:', combinedData);
-          setSubscription(combinedData);
+          });
         } else {
-          console.log('Settings - Plan not found, setting subscription without plan details');
           setSubscription(subData);
         }
       } else {
-        console.log('Settings - No active subscription found');
         setSubscription(null);
       }
 
