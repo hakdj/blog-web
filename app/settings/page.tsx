@@ -78,14 +78,7 @@ export default function SettingsPage() {
       // Load subscription
       const { data: subData, error: subError } = await supabase
         .from('subscriptions')
-        .select(`
-          *,
-          plans (
-            name,
-            price,
-            interval
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .eq('status', 'active')
         .maybeSingle();
@@ -98,8 +91,27 @@ export default function SettingsPage() {
       }
 
       if (subData) {
-        console.log('Settings - Setting subscription state:', subData);
-        setSubscription(subData);
+        // Load plan details separately
+        const { data: planData, error: planError } = await supabase
+          .from('plans')
+          .select('name, price, interval')
+          .eq('id', subData.plan_id)
+          .single();
+
+        console.log('Settings - Plan data:', planData);
+        
+        if (planData) {
+          // Combine subscription and plan data
+          const combinedData = {
+            ...subData,
+            plans: planData
+          };
+          console.log('Settings - Setting subscription state:', combinedData);
+          setSubscription(combinedData);
+        } else {
+          console.log('Settings - Plan not found, setting subscription without plan details');
+          setSubscription(subData);
+        }
       } else {
         console.log('Settings - No active subscription found');
         setSubscription(null);
