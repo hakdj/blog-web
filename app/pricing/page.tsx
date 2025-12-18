@@ -27,6 +27,7 @@ export default function PricingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [currentSubscription, setCurrentSubscription] = useState<any>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -137,6 +138,18 @@ export default function PricingPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      
+      // Check if user has active subscription
+      if (user) {
+        const { data: subscription } = await supabase
+          .from('subscriptions')
+          .select('*, plan:plans(*)')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .maybeSingle();
+        
+        setCurrentSubscription(subscription);
+      }
     };
     checkUser();
   }, []);
@@ -329,12 +342,25 @@ export default function PricingPage() {
                     </div>
 
                     {/* 시작하기 버튼 */}
-                    <button
-                      onClick={() => handleSubscribe(plan.id)}
-                      className="w-full py-4 px-6 rounded-lg font-semibold text-white bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 transition-all duration-200 shadow-md hover:shadow-lg text-lg"
-                    >
-                      구독 시작하기
-                    </button>
+                    {currentSubscription && currentSubscription.plan_id === plan.id ? (
+                      <div className="w-full py-4 px-6 rounded-lg font-semibold text-center bg-gray-100 text-gray-600 border-2 border-gray-300">
+                        현재 구독 중
+                      </div>
+                    ) : currentSubscription ? (
+                      <button
+                        onClick={() => router.push('/settings')}
+                        className="w-full py-4 px-6 rounded-lg font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 shadow-md hover:shadow-lg text-lg"
+                      >
+                        플랜 변경하기
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSubscribe(plan.id)}
+                        className="w-full py-4 px-6 rounded-lg font-semibold text-white bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 transition-all duration-200 shadow-md hover:shadow-lg text-lg"
+                      >
+                        구독 시작하기
+                      </button>
+                    )}
                   </div>
                 );
               })}

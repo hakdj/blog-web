@@ -56,40 +56,62 @@ export async function GET() {
       throw subsError;
     }
 
-    // Calculate total revenue - fetch subscriptions and plans separately
+    // Fetch active subscriptions with user and plan details
     const { data: activeSubsData, error: activeSubsError } = await supabase
       .from('subscriptions')
-      .select('plan_id')
-      .eq('status', 'active');
+      .select('id, user_id, plan_id, status, created_at, current_period_end')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
 
     if (activeSubsError) {
       console.error('Admin API - Error fetching active subscriptions:', activeSubsError);
     }
 
+    // Get user emails and plan details for subscriptions
+    let subscribers = [];
     let totalRevenue = 0;
+    
     if (activeSubsData && activeSubsData.length > 0) {
+      const userIds = activeSubsData.map((sub: any) => sub.user_id);
       const planIds = [...new Set(activeSubsData.map((sub: any) => sub.plan_id))];
+      
+      // Fetch profiles
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .in('id', userIds);
+      
+      // Fetch plans
       const { data: plansData, error: plansError } = await supabase
         .from('plans')
-        .select('id, price')
+        .select('id, name, price')
         .in('id', planIds);
 
-      if (plansError) {
-        console.error('Admin API - Error fetching plans:', plansError);
-      } else if (plansData) {
-        // Create a map of plan prices
-        const planPriceMap = new Map(plansData.map((p: any) => [p.id, p.price]));
-        // Calculate total revenue
-        totalRevenue = activeSubsData.reduce((sum, sub: any) => {
-          return sum + (planPriceMap.get(sub.plan_id) || 0);
-        }, 0);
+      if (!profilesError && !plansError && profilesData && plansData) {
+        const profileMap = new Map(profilesData.map((p: any) => [p.id, p.email]));
+        const planMap = new Map(plansData.map((p: any) => [p.id, { name: p.name, price: p.price }]));
+        
+        subscribers = activeSubsData.map((sub: any) => {
+          const plan = planMap.get(sub.plan_id);
+          if (plan) {
+            totalRevenue += plan.price;
+          }
+          return {
+            id: sub.id,
+            email: profileMap.get(sub.user_id) || 'Unknown',
+            plan_name: plan?.name || 'Unknown',
+            plan_price: plan?.price || 0,
+            created_at: sub.created_at,
+            current_period_end: sub.current_period_end
+          };
+        });
       }
     }
 
-    // Fetch recent users - get from auth.users via profiles
+    // Fetch recent users
     const { data: recentProfiles, error: recentError } = await supabase
       .from('profiles')
-      .select('id, created_at')
+      .select('id, email, created_at')
       .order('created_at', { ascending: false })
       .limit(10);
 
@@ -97,10 +119,9 @@ export async function GET() {
       console.error('Admin API - Error fetching recent users:', recentError);
     }
 
-    // Get email from auth metadata if needed
     const recentUsers = recentProfiles?.map((profile: any) => ({
       id: profile.id,
-      email: 'user@example.com', // Placeholder since we can't easily get email from profiles
+      email: profile.email || 'No email',
       created_at: profile.created_at
     })) || [];
 
@@ -108,7 +129,8 @@ export async function GET() {
       totalUsers: totalUsers || 0,
       activeSubscriptions: activeSubscriptions || 0,
       totalRevenue: totalRevenue || 0,
-      recentUsers: recentUsers || []
+      recentUsers: recentUsers || [],
+      subscribers: subscribers || []
     };
 
     console.log('Admin API - Success:', responseData);
@@ -123,7 +145,8 @@ export async function GET() {
         totalUsers: 0,
         activeSubscriptions: 0,
         totalRevenue: 0,
-        recentUsers: []
+        recentUsers: [],
+        subscribers: []
       },
       { status: 200 } // Return 200 with default data instead of 500
     );

@@ -14,6 +14,15 @@ interface Plan {
   features: string[];
 }
 
+interface Subscriber {
+  id: string;
+  email: string;
+  plan_name: string;
+  plan_price: number;
+  created_at: string;
+  current_period_end: string;
+}
+
 interface AdminData {
   totalUsers: number;
   activeSubscriptions: number;
@@ -22,6 +31,7 @@ interface AdminData {
     email: string;
     created_at: string;
   }>;
+  subscribers: Subscriber[];
 }
 
 export default function AdminPage() {
@@ -101,7 +111,8 @@ export default function AdminPage() {
         totalUsers: data.totalUsers || 0,
         activeSubscriptions: data.activeSubscriptions || 0,
         totalRevenue: data.totalRevenue || 0,
-        recentUsers: data.recentUsers || []
+        recentUsers: data.recentUsers || [],
+        subscribers: data.subscribers || []
       });
     } catch (error) {
       console.error('Admin - Error loading data:', error);
@@ -448,6 +459,59 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+
+        {/* Active Subscribers */}
+        {adminData && adminData.subscribers && adminData.subscribers.length > 0 && (
+          <div className="bg-white rounded-lg shadow mb-8">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">활성 구독자 목록</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      이메일
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      플랜
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      가격
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      구독일
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      만료일
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {adminData.subscribers.map((subscriber) => (
+                    <tr key={subscriber.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {subscriber.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {subscriber.plan_name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ₩{subscriber.plan_price.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(subscriber.created_at).toLocaleDateString('ko-KR')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(subscriber.current_period_end).toLocaleDateString('ko-KR')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Recent Users */}
         {adminData && adminData.recentUsers.length > 0 && (
