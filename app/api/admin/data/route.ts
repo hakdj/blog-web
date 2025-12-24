@@ -45,16 +45,22 @@ export async function GET() {
       throw usersError;
     }
 
-    // Fetch active subscriptions
-    const { count: activeSubscriptions, error: subsError } = await supabase
+    // Fetch paid members (active subscriptions)
+    const { count: paidMembers, error: paidError } = await supabase
       .from('subscriptions')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'active');
 
-    if (subsError) {
-      console.error('Admin API - Error fetching subscriptions:', subsError);
-      throw subsError;
+    if (paidError) {
+      console.error('Admin API - Error fetching paid members:', paidError);
+      throw paidError;
     }
+
+    // Calculate free members
+    const freeMembers = (totalUsers || 0) - (paidMembers || 0);
+
+    // Fetch active subscriptions (keeping for compatibility)
+    const activeSubscriptions = paidMembers;
 
     // Fetch active subscriptions with user and plan details
     const { data: activeSubsData, error: activeSubsError } = await supabase
@@ -127,7 +133,9 @@ export async function GET() {
 
     const responseData = {
       totalUsers: totalUsers || 0,
-      activeSubscriptions: activeSubscriptions || 0,
+      paidMembers: paidMembers || 0,
+      freeMembers: freeMembers || 0,
+      activeSubscriptions: activeSubscriptions || 0, // 호환성 유지
       totalRevenue: totalRevenue || 0,
       recentUsers: recentUsers || [],
       subscribers: subscribers || []
@@ -143,6 +151,8 @@ export async function GET() {
         error: 'Failed to fetch admin data: ' + (error as Error).message,
         // Return default data on error so page doesn't break
         totalUsers: 0,
+        paidMembers: 0,
+        freeMembers: 0,
         activeSubscriptions: 0,
         totalRevenue: 0,
         recentUsers: [],

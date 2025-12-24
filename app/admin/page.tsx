@@ -25,6 +25,8 @@ interface Subscriber {
 
 interface AdminData {
   totalUsers: number;
+  paidMembers: number;
+  freeMembers: number;
   activeSubscriptions: number;
   totalRevenue: number;
   recentUsers: Array<{
@@ -42,6 +44,7 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [newPlan, setNewPlan] = useState({ name: '', price: '', tier: 'custom', interval: 'month', features: '' });
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'revenue'>('overview');
   const supabase = createClient();
   const router = useRouter();
 
@@ -109,6 +112,8 @@ export default function AdminPage() {
       
       setAdminData({
         totalUsers: data.totalUsers || 0,
+        paidMembers: data.paidMembers || 0,
+        freeMembers: data.freeMembers || 0,
         activeSubscriptions: data.activeSubscriptions || 0,
         totalRevenue: data.totalRevenue || 0,
         recentUsers: data.recentUsers || [],
@@ -119,6 +124,8 @@ export default function AdminPage() {
       // Set default data instead of showing error
       setAdminData({
         totalUsers: 0,
+        paidMembers: 0,
+        freeMembers: 0,
         activeSubscriptions: 0,
         totalRevenue: 0,
         recentUsers: [],
@@ -299,35 +306,155 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">관리자 대시보드</h1>
 
+        {/* Tabs */}
+        <div className="mb-6 border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'overview'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              개요
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'history'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              이력 관리
+            </button>
+            <button
+              onClick={() => setActiveTab('revenue')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'revenue'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              세부 수익 관리
+            </button>
+          </nav>
+        </div>
+
         {/* Stats Grid */}
-        {adminData && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {adminData && activeTab === 'overview' && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">총 사용자</h3>
+              <h3 className="text-sm font-medium text-gray-500">총 회원</h3>
               <p className="text-3xl font-bold text-gray-900 mt-2">{adminData.totalUsers}</p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">활성 구독</h3>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{adminData.activeSubscriptions}</p>
+            <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
+              <h3 className="text-sm font-medium text-gray-500">유료회원 수</h3>
+              <p className="text-3xl font-bold text-green-600 mt-2">{adminData.paidMembers}</p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">총 수익</h3>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+            <div className="bg-white p-6 rounded-lg shadow border-l-4 border-gray-400">
+              <h3 className="text-sm font-medium text-gray-500">무료회원 수</h3>
+              <p className="text-3xl font-bold text-gray-600 mt-2">{adminData.freeMembers}</p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
+              <h3 className="text-sm font-medium text-gray-500">총 매출</h3>
+              <p className="text-3xl font-bold text-blue-600 mt-2">
                 ₩{adminData.totalRevenue.toLocaleString()}
               </p>
             </div>
           </div>
         )}
 
+        {/* Subscription History Tab */}
+        {activeTab === 'history' && (
+          <div className="bg-white rounded-lg shadow mb-8">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">구독 이력 관리</h2>
+              <p className="text-sm text-gray-600 mt-1">회원들의 플랜 변경 이력을 확인하세요</p>
+            </div>
+            <div className="p-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-800">
+                  💡 <strong>이력 관리 기능</strong>: 구독자들이 어떤 플랜을 사용했는지, 언제 변경했는지 추적할 수 있습니다.
+                </p>
+              </div>
+              
+              <div className="text-center py-12 text-gray-500">
+                <div className="text-6xl mb-4">📊</div>
+                <p className="text-lg font-medium mb-2">구독 이력 데이터</p>
+                <p className="text-sm">데이터베이스에 subscription_history 테이블을 생성하면 이력이 자동으로 추적됩니다.</p>
+                <p className="text-xs text-gray-400 mt-2">SQL 파일: db/CREATE_SUBSCRIPTION_HISTORY.sql</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Revenue Management Tab */}
+        {activeTab === 'revenue' && (
+          <div className="space-y-6">
+            {/* Revenue Summary */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900">세부 수익 관리</h2>
+                <p className="text-sm text-gray-600 mt-1">수익 출처별 상세 내역 및 구멍가게 재고 관리</p>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
+                    <h3 className="text-sm font-medium text-blue-700">구독 수익</h3>
+                    <p className="text-3xl font-bold text-blue-900 mt-2">
+                      ₩{adminData?.totalRevenue.toLocaleString() || 0}
+                    </p>
+                    <p className="text-xs text-blue-600 mt-1">월간/연간 구독료</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
+                    <h3 className="text-sm font-medium text-green-700">구멍가게 수익</h3>
+                    <p className="text-3xl font-bold text-green-900 mt-2">₩0</p>
+                    <p className="text-xs text-green-600 mt-1">상품 판매/대여</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-lg border border-purple-200">
+                    <h3 className="text-sm font-medium text-purple-700">기타 수익</h3>
+                    <p className="text-3xl font-bold text-purple-900 mt-2">₩0</p>
+                    <p className="text-xs text-purple-600 mt-1">이벤트, 광고 등</p>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm text-yellow-800">
+                    💡 <strong>구멍가게 재고 관리</strong>: products 테이블을 생성하면 상품별 재고와 수익을 추적할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Inventory */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900">구멍가게 재고 현황</h2>
+              </div>
+              <div className="p-6">
+                <div className="text-center py-12 text-gray-500">
+                  <div className="text-6xl mb-4">🏪</div>
+                  <p className="text-lg font-medium mb-2">구멍가게 상품 데이터</p>
+                  <p className="text-sm">데이터베이스에 products 테이블을 생성하면 재고가 표시됩니다.</p>
+                  <p className="text-xs text-gray-400 mt-2">SQL 파일: db/CREATE_PRODUCTS_TABLE.sql</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Plan Management */}
+        {activeTab === 'overview' && (
         <div className="bg-white rounded-lg shadow mb-8">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">플랜 관리</h2>
+            <h2 className="text-xl font-bold text-gray-900">구독 관리</h2>
           </div>
           
           {/* Add New Plan */}
           <div className="p-6 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-lg font-semibold mb-4">새 플랜 추가</h3>
+            <h3 className="text-lg font-semibold mb-4">새 구독 추가</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
                 type="text"
@@ -462,10 +589,10 @@ export default function AdminPage() {
         </div>
 
         {/* Active Subscribers */}
-        {adminData && adminData.subscribers && adminData.subscribers.length > 0 && (
+        {activeTab === 'overview' && adminData && adminData.subscribers && adminData.subscribers.length > 0 && (
           <div className="bg-white rounded-lg shadow mb-8">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">활성 구독자 목록</h2>
+              <h2 className="text-xl font-bold text-gray-900">유료회원 명단 관리</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -515,7 +642,7 @@ export default function AdminPage() {
         )}
 
         {/* Recent Users */}
-        {adminData && adminData.recentUsers.length > 0 && (
+        {activeTab === 'overview' && adminData && adminData.recentUsers.length > 0 && (
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900">최근 가입 사용자</h2>
@@ -533,6 +660,7 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+        )}
         )}
       </div>
     </div>

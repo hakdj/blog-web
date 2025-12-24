@@ -55,7 +55,7 @@ export default function Header() {
               href="/pricing"
               className="text-gray-600 hover:text-gray-900 font-medium"
             >
-              가격
+              구독
             </Link>
 
             {isLoading ? (
