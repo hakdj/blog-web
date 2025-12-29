@@ -937,6 +937,7 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Active Subscribers */}
         {activeTab === 'overview' && adminData && adminData.subscribers && adminData.subscribers.length > 0 && (
