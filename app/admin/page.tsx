@@ -23,6 +23,17 @@ interface Subscriber {
   current_period_end: string;
 }
 
+interface Member {
+  id: string;
+  email: string;
+  created_at: string;
+  subscription?: {
+    plan_name: string;
+    plan_price: number;
+    current_period_end: string;
+  };
+}
+
 interface AdminData {
   totalUsers: number;
   paidMembers: number;
@@ -34,6 +45,8 @@ interface AdminData {
     created_at: string;
   }>;
   subscribers: Subscriber[];
+  paidMembersList: Member[];
+  freeMembersList: Member[];
 }
 
 export default function AdminPage() {
@@ -44,12 +57,21 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [newPlan, setNewPlan] = useState({ name: '', price: '', tier: 'custom', interval: 'month', features: '' });
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'revenue'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'revenue' | 'paid-members' | 'free-members' | 'test-payment'>('overview');
+  const [selectedUser, setSelectedUser] = useState<Member | null>(null);
+  const [messageContent, setMessageContent] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [testPaymentAmount, setTestPaymentAmount] = useState('100');
+  const [testPaymentLoading, setTestPaymentLoading] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<'test' | 'live'>('test');
   const supabase = createClient();
   const router = useRouter();
 
   useEffect(() => {
     checkAdminAndLoadData();
+    // 결제 모드 확인
+    const mode = process.env.NEXT_PUBLIC_PORTONE_MODE || 'test';
+    setPaymentMode(mode as 'test' | 'live');
   }, []);
 
   const checkAdminAndLoadData = async () => {
@@ -117,7 +139,9 @@ export default function AdminPage() {
         activeSubscriptions: data.activeSubscriptions || 0,
         totalRevenue: data.totalRevenue || 0,
         recentUsers: data.recentUsers || [],
-        subscribers: data.subscribers || []
+        subscribers: data.subscribers || [],
+        paidMembersList: data.paidMembersList || [],
+        freeMembersList: data.freeMembersList || []
       });
     } catch (error) {
       console.error('Admin - Error loading data:', error);
@@ -129,7 +153,9 @@ export default function AdminPage() {
         activeSubscriptions: 0,
         totalRevenue: 0,
         recentUsers: [],
-        subscribers: []
+        subscribers: [],
+        paidMembersList: [],
+        freeMembersList: []
       });
     }
   };
@@ -273,6 +299,95 @@ export default function AdminPage() {
     }
   };
 
+  const handleSendMessage = async () => {
+    if (!selectedUser || !messageContent.trim()) {
+      alert('메시지 내용을 입력해주세요.');
+      return;
+    }
+
+    setSendingMessage(true);
+    try {
+      // TODO: 실제 메시지 전송 로직 구현 (이메일 또는 알림)
+      // 여기서는 콘솔에 로그만 출력
+      console.log('Sending message to:', selectedUser.email);
+      console.log('Message:', messageContent);
+      
+      // 실제 구현 시에는 이메일 API나 알림 시스템을 사용
+      alert(`메시지가 ${selectedUser.email}에게 전송되었습니다.\n\n(현재는 개발 모드로 실제 전송되지 않습니다)`);
+      
+      setSelectedUser(null);
+      setMessageContent('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('메시지 전송 중 오류가 발생했습니다.');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const handleTestPayment = async () => {
+    const amount = parseInt(testPaymentAmount);
+    if (isNaN(amount) || amount < 100) {
+      alert('최소 100원 이상 입력해주세요.');
+      return;
+    }
+
+    if (paymentMode === 'live' && amount > 1000) {
+      if (!confirm('실제 결제 모드에서 1,000원 이상 결제하시겠습니까?\n\n테스트는 소액(100-1,000원)으로 진행하는 것을 권장합니다.')) {
+        return;
+      }
+    }
+
+    setTestPaymentLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
+
+      // 테스트용 플랜 생성 또는 선택
+      const { data: testPlan } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('tier', 'test')
+        .eq('price', amount)
+        .single();
+
+      let planId = testPlan?.id;
+
+      if (!testPlan) {
+        // 테스트 플랜이 없으면 생성
+        const { data: newPlan, error: planError } = await supabase
+          .from('plans')
+          .insert([{
+            name: `테스트 플랜 (${amount}원)`,
+            price: amount,
+            tier: 'test',
+            interval: 'month',
+            is_active: true,
+            features: ['테스트용 플랜']
+          }])
+          .select()
+          .single();
+
+        if (planError) {
+          throw planError;
+        }
+        planId = newPlan.id;
+      }
+
+      // 결제 페이지로 이동
+      router.push(`/pricing?test=true&plan=${planId}&amount=${amount}`);
+      
+    } catch (error) {
+      console.error('Error initiating test payment:', error);
+      alert('테스트 결제 시작 중 오류가 발생했습니다: ' + (error as Error).message);
+    } finally {
+      setTestPaymentLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -320,6 +435,16 @@ export default function AdminPage() {
               개요
             </button>
             <button
+              onClick={() => setActiveTab('test-payment')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'test-payment'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              테스트 결제
+            </button>
+            <button
               onClick={() => setActiveTab('history')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'history'
@@ -349,19 +474,244 @@ export default function AdminPage() {
               <h3 className="text-sm font-medium text-gray-500">총 회원</h3>
               <p className="text-3xl font-bold text-gray-900 mt-2">{adminData.totalUsers}</p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
+            <button 
+              onClick={() => setActiveTab('paid-members')}
+              className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500 hover:bg-green-50 transition-colors text-left cursor-pointer"
+            >
               <h3 className="text-sm font-medium text-gray-500">유료회원 수</h3>
               <p className="text-3xl font-bold text-green-600 mt-2">{adminData.paidMembers}</p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow border-l-4 border-gray-400">
+              <p className="text-xs text-green-600 mt-2">클릭하여 명단 보기 →</p>
+            </button>
+            <button 
+              onClick={() => setActiveTab('free-members')}
+              className="bg-white p-6 rounded-lg shadow border-l-4 border-gray-400 hover:bg-gray-50 transition-colors text-left cursor-pointer"
+            >
               <h3 className="text-sm font-medium text-gray-500">무료회원 수</h3>
               <p className="text-3xl font-bold text-gray-600 mt-2">{adminData.freeMembers}</p>
-            </div>
+              <p className="text-xs text-gray-600 mt-2">클릭하여 명단 보기 →</p>
+            </button>
             <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
               <h3 className="text-sm font-medium text-gray-500">총 매출</h3>
               <p className="text-3xl font-bold text-blue-600 mt-2">
                 ₩{adminData.totalRevenue.toLocaleString()}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Test Payment Tab */}
+        {activeTab === 'test-payment' && (
+          <div className="space-y-6">
+            {/* Payment Mode Status */}
+            <div className={`rounded-lg p-6 ${paymentMode === 'live' ? 'bg-red-50 border-2 border-red-300' : 'bg-blue-50 border-2 border-blue-300'}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold mb-2">
+                    {paymentMode === 'live' ? '🔴 실제 결제 모드' : '🔵 테스트 모드'}
+                  </h2>
+                  <p className="text-sm">
+                    {paymentMode === 'live' 
+                      ? '⚠️ 실제 돈이 결제됩니다! 소액으로 테스트하세요.' 
+                      : '테스트 카드로 결제 플로우를 확인할 수 있습니다.'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-600 mb-1">환경 변수 설정</p>
+                  <code className="text-xs bg-white px-2 py-1 rounded">
+                    NEXT_PUBLIC_PORTONE_MODE={paymentMode}
+                  </code>
+                </div>
+              </div>
+            </div>
+
+            {/* Test Payment Form */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900">결제 테스트</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {paymentMode === 'live' 
+                    ? '실제 결제를 테스트합니다. 본인 카드만 사용하세요.' 
+                    : '테스트 카드로 결제 플로우를 확인합니다.'}
+                </p>
+              </div>
+              <div className="p-6">
+                <div className="max-w-md">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    테스트 금액 (원)
+                  </label>
+                  <input
+                    type="number"
+                    value={testPaymentAmount}
+                    onChange={(e) => setTestPaymentAmount(e.target.value)}
+                    min="100"
+                    step="100"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+                    placeholder="100"
+                  />
+                  
+                  {paymentMode === 'live' && parseInt(testPaymentAmount) > 1000 && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                      <p className="text-sm text-yellow-800">
+                        ⚠️ 실제 결제 테스트는 100-1,000원으로 진행하는 것을 권장합니다.
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleTestPayment}
+                    disabled={testPaymentLoading}
+                    className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+                  >
+                    {testPaymentLoading ? '처리 중...' : `${testPaymentAmount}원 결제 테스트`}
+                  </button>
+                </div>
+
+                {/* Test Card Info */}
+                {paymentMode === 'test' && (
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h3 className="font-semibold text-gray-900 mb-3">테스트 카드 정보</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">카드번호:</span>
+                        <code className="bg-white px-2 py-1 rounded">5570-1234-5678-9012</code>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">유효기간:</span>
+                        <code className="bg-white px-2 py-1 rounded">2030-12</code>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">CVC:</span>
+                        <code className="bg-white px-2 py-1 rounded">123</code>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">비밀번호:</span>
+                        <code className="bg-white px-2 py-1 rounded">00</code>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Live Payment Warning */}
+                {paymentMode === 'live' && (
+                  <div className="mt-6 p-4 bg-red-50 rounded-lg border border-red-200">
+                    <h3 className="font-semibold text-red-900 mb-2">⚠️ 실제 결제 주의사항</h3>
+                    <ul className="space-y-1 text-sm text-red-800">
+                      <li>• 본인 카드만 사용하세요</li>
+                      <li>• 소액(100-1,000원)으로 테스트하세요</li>
+                      <li>• 테스트 후 즉시 환불하세요</li>
+                      <li>• 포트원 콘솔에서 결제 내역 확인 가능</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* How to Switch Mode */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900">결제 모드 전환 방법</h2>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">1. 환경 변수 수정</h3>
+                    <p className="text-sm text-gray-600 mb-2">.env.local 파일 수정:</p>
+                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono">
+                      <div className="mb-2"># 테스트 모드</div>
+                      <div className="text-blue-400">NEXT_PUBLIC_PORTONE_MODE=test</div>
+                      <div className="text-blue-400">PORTONE_API_KEY=test_xxxxx</div>
+                      <div className="mt-3 mb-2"># 실제 결제 모드</div>
+                      <div className="text-green-400">NEXT_PUBLIC_PORTONE_MODE=live</div>
+                      <div className="text-green-400">PORTONE_API_KEY=live_xxxxx</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">2. 포트원 콘솔에서 API 키 확인</h3>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      <li>• 포트원 콘솔 접속: <a href="https://console.portone.io" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">console.portone.io</a></li>
+                      <li>• 상단 탭: API Keys 클릭</li>
+                      <li>• 테스트 키와 실제 키(Live) 확인</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">3. 서버 재시작</h3>
+                    <p className="text-sm text-gray-600">환경 변수 변경 후 개발 서버를 재시작해야 적용됩니다.</p>
+                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono mt-2">
+                      <div>npm run dev</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contract Status Check */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900">포트원 계약 상태 확인</h2>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-bold">1</span>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1">포트원 콘솔 접속</h3>
+                      <p className="text-sm text-gray-600">
+                        <a href="https://console.portone.io" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          https://console.portone.io
+                        </a> 접속 후 로그인
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-bold">2</span>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1">PG 설정 확인</h3>
+                      <p className="text-sm text-gray-600">좌측 메뉴 → "PG 설정" 또는 "결제 대행사" 클릭</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-bold">3</span>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1">계약 상태 확인</h3>
+                      <p className="text-sm text-gray-600 mb-2">KG이니시스 또는 다른 PG사 계약 상태 확인</p>
+                      <div className="text-sm space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-green-600">✓</span>
+                          <span className="text-gray-600">"승인됨" 또는 "활성" → 실제 결제 가능</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-yellow-600">⚠</span>
+                          <span className="text-gray-600">"대기중" → 승인 대기 (3-5일 소요)</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-red-600">✗</span>
+                          <span className="text-gray-600">"미계약" → PG사 신청 필요</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-bold">4</span>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1">연동 모드 확인</h3>
+                      <p className="text-sm text-gray-600">채널 관리 → 연동 정보에서 "테스트" 또는 "실연동" 모드 확인</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -587,7 +937,6 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
-        )}
 
         {/* Active Subscribers */}
         {activeTab === 'overview' && adminData && adminData.subscribers && adminData.subscribers.length > 0 && (
@@ -659,6 +1008,191 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Paid Members Tab */}
+        {activeTab === 'paid-members' && adminData && (
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">유료회원 명단</h2>
+                  <p className="text-sm text-gray-600 mt-1">총 {adminData.paidMembersList.length}명</p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('overview')}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  ← 돌아가기
+                </button>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      이메일
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      플랜
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      가격
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      가입일
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      만료일
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      액션
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {adminData.paidMembersList.map((member) => (
+                    <tr key={member.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {member.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {member.subscription?.plan_name || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ₩{member.subscription?.plan_price.toLocaleString() || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(member.created_at).toLocaleDateString('ko-KR')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {member.subscription?.current_period_end 
+                          ? new Date(member.subscription.current_period_end).toLocaleDateString('ko-KR')
+                          : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => setSelectedUser(member)}
+                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          메시지
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {adminData.paidMembersList.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <p>유료회원이 없습니다.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Free Members Tab */}
+        {activeTab === 'free-members' && adminData && (
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">무료회원 명단</h2>
+                  <p className="text-sm text-gray-600 mt-1">총 {adminData.freeMembersList.length}명</p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('overview')}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  ← 돌아가기
+                </button>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      이메일
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      가입일
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      액션
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {adminData.freeMembersList.map((member) => (
+                    <tr key={member.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {member.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(member.created_at).toLocaleDateString('ko-KR')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => setSelectedUser(member)}
+                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          메시지
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {adminData.freeMembersList.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <p>무료회원이 없습니다.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Message Modal */}
+        {selectedUser && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">메시지 보내기</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                받는 사람: <strong>{selectedUser.email}</strong>
+              </p>
+              <textarea
+                value={messageContent}
+                onChange={(e) => setMessageContent(e.target.value)}
+                placeholder="메시지 내용을 입력하세요..."
+                rows={6}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+              />
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleSendMessage}
+                  disabled={sendingMessage || !messageContent.trim()}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  {sendingMessage ? '전송 중...' : '전송'}
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedUser(null);
+                    setMessageContent('');
+                  }}
+                  disabled={sendingMessage}
+                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  취소
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                💡 현재는 개발 모드입니다. 실제 메시지 전송을 위해서는 이메일 API(예: SendGrid, AWS SES)를 연동해야 합니다.
+              </p>
             </div>
           </div>
         )}

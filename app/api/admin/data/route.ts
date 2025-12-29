@@ -131,6 +131,39 @@ export async function GET() {
       created_at: profile.created_at
     })) || [];
 
+    // Fetch all users with subscription status
+    const { data: allProfiles, error: allProfilesError } = await supabase
+      .from('profiles')
+      .select('id, email, created_at')
+      .order('created_at', { ascending: false });
+
+    if (allProfilesError) {
+      console.error('Admin API - Error fetching all profiles:', allProfilesError);
+    }
+
+    // Get paid user IDs
+    const paidUserIds = new Set(subscribers.map(sub => 
+      allProfiles?.find((p: any) => p.email === sub.email)?.id
+    ).filter(Boolean));
+
+    // Separate paid and free members
+    const paidMembersList = allProfiles?.filter((profile: any) => 
+      paidUserIds.has(profile.id)
+    ).map((profile: any) => ({
+      id: profile.id,
+      email: profile.email || 'No email',
+      created_at: profile.created_at,
+      subscription: subscribers.find(sub => sub.email === profile.email)
+    })) || [];
+
+    const freeMembersList = allProfiles?.filter((profile: any) => 
+      !paidUserIds.has(profile.id)
+    ).map((profile: any) => ({
+      id: profile.id,
+      email: profile.email || 'No email',
+      created_at: profile.created_at
+    })) || [];
+
     const responseData = {
       totalUsers: totalUsers || 0,
       paidMembers: paidMembers || 0,
@@ -138,7 +171,9 @@ export async function GET() {
       activeSubscriptions: activeSubscriptions || 0, // 호환성 유지
       totalRevenue: totalRevenue || 0,
       recentUsers: recentUsers || [],
-      subscribers: subscribers || []
+      subscribers: subscribers || [],
+      paidMembersList: paidMembersList || [],
+      freeMembersList: freeMembersList || []
     };
 
     console.log('Admin API - Success:', responseData);
@@ -156,7 +191,9 @@ export async function GET() {
         activeSubscriptions: 0,
         totalRevenue: 0,
         recentUsers: [],
-        subscribers: []
+        subscribers: [],
+        paidMembersList: [],
+        freeMembersList: []
       },
       { status: 200 } // Return 200 with default data instead of 500
     );

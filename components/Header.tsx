@@ -63,12 +63,6 @@ export default function Header() {
             ) : user ? (
               <div className="flex items-center space-x-4">
                 <Link
-                  href="/dashboard"
-                  className="text-gray-600 hover:text-gray-900 font-medium"
-                >
-                  대시보드
-                </Link>
-                <Link
                   href="/settings"
                   className="text-gray-600 hover:text-gray-900 font-medium"
                 >
