@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { fetchCurrentFestivals, convertTourEventToDbFormat } from '@/lib/tourapi';
 import { fetchCurrentCultureEvents, convertCultureEventToDbFormat } from '@/lib/culture-api';
-import { fetchSeoulEvents, convertSeoulEventToDbFormat, fetchGyeonggiEvents } from '@/lib/local-event-api';
+import { fetchSeoulEvents, convertSeoulEventToDbFormat, fetchGyeonggiEvents, convertGyeonggiEventToDbFormat } from '@/lib/local-event-api';
 
 /**
  * 다중 API에서 이벤트 정보를 가져와 DB에 동기화
@@ -167,7 +167,45 @@ export async function POST(request: NextRequest) {
     // 4. 경기데이터드림
     console.log('📍 4/4: Gyeonggi API 행사 정보 수집 중...');
     const gyeonggiEvents = await fetchGyeonggiEvents();
-    results.gyeonggi = { synced: 0, skipped: 0, total: gyeonggiEvents.length };
+    let gyeonggiSynced = 0;
+    let gyeonggiSkipped = 0;
+
+    for (const event of gyeonggiEvents) {
+      try {
+        const eventData = convertGyeonggiEventToDbFormat(event);
+        
+        // 날짜가 유효하지 않으면 스킵
+        if (!eventData.start_date) {
+          gyeonggiSkipped++;
+          continue;
+        }
+
+        const { data: existing } = await supabase
+          .from('events')
+          .select('id')
+          .eq('title', eventData.title)
+          .eq('start_date', eventData.start_date)
+          .maybeSingle();
+
+        if (existing) {
+          const { error } = await supabase
+            .from('events')
+            .update({ ...eventData, updated_at: new Date().toISOString() })
+            .eq('id', existing.id);
+          error ? gyeonggiSkipped++ : gyeonggiSynced++;
+        } else {
+          const { error } = await supabase.from('events').insert(eventData);
+          error ? gyeonggiSkipped++ : gyeonggiSynced++;
+        }
+      } catch (error) {
+        console.error('Gyeonggi 이벤트 처리 오류:', error);
+        gyeonggiSkipped++;
+      }
+    }
+
+    results.gyeonggi = { synced: gyeonggiSynced, skipped: gyeonggiSkipped, total: gyeonggiEvents.length };
+    totalSynced += gyeonggiSynced;
+    totalSkipped += gyeonggiSkipped;
 
     console.log(`🎉 전체 동기화 완료: ${totalSynced}개 성공, ${totalSkipped}개 실패`);
 

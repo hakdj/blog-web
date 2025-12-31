@@ -188,6 +188,12 @@ export default function SettingsPage() {
   const handleToggleAutoRenew = async () => {
     if (!subscription) return;
 
+    // 결제 수단이 없으면 자동 갱신 불가
+    if (!subscription.billing_key) {
+      alert('자동 갱신을 활성화하려면 먼저 결제 수단을 등록해주세요.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -498,15 +504,15 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-sm text-gray-600">자동 갱신</span>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                    <label className={`relative inline-flex items-center ${!subscription.billing_key ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                       <input
                         type="checkbox"
-                        checked={subscription.auto_renew ?? true}
+                        checked={subscription.auto_renew ?? false}
                         onChange={handleToggleAutoRenew}
-                        disabled={loading}
+                        disabled={loading || !subscription.billing_key}
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:cursor-not-allowed"></div>
                     </label>
                   </div>
                   {subscription.billing_key && (
@@ -520,13 +526,28 @@ export default function SettingsPage() {
                 </div>
 
                 {/* 자동 갱신 안내 */}
-                {subscription.auto_renew && (
+                {subscription.auto_renew && subscription.billing_key && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <div className="flex items-start">
                       <div className="text-blue-600 mr-3">ℹ️</div>
                       <div className="text-sm text-blue-800">
                         <p className="font-medium mb-1">자동 갱신이 활성화되어 있습니다</p>
                         <p className="text-blue-700">
+                          다음 결제일에 등록된 결제 수단으로 자동으로 결제됩니다.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* 결제 수단 없음 경고 */}
+                {!subscription.billing_key && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <div className="text-yellow-600 mr-3">⚠️</div>
+                      <div className="text-sm text-yellow-800">
+                        <p className="font-medium mb-1">자동 갱신이 활성화되어 있지 않습니다</p>
+                        <p className="text-yellow-700">
                           다음 결제일에 등록된 결제 수단으로 자동으로 결제됩니다.
                         </p>
                       </div>
