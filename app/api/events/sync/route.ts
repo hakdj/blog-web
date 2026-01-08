@@ -20,11 +20,12 @@ import { fetchSeoulEvents, convertSeoulEventToDbFormat, fetchGyeonggiEvents, con
  */
 export async function POST(request: NextRequest) {
   try {
-    // Cron Secret 검증 (보안)
+    // Cron Secret 검증 (보안) - POST 요청만 검증
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
     
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // POST 요청은 인증 필요 (Vercel Cron용)
+    if (request.method === 'POST' && cronSecret && authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
