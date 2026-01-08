@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
     // 1. 한국관광공사 Tour API - 전국 축제
     console.log('📍 1/4: Tour API 축제 정보 수집 중...');
     const festivals = await fetchCurrentFestivals();
+    console.log(`Tour API 응답: ${festivals.length}개의 축제 데이터`);
 
     let tourSynced = 0;
     let tourSkipped = 0;
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
     // 2. 문화체육관광부 공연전시정보 API
     console.log('📍 2/4: Culture API 공연/전시 정보 수집 중...');
     const cultureEvents = await fetchCurrentCultureEvents();
+    console.log(`Culture API 응답: ${cultureEvents.length}개의 공연/전시 데이터`);
     let cultureSynced = 0;
     let cultureSkipped = 0;
 
@@ -133,6 +135,7 @@ export async function POST(request: NextRequest) {
     // 3. 서울열린데이터광장
     console.log('📍 3/4: Seoul API 문화행사 정보 수집 중...');
     const seoulEvents = await fetchSeoulEvents();
+    console.log(`Seoul API 응답: ${seoulEvents.length}개의 문화행사 데이터`);
     let seoulSynced = 0;
     let seoulSkipped = 0;
 
@@ -168,6 +171,7 @@ export async function POST(request: NextRequest) {
     // 4. 경기데이터드림
     console.log('📍 4/4: Gyeonggi API 행사 정보 수집 중...');
     const gyeonggiEvents = await fetchGyeonggiEvents();
+    console.log(`Gyeonggi API 응답: ${gyeonggiEvents.length}개의 행사 데이터`);
     let gyeonggiSynced = 0;
     let gyeonggiSkipped = 0;
 
