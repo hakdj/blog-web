@@ -128,28 +128,35 @@ export interface GyeonggiEvent {
 
 export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
   if (!GYEONGGI_API_KEY) {
-    console.log('Gyeonggi API Key가 설정되지 않았습니다.');
+    console.error('❌ Gyeonggi API Key가 설정되지 않았습니다.');
     return [];
   }
 
   try {
     const url = `https://openapi.gg.go.kr/Genrestrtcltrevents?KEY=${GYEONGGI_API_KEY}&Type=json&pIndex=1&pSize=100`;
     
-    console.log('Gyeonggi API 요청');
+    console.log('🔍 Gyeonggi API 요청:', url.replace(GYEONGGI_API_KEY, 'API_KEY_HIDDEN'));
 
     const response = await fetch(url);
 
     if (!response.ok) {
+      console.error(`❌ Gyeonggi API HTTP 오류: ${response.status}`);
       throw new Error(`Gyeonggi API 오류: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('📦 Gyeonggi API 응답 구조:', Object.keys(data));
+    console.log('📦 Genrestrtcltrevents:', data?.Genrestrtcltrevents ? 'exists' : 'missing');
+    
     const items = data?.Genrestrtcltrevents?.[1]?.row;
     
     if (!items || items.length === 0) {
-      console.log('Gyeonggi API 응답에 이벤트가 없습니다.');
+      console.warn('⚠️ Gyeonggi API 응답에 이벤트가 없습니다.');
+      console.log('📦 전체 응답:', JSON.stringify(data).substring(0, 500));
       return [];
     }
+
+    console.log(`✅ Gyeonggi API에서 ${items.length}개의 원본 데이터 수신`);
 
     // 현재 진행 중이거나 예정된 이벤트만 필터링
     const today = new Date();

@@ -86,7 +86,7 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
 
     const url = `${TOUR_API_BASE_URL}/searchFestival1?${params.toString()}`;
     
-    console.log('Tour API 요청:', url);
+    console.log('🔍 Tour API 요청 URL 생성 완료');
 
     const response = await fetch(url, {
       method: 'GET',
@@ -95,19 +95,28 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
       },
     });
 
+    console.log('📡 Tour API 응답 상태:', response.status);
+
     if (!response.ok) {
+      console.error(`❌ Tour API HTTP 오류: ${response.status}`);
+      const errorText = await response.text();
+      console.error('오류 내용:', errorText.substring(0, 200));
       throw new Error(`Tour API 오류: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('📦 Tour API 응답 구조:', Object.keys(data));
     
     // API 응답 구조 확인
     const items = data?.response?.body?.items?.item;
     
     if (!items) {
-      console.log('Tour API 응답에 이벤트가 없습니다.');
+      console.warn('⚠️ Tour API 응답에 이벤트가 없습니다.');
+      console.log('📦 응답 body:', data?.response?.body);
       return [];
     }
+
+    console.log(`✅ Tour API에서 ${Array.isArray(items) ? items.length : 1}개의 원본 데이터 수신`);
 
     // 배열이 아닌 경우 배열로 변환
     const eventList = Array.isArray(items) ? items : [items];

@@ -24,9 +24,11 @@ export interface CultureEvent {
  */
 export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
   if (!CULTURE_API_KEY) {
-    console.error('Culture API Key가 설정되지 않았습니다.');
+    console.error('❌ Culture API Key가 설정되지 않았습니다.');
     return [];
   }
+
+  console.log('🔑 Culture API Key 확인: ', CULTURE_API_KEY ? '설정됨' : '없음');
 
   try {
     const today = new Date();
@@ -47,21 +49,29 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
 
     const url = `${CULTURE_API_BASE_URL}/period?${params.toString()}`;
     
-    console.log('Culture API 요청:', url);
+    console.log('🔍 Culture API 요청 URL 생성 완료');
 
     const response = await fetch(url);
 
+    console.log('📡 Culture API 응답 상태:', response.status);
+
     if (!response.ok) {
+      console.error(`❌ Culture API HTTP 오류: ${response.status}`);
       throw new Error(`Culture API 오류: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('📦 Culture API 응답 구조:', Object.keys(data));
+    
     const items = data?.msgBody;
     
     if (!items || items.length === 0) {
-      console.log('Culture API 응답에 이벤트가 없습니다.');
+      console.warn('⚠️ Culture API 응답에 이벤트가 없습니다.');
+      console.log('📦 응답 데이터:', JSON.stringify(data).substring(0, 200));
       return [];
     }
+
+    console.log(`✅ Culture API에서 ${items.length}개의 원본 데이터 수신`);
 
     console.log(`Culture API에서 ${items.length}개의 공연/전시 정보를 가져왔습니다.`);
     
