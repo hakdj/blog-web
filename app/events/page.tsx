@@ -44,7 +44,6 @@ const EVENT_TYPES = [
   { value: 'all', label: '전체', icon: '📋' },
   { value: 'festival', label: '축제', icon: '🎉' },
   { value: 'local_feature', label: '지역 특색', icon: '🏞️' },
-  { value: 'local_ad', label: '지역 광고', icon: '📢' },
 ];
 
 export default function EventsPage() {
@@ -74,11 +73,20 @@ export default function EventsPage() {
         .from('events')
         .select('*')
         .eq('is_active', true)
-        .lte('start_date', today) // 시작일이 오늘 이전 (이미 시작함)
         .gte('end_date', today)   // 종료일이 오늘 이후 (아직 안 끝남)
-        .order('end_date', { ascending: true }); // 종료일 빠른 순
+        .order('start_date', { ascending: true }); // 시작일 빠른 순
 
       if (error) throw error;
+
+      console.log('📊 이벤트 데이터:', data);
+      console.log('📊 지역별 분포:', data?.reduce((acc: any, event) => {
+        acc[event.region] = (acc[event.region] || 0) + 1;
+        return acc;
+      }, {}));
+      console.log('📊 유형별 분포:', data?.reduce((acc: any, event) => {
+        acc[event.event_type] = (acc[event.event_type] || 0) + 1;
+        return acc;
+      }, {}));
 
       setEvents(data || []);
     } catch (error) {
