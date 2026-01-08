@@ -339,7 +339,25 @@ export default function AdminPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setSyncResult(`✅ 성공! ${data.synced}개의 이벤트가 동기화되었습니다.`);
+        const debugInfo = data.debug || {};
+        const results = data.results || {};
+        
+        const details = `
+📊 API 응답 개수:
+- Tour API (전국 축제): ${debugInfo.tourApiCount || 0}개
+- Culture API (공연/전시): ${debugInfo.cultureApiCount || 0}개
+- Seoul API (서울): ${debugInfo.seoulApiCount || 0}개
+- Gyeonggi API (경기): ${debugInfo.gyeonggiApiCount || 0}개
+
+💾 DB 저장 결과:
+- Tour: ${results.tour?.synced || 0}개 성공, ${results.tour?.skipped || 0}개 실패
+- Culture: ${results.culture?.synced || 0}개 성공, ${results.culture?.skipped || 0}개 실패
+- Seoul: ${results.seoul?.synced || 0}개 성공, ${results.seoul?.skipped || 0}개 실패
+- Gyeonggi: ${results.gyeonggi?.synced || 0}개 성공, ${results.gyeonggi?.skipped || 0}개 실패
+
+✅ 총 ${data.synced}개의 이벤트가 동기화되었습니다.`;
+        
+        setSyncResult(details);
       } else {
         setSyncResult(`❌ 실패: ${data.error || '알 수 없는 오류'}`);
       }
@@ -473,11 +491,11 @@ export default function AdminPage() {
         {/* Sync Result Message */}
         {syncResult && (
           <div className={`mb-6 p-4 rounded-lg ${
-            syncResult.startsWith('✅') 
+            syncResult.startsWith('✅') || syncResult.includes('📊')
               ? 'bg-green-50 border border-green-200 text-green-800' 
               : 'bg-red-50 border border-red-200 text-red-800'
           }`}>
-            {syncResult}
+            <pre className="whitespace-pre-wrap font-mono text-sm">{syncResult}</pre>
           </div>
         )}
 

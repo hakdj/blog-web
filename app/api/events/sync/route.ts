@@ -213,6 +213,7 @@ export async function POST(request: NextRequest) {
     totalSkipped += gyeonggiSkipped;
 
     console.log(`🎉 전체 동기화 완료: ${totalSynced}개 성공, ${totalSkipped}개 실패`);
+    console.log('📊 상세 결과:', JSON.stringify(results, null, 2));
 
     return NextResponse.json({
       success: true,
@@ -220,6 +221,12 @@ export async function POST(request: NextRequest) {
       synced: totalSynced,
       skipped: totalSkipped,
       results: results,
+      debug: {
+        tourApiCount: festivals.length,
+        cultureApiCount: cultureEvents.length,
+        seoulApiCount: seoulEvents.length,
+        gyeonggiApiCount: gyeonggiEvents.length,
+      }
     });
 
   } catch (error) {
