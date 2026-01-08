@@ -64,6 +64,8 @@ export default function AdminPage() {
   const [testPaymentAmount, setTestPaymentAmount] = useState('100');
   const [testPaymentLoading, setTestPaymentLoading] = useState(false);
   const [paymentMode, setPaymentMode] = useState<'test' | 'live'>('test');
+  const [syncingEvents, setSyncingEvents] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
   const supabase = createClient();
   const router = useRouter();
 
@@ -325,6 +327,30 @@ export default function AdminPage() {
     }
   };
 
+  const handleSyncEvents = async () => {
+    setSyncingEvents(true);
+    setSyncResult(null);
+
+    try {
+      const response = await fetch('/api/events/sync', {
+        method: 'GET',
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setSyncResult(`✅ 성공! ${data.synced}개의 이벤트가 동기화되었습니다.`);
+      } else {
+        setSyncResult(`❌ 실패: ${data.error || '알 수 없는 오류'}`);
+      }
+    } catch (error) {
+      console.error('Event sync error:', error);
+      setSyncResult(`❌ 오류: ${(error as Error).message}`);
+    } finally {
+      setSyncingEvents(false);
+    }
+  };
+
   const handleTestPayment = async () => {
     const amount = parseInt(testPaymentAmount);
     if (isNaN(amount) || amount < 100) {
@@ -419,7 +445,41 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">관리자 대시보드</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">관리자 대시보드</h1>
+          
+          {/* Event Sync Button */}
+          <button
+            onClick={handleSyncEvents}
+            disabled={syncingEvents}
+            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium flex items-center gap-2"
+          >
+            {syncingEvents ? (
+              <>
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                동기화 중...
+              </>
+            ) : (
+              <>
+                🔄 이벤트 동기화
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Sync Result Message */}
+        {syncResult && (
+          <div className={`mb-6 p-4 rounded-lg ${
+            syncResult.startsWith('✅') 
+              ? 'bg-green-50 border border-green-200 text-green-800' 
+              : 'bg-red-50 border border-red-200 text-red-800'
+          }`}>
+            {syncResult}
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="mb-6 border-b border-gray-200">
