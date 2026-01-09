@@ -26,6 +26,16 @@ export default function SettingsPage() {
     birth: '',
     pwd2digit: ''
   });
+  const [myAds, setMyAds] = useState<any[]>([]);
+  const [showAdForm, setShowAdForm] = useState(false);
+  const [editingAd, setEditingAd] = useState<any>(null);
+  const [adForm, setAdForm] = useState({
+    title: '',
+    description: '',
+    image_url: '',
+    link_url: '',
+    end_date: ''
+  });
 
   const supabase = createClient();
   const router = useRouter();
@@ -33,6 +43,12 @@ export default function SettingsPage() {
   useEffect(() => {
     loadUserData();
   }, []);
+
+  useEffect(() => {
+    if (user && subscription?.status === 'active') {
+      loadMyAds();
+    }
+  }, [user, subscription]);
 
   const loadUserData = async () => {
     try {
@@ -337,6 +353,123 @@ export default function SettingsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 광고 관리 함수들
+  const loadMyAds = async () => {
+    if (!user) return;
+
+    try {
+      const response = await fetch(`/api/ads?user_id=${user.id}`);
+      const data = await response.json();
+
+      if (data.ads) {
+        setMyAds(data.ads);
+      }
+    } catch (error) {
+      console.error('Error loading ads:', error);
+    }
+  };
+
+  const handleCreateAd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/ads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(adForm)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '광고 생성 실패');
+      }
+
+      alert('광고가 등록되었습니다!');
+      setShowAdForm(false);
+      setAdForm({ title: '', description: '', image_url: '', link_url: '', end_date: '' });
+      await loadMyAds();
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateAd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAd) return;
+
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/ads', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingAd.id, ...adForm })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '광고 수정 실패');
+      }
+
+      alert('광고가 수정되었습니다!');
+      setEditingAd(null);
+      setAdForm({ title: '', description: '', image_url: '', link_url: '', end_date: '' });
+      await loadMyAds();
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAd = async (adId: string) => {
+    if (!confirm('이 광고를 삭제하시겠습니까?')) return;
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/ads?id=${adId}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '광고 삭제 실패');
+      }
+
+      alert('광고가 삭제되었습니다.');
+      await loadMyAds();
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startEditAd = (ad: any) => {
+    setEditingAd(ad);
+    setAdForm({
+      title: ad.title,
+      description: ad.description || '',
+      image_url: ad.image_url || '',
+      link_url: ad.link_url,
+      end_date: ad.end_date ? ad.end_date.split('T')[0] : ''
+    });
+    setShowAdForm(true);
+  };
+
+  const cancelAdForm = () => {
+    setShowAdForm(false);
+    setEditingAd(null);
+    setAdForm({ title: '', description: '', image_url: '', link_url: '', end_date: '' });
   };
 
   if (initialLoading) {
@@ -714,6 +847,190 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
+
+        {/* 광고 관리 섹션 (유료 구독자만) */}
+        {subscription?.status === 'active' && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900">내 광고 관리</h2>
+              {!showAdForm && (
+                <button
+                  onClick={() => setShowAdForm(true)}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  + 새 광고 등록
+                </button>
+              )}
+            </div>
+
+            {/* 광고 등록/수정 폼 */}
+            {showAdForm && (
+              <form onSubmit={editingAd ? handleUpdateAd : handleCreateAd} className="mb-6 border border-purple-200 rounded-lg p-6 bg-purple-50">
+                <h3 className="text-lg font-semibold mb-4">{editingAd ? '광고 수정' : '새 광고 등록'}</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      제목 *
+                    </label>
+                    <input
+                      type="text"
+                      value={adForm.title}
+                      onChange={(e) => setAdForm({ ...adForm, title: e.target.value })}
+                      placeholder="광고 제목"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      설명
+                    </label>
+                    <textarea
+                      value={adForm.description}
+                      onChange={(e) => setAdForm({ ...adForm, description: e.target.value })}
+                      placeholder="광고 설명"
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      이미지 URL
+                    </label>
+                    <input
+                      type="url"
+                      value={adForm.image_url}
+                      onChange={(e) => setAdForm({ ...adForm, image_url: e.target.value })}
+                      placeholder="https://example.com/image.jpg"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      링크 URL *
+                    </label>
+                    <input
+                      type="url"
+                      value={adForm.link_url}
+                      onChange={(e) => setAdForm({ ...adForm, link_url: e.target.value })}
+                      placeholder="https://example.com"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      종료일 (선택)
+                    </label>
+                    <input
+                      type="date"
+                      value={adForm.end_date}
+                      onChange={(e) => setAdForm({ ...adForm, end_date: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                    >
+                      {loading ? '처리 중...' : editingAd ? '수정하기' : '등록하기'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelAdForm}
+                      className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+
+            {/* 광고 목록 */}
+            {myAds.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <div className="text-5xl mb-4">📢</div>
+                <p className="text-lg font-medium mb-2">등록된 광고가 없습니다</p>
+                <p className="text-sm">새 광고를 등록하여 "요즘뭐해?" 페이지에 노출하세요!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {myAds.map((ad) => (
+                  <div key={ad.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">{ad.title}</h3>
+                        {ad.description && (
+                          <p className="text-sm text-gray-600 mb-2">{ad.description}</p>
+                        )}
+                        <a
+                          href={ad.link_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:underline"
+                        >
+                          {ad.link_url}
+                        </a>
+                      </div>
+                      {ad.image_url && (
+                        <img
+                          src={ad.image_url}
+                          alt={ad.title}
+                          className="w-24 h-24 object-cover rounded-lg ml-4"
+                        />
+                      )}
+                    </div>
+
+                    {/* 통계 */}
+                    <div className="flex items-center gap-6 mb-3 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <span>👁️</span>
+                        <span>{ad.views.toLocaleString()} 조회</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span>👆</span>
+                        <span>{ad.clicks.toLocaleString()} 클릭</span>
+                      </div>
+                      {ad.views > 0 && (
+                        <div className="text-purple-600 font-medium">
+                          클릭률 {((ad.clicks / ad.views) * 100).toFixed(1)}%
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-400">
+                        {new Date(ad.created_at).toLocaleDateString('ko-KR')} 등록
+                      </div>
+                    </div>
+
+                    {/* 액션 버튼 */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => startEditAd(ad)}
+                        className="px-4 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                      >
+                        수정
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAd(ad.id)}
+                        className="px-4 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
