@@ -127,6 +127,8 @@ export async function issueBillingKey(
   request: IssueBillingKeyRequest
 ): Promise<IssueBillingKeyResponse> {
   try {
+    console.log('🔑 빌링키 발급 요청:', { customer_uid: request.customer_uid });
+    
     // PortOne API 호출
     const response = await fetch('https://api.portone.io/v2/billing-keys', {
       method: 'POST',
@@ -143,12 +145,27 @@ export async function issueBillingKey(
       }),
     });
 
-    const data = await response.json();
+    console.log('📡 PortOne 응답 상태:', response.status);
+
+    // 응답 텍스트 먼저 확인
+    const responseText = await response.text();
+    console.log('📦 PortOne 응답 (처음 500자):', responseText.substring(0, 500));
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ JSON 파싱 오류:', parseError);
+      console.error('응답 전체:', responseText);
+      throw new Error('서버 응답을 처리할 수 없습니다.');
+    }
 
     if (!response.ok) {
+      console.error('❌ PortOne API 오류:', data);
       throw new Error(data.message || '빌링키 발급 실패');
     }
 
+    console.log('✅ 빌링키 발급 성공');
     return {
       success: true,
       billing_key: data.billing_key || data.customer_uid,
