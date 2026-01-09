@@ -153,6 +153,21 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // 유료 구독자 확인
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('status')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .single();
+
+    if (!subscription) {
+      return NextResponse.json(
+        { error: '유료 구독이 필요합니다. 구독이 만료되었거나 취소되었습니다.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { id, title, description, image_url, link_url, status, end_date } = body;
 

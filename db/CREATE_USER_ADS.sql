@@ -3,6 +3,12 @@
 -- ============================================
 -- 작성일: 2026년 1월 9일
 -- 목적: 유료 구독자가 자신의 광고를 게시하고 통계를 확인할 수 있는 시스템
+-- 
+-- 핵심 기능:
+-- 1. 유료 구독자만 광고 등록 가능
+-- 2. 구독 취소/만료 시 광고 자동 비활성화
+-- 3. 광고 조회수/클릭수 실시간 추적
+-- 4. 광고 효과 리포트 (CTR 등)
 
 -- 1. 광고 테이블 생성
 CREATE TABLE IF NOT EXISTS user_ads (
@@ -126,7 +132,32 @@ CREATE TRIGGER trigger_user_ads_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- 8. 샘플 데이터 확인 쿼리
+-- 8. 구독 취소/만료 시 광고 자동 비활성화 트리거
+CREATE OR REPLACE FUNCTION deactivate_ads_on_subscription_end()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- 구독이 active에서 다른 상태로 변경되면 해당 사용자의 모든 광고를 비활성화
+  IF OLD.status = 'active' AND NEW.status != 'active' THEN
+    UPDATE user_ads 
+    SET status = 'inactive', 
+        end_date = NOW(),
+        updated_at = NOW()
+    WHERE user_id = NEW.user_id 
+      AND status = 'active';
+    
+    RAISE NOTICE '사용자 %의 광고가 구독 종료로 인해 비활성화되었습니다.', NEW.user_id;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_deactivate_ads_on_subscription_end
+  AFTER UPDATE ON subscriptions
+  FOR EACH ROW
+  EXECUTE FUNCTION deactivate_ads_on_subscription_end();
+
+-- 9. 샘플 데이터 확인 쿼리
 -- SELECT 
 --   ua.id,
 --   ua.title,

@@ -327,7 +327,13 @@ export default function SettingsPage() {
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm('정말 구독을 취소하시겠습니까?')) return;
+    // 광고가 있는지 확인
+    const hasAds = myAds.length > 0;
+    const warningMessage = hasAds 
+      ? '정말 구독을 취소하시겠습니까?\n\n⚠️ 경고: 구독을 취소하면 등록된 모든 광고가 자동으로 비활성화됩니다!'
+      : '정말 구독을 취소하시겠습니까?';
+    
+    if (!confirm(warningMessage)) return;
 
     setLoading(true);
     setError(null);
