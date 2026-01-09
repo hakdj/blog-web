@@ -188,11 +188,46 @@ export async function GET(request: NextRequest) {
 
     console.log(`🎉 Renewal complete: ${successCount} success, ${failCount} failed`);
 
+    // 추가: 종료일이 지난 광고 비활성화
+    console.log('📢 Checking for expired ads...');
+    let deactivatedAdsCount = 0;
+    
+    try {
+      const { data: expiredAds, error: adsError } = await supabase
+        .from('user_ads')
+        .select('id, title, end_date')
+        .eq('status', 'active')
+        .not('end_date', 'is', null)
+        .lt('end_date', new Date().toISOString());
+
+      if (!adsError && expiredAds && expiredAds.length > 0) {
+        console.log(`📢 Found ${expiredAds.length} expired ad(s)`);
+        
+        const { error: updateAdsError } = await supabase
+          .from('user_ads')
+          .update({ 
+            status: 'inactive',
+            updated_at: new Date().toISOString()
+          })
+          .in('id', expiredAds.map(ad => ad.id));
+
+        if (!updateAdsError) {
+          deactivatedAdsCount = expiredAds.length;
+          console.log(`✅ Deactivated ${deactivatedAdsCount} expired ad(s)`);
+        }
+      } else {
+        console.log('✅ No expired ads found');
+      }
+    } catch (adsError) {
+      console.error('⚠️ Error checking expired ads (non-critical):', adsError);
+    }
+
     return NextResponse.json({
       success: true,
       message: `Processed ${expiringSubscriptions.length} subscription(s)`,
       renewed: successCount,
       failed: failCount,
+      deactivated_ads: deactivatedAdsCount,
       results,
     });
 
