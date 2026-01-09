@@ -340,10 +340,7 @@ export default function AdminPage() {
     try {
       const { data, error } = await supabase
         .from('subscription_history')
-        .select(`
-          *,
-          users:user_id (email)
-        `)
+        .select('*')
         .order('started_at', { ascending: false })
         .limit(100);
 
@@ -352,7 +349,24 @@ export default function AdminPage() {
         return;
       }
 
-      setSubscriptionHistory(data || []);
+      // 사용자 이메일 정보를 별도로 가져오기
+      if (data && data.length > 0) {
+        const userIds = [...new Set(data.map(h => h.user_id))];
+        const { data: users } = await supabase.auth.admin.listUsers();
+        
+        const userEmailMap = new Map(
+          users?.users?.map(u => [u.id, u.email]) || []
+        );
+
+        const historyWithEmails = data.map(h => ({
+          ...h,
+          user_email: userEmailMap.get(h.user_id) || 'Unknown'
+        }));
+
+        setSubscriptionHistory(historyWithEmails);
+      } else {
+        setSubscriptionHistory(data || []);
+      }
     } catch (error) {
       console.error('구독 이력 조회 중 오류:', error);
     } finally {
@@ -870,7 +884,7 @@ export default function AdminPage() {
                       {subscriptionHistory.map((history) => (
                         <tr key={history.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {history.users?.email || 'N/A'}
+                            {history.user_email || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {history.plan_name}

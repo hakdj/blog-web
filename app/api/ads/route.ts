@@ -14,10 +14,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('user_ads')
-      .select(`
-        *,
-        users:user_id (email)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     // 특정 사용자의 광고만 조회
