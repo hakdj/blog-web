@@ -14,35 +14,22 @@ import { fetchSeoulEvents, convertSeoulEventToDbFormat, fetchGyeonggiEvents, con
  * 4. 경기데이터드림 - 경기도 행사
  * 
  * 사용법:
- * POST /api/events/sync
- * 
- * 또는 Vercel Cron으로 자동 실행
+ * GET /api/events/sync (테스트용)
+ * POST /api/events/sync (Vercel Cron용, 인증 필요)
  */
-export async function POST(request: NextRequest) {
-  try {
-    // Cron Secret 검증 (보안) - POST 요청만 검증
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-    
-    // POST 요청은 인증 필요 (Vercel Cron용)
-    if (request.method === 'POST' && cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
-    console.log('🔄 다중 API 이벤트 정보 동기화 시작...');
+async function syncEvents() {
+  console.log('🔄 다중 API 이벤트 정보 동기화 시작...');
 
-    const supabase = createServiceClient();
-    let totalSynced = 0;
-    let totalSkipped = 0;
-    const results: any = {};
+  const supabase = createServiceClient();
+  let totalSynced = 0;
+  let totalSkipped = 0;
+  const results: any = {};
 
-    // 1. 한국관광공사 Tour API - 전국 축제
-    console.log('📍 1/4: Tour API 축제 정보 수집 중...');
-    const festivals = await fetchCurrentFestivals();
-    console.log(`Tour API 응답: ${festivals.length}개의 축제 데이터`);
+  // 1. 한국관광공사 Tour API - 전국 축제
+  console.log('📍 1/4: Tour API 축제 정보 수집 중...');
+  const festivals = await fetchCurrentFestivals();
+  console.log(`Tour API 응답: ${festivals.length}개의 축제 데이터`);
 
     let tourSynced = 0;
     let tourSkipped = 0;
@@ -215,20 +202,40 @@ export async function POST(request: NextRequest) {
     console.log(`🎉 전체 동기화 완료: ${totalSynced}개 성공, ${totalSkipped}개 실패`);
     console.log('📊 상세 결과:', JSON.stringify(results, null, 2));
 
-    return NextResponse.json({
-      success: true,
-      message: `${totalSynced}개의 이벤트 정보가 동기화되었습니다.`,
-      synced: totalSynced,
-      skipped: totalSkipped,
-      results: results,
-      debug: {
-        tourApiCount: festivals.length,
-        cultureApiCount: cultureEvents.length,
-        seoulApiCount: seoulEvents.length,
-        gyeonggiApiCount: gyeonggiEvents.length,
-      }
-    });
+  return {
+    success: true,
+    message: `${totalSynced}개의 이벤트 정보가 동기화되었습니다.`,
+    synced: totalSynced,
+    skipped: totalSkipped,
+    results: results,
+    debug: {
+      tourApiCount: festivals.length,
+      cultureApiCount: cultureEvents.length,
+      seoulApiCount: seoulEvents.length,
+      gyeonggiApiCount: gyeonggiEvents.length,
+    }
+  };
+}
 
+/**
+ * POST 요청 (Vercel Cron용, 인증 필요)
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // Cron Secret 검증
+    const authHeader = request.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET;
+    
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      console.log('❌ 인증 실패: Cron Secret 불일치');
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const result = await syncEvents();
+    return NextResponse.json(result);
   } catch (error) {
     console.error('축제 정보 동기화 오류:', error);
     return NextResponse.json(
@@ -239,9 +246,19 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET 요청으로 수동 동기화 트리거
+ * GET 요청 (테스트용, 인증 불필요)
  */
 export async function GET(request: NextRequest) {
-  return POST(request);
+  try {
+    console.log('📞 GET 요청으로 수동 동기화 시작');
+    const result = await syncEvents();
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('축제 정보 동기화 오류:', error);
+    return NextResponse.json(
+      { error: '동기화 중 오류가 발생했습니다.', details: (error as Error).message },
+      { status: 500 }
+    );
+  }
 }
 
