@@ -256,10 +256,10 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 광고 소유자 확인
+    // 광고 소유자 확인 및 이미지 URL 가져오기
     const { data: existingAd } = await supabase
       .from('user_ads')
-      .select('user_id')
+      .select('user_id, image_url')
       .eq('id', adId)
       .single();
 
@@ -268,6 +268,21 @@ export async function DELETE(request: NextRequest) {
         { error: '권한이 없습니다.' },
         { status: 403 }
       );
+    }
+
+    // 업로드된 이미지가 있으면 Storage에서도 삭제
+    if (existingAd.image_url && existingAd.image_url.includes('/storage/v1/object/public/')) {
+      try {
+        const urlParts = existingAd.image_url.split('/public/');
+        if (urlParts.length >= 2) {
+          const filePath = urlParts[1];
+          await supabase.storage.from('public').remove([filePath]);
+          console.log('✅ 이미지 삭제 성공:', filePath);
+        }
+      } catch (imgError) {
+        console.error('⚠️ 이미지 삭제 실패 (계속 진행):', imgError);
+        // 이미지 삭제 실패해도 광고는 삭제
+      }
     }
 
     // 광고 삭제

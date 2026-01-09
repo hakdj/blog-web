@@ -36,6 +36,8 @@ export default function SettingsPage() {
     link_url: '',
     end_date: ''
   });
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const supabase = createClient();
   const router = useRouter();
@@ -469,6 +471,7 @@ export default function SettingsPage() {
       link_url: ad.link_url,
       end_date: ad.end_date ? ad.end_date.split('T')[0] : ''
     });
+    setImagePreview(ad.image_url || null);
     setShowAdForm(true);
   };
 
@@ -476,6 +479,66 @@ export default function SettingsPage() {
     setShowAdForm(false);
     setEditingAd(null);
     setAdForm({ title: '', description: '', image_url: '', link_url: '', end_date: '' });
+    setImagePreview(null);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 파일 크기 검증 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('파일 크기는 5MB 이하여야 합니다.');
+      return;
+    }
+
+    // 파일 타입 검증
+    if (!file.type.startsWith('image/')) {
+      alert('이미지 파일만 업로드 가능합니다.');
+      return;
+    }
+
+    setUploadingImage(true);
+
+    try {
+      // 미리보기 생성
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+
+      // 서버에 업로드
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload/ad-image', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '이미지 업로드 실패');
+      }
+
+      // 업로드된 이미지 URL을 폼에 설정
+      setAdForm({ ...adForm, image_url: data.url });
+      console.log('✅ 이미지 업로드 성공:', data.url);
+
+    } catch (error) {
+      console.error('이미지 업로드 오류:', error);
+      alert((error as Error).message);
+      setImagePreview(null);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setAdForm({ ...adForm, image_url: '' });
+    setImagePreview(null);
   };
 
   if (initialLoading) {
@@ -903,15 +966,66 @@ export default function SettingsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      이미지 URL
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      이미지
                     </label>
+                    
+                    {/* 이미지 미리보기 */}
+                    {(imagePreview || adForm.image_url) && (
+                      <div className="mb-3 relative inline-block">
+                        <img
+                          src={imagePreview || adForm.image_url}
+                          alt="미리보기"
+                          className="w-48 h-48 object-cover rounded-lg border border-gray-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+
+                    {/* 이미지 업로드 버튼 */}
+                    {!adForm.image_url && (
+                      <div className="mb-3">
+                        <label className="cursor-pointer">
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-500 transition-colors">
+                            {uploadingImage ? (
+                              <div className="text-gray-500">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
+                                <p>업로드 중...</p>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="text-4xl mb-2">📷</div>
+                                <p className="text-sm text-gray-600 mb-1">클릭하여 이미지 업로드</p>
+                                <p className="text-xs text-gray-400">JPG, PNG, GIF, WEBP (최대 5MB)</p>
+                              </>
+                            )}
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            disabled={uploadingImage}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    )}
+
+                    {/* 또는 URL 직접 입력 */}
+                    <div className="text-center text-xs text-gray-500 mb-2">또는</div>
                     <input
                       type="url"
                       value={adForm.image_url}
                       onChange={(e) => setAdForm({ ...adForm, image_url: e.target.value })}
-                      placeholder="https://example.com/image.jpg"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      placeholder="이미지 URL 직접 입력 (https://...)"
+                      disabled={uploadingImage}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
                     />
                   </div>
 
