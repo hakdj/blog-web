@@ -103,27 +103,20 @@ export function convertSeoulEventToDbFormat(seoulEvent: SeoulEvent) {
 const GYEONGGI_API_KEY = process.env.GYEONGGI_API_KEY || process.env.NEXT_PUBLIC_GYEONGGI_API_KEY;
 
 export interface GyeonggiEvent {
-  FSTVL_NM?: string; // 축제명
-  EVENT_NM?: string; // 행사명
-  FSTVL_START_DATE?: string; // 축제시작일자
-  FSTVL_END_DATE?: string; // 축제종료일자
-  EVENT_START_DATE?: string; // 행사시작일자
-  EVENT_END_DATE?: string; // 행사종료일자
-  FSTVL_CO?: string; // 축제내용
-  EVENT_CO?: string; // 행사내용
-  AUSPC_INSTT_NM?: string; // 주최기관명
-  MANAGE_INSTT_NM?: string; // 주관기관명
-  SUPRT_INSTT_NM?: string; // 후원기관명
-  PHONE_NUMBER?: string; // 전화번호
-  HMPG_ADDR?: string; // 홈페이지주소
-  RELATE_PLACE_NM?: string; // 관련장소명
-  RELATE_PLACE_ADDR?: string; // 관련장소주소
-  SIGUN_NM?: string; // 시군명
-  REFINE_ROADNM_ADDR?: string; // 도로명주소
-  REFINE_LOTNO_ADDR?: string; // 지번주소
-  REFINE_ZIP_CD?: string; // 우편번호
-  REFINE_WGS84_LAT?: string; // 위도
-  REFINE_WGS84_LOGT?: string; // 경도
+  INST_NM?: string; // 기관명
+  TITLE_NM?: string; // 제목
+  CLASS_NM?: string; // 분류명
+  ADDR?: string; // 주소
+  TM?: string; // 시간
+  EXPN?: string; // 비용
+  TELNO?: string; // 문의할 연락처
+  MNGT_NM?: string; // 주최 주관
+  HMPG_NM?: string; // 홈페이지
+  PARTCPTN_WRITR_NM?: string; // 참여작가
+  IMAGE_URL_NM?: string; // 이미지 URL
+  BGNG_DE?: string; // 시작일
+  END_DE?: string; // 종료일
+  URL_NM?: string; // 자세히 보기 URL
 }
 
 export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
@@ -133,7 +126,7 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
   }
 
   try {
-    const url = `https://openapi.gg.go.kr/Genrestrtcltrevents?KEY=${GYEONGGI_API_KEY}&Type=json&pIndex=1&pSize=100`;
+    const url = `https://openapi.gg.go.kr/GgCultEvnt?KEY=${GYEONGGI_API_KEY}&Type=json&pIndex=1&pSize=100`;
     
     console.log('🔍 Gyeonggi API 요청:', url.replace(GYEONGGI_API_KEY, 'API_KEY_HIDDEN'));
 
@@ -146,9 +139,9 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
 
     const data = await response.json();
     console.log('📦 Gyeonggi API 응답 구조:', Object.keys(data));
-    console.log('📦 Genrestrtcltrevents:', data?.Genrestrtcltrevents ? 'exists' : 'missing');
+    console.log('📦 GgCultEvnt:', data?.GgCultEvnt ? 'exists' : 'missing');
     
-    const items = data?.Genrestrtcltrevents?.[1]?.row;
+    const items = data?.GgCultEvnt?.[1]?.row;
     
     if (!items || items.length === 0) {
       console.warn('⚠️ Gyeonggi API 응답에 이벤트가 없습니다.');
@@ -161,7 +154,7 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
     // 현재 진행 중이거나 예정된 이벤트만 필터링
     const today = new Date();
     const currentEvents = items.filter((event: GyeonggiEvent) => {
-      const endDateStr = event.FSTVL_END_DATE || event.EVENT_END_DATE;
+      const endDateStr = event.END_DE;
       if (!endDateStr) return false;
       
       try {
@@ -211,27 +204,27 @@ export function convertGyeonggiEventToDbFormat(gyeonggiEvent: GyeonggiEvent) {
     return `${cleanDate.slice(0, 4)}-${cleanDate.slice(4, 6)}-${cleanDate.slice(6, 8)}`;
   };
 
-  // 축제명 또는 행사명
-  const title = gyeonggiEvent.FSTVL_NM || gyeonggiEvent.EVENT_NM || '제목 없음';
+  // 제목
+  const title = gyeonggiEvent.TITLE_NM || '제목 없음';
   
-  // 축제내용 또는 행사내용
-  const description = gyeonggiEvent.FSTVL_CO || gyeonggiEvent.EVENT_CO || '';
+  // 설명 (분류명 + 기관명)
+  const description = [
+    gyeonggiEvent.CLASS_NM,
+    gyeonggiEvent.INST_NM,
+    gyeonggiEvent.EXPN ? `비용: ${gyeonggiEvent.EXPN}` : null,
+  ].filter(Boolean).join(' / ');
   
-  // 시작일/종료일 (축제 우선, 없으면 행사)
-  const startDate = formatDate(gyeonggiEvent.FSTVL_START_DATE || gyeonggiEvent.EVENT_START_DATE);
-  const endDate = formatDate(gyeonggiEvent.FSTVL_END_DATE || gyeonggiEvent.EVENT_END_DATE);
+  // 시작일/종료일
+  const startDate = formatDate(gyeonggiEvent.BGNG_DE);
+  const endDate = formatDate(gyeonggiEvent.END_DE);
   
   // 장소 정보
-  const location = gyeonggiEvent.RELATE_PLACE_NM || 
-                   gyeonggiEvent.REFINE_ROADNM_ADDR || 
-                   gyeonggiEvent.REFINE_LOTNO_ADDR || 
-                   gyeonggiEvent.SIGUN_NM || 
-                   '';
+  const location = gyeonggiEvent.ADDR || '';
   
   // 연락처 정보
   const contactInfo = [
-    gyeonggiEvent.AUSPC_INSTT_NM,
-    gyeonggiEvent.PHONE_NUMBER
+    gyeonggiEvent.MNGT_NM,
+    gyeonggiEvent.TELNO
   ].filter(Boolean).join(' / ');
 
   return {
@@ -242,8 +235,8 @@ export function convertGyeonggiEventToDbFormat(gyeonggiEvent: GyeonggiEvent) {
     location: location,
     start_date: startDate,
     end_date: endDate,
-    image_url: null, // 경기도 API는 이미지 제공 안 함
-    link_url: gyeonggiEvent.HMPG_ADDR || null,
+    image_url: gyeonggiEvent.IMAGE_URL_NM || null,
+    link_url: gyeonggiEvent.URL_NM || gyeonggiEvent.HMPG_NM || null,
     contact_info: contactInfo || null,
     is_featured: false,
     is_active: true,
