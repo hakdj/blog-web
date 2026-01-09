@@ -19,6 +19,20 @@ interface Event {
   is_featured: boolean;
 }
 
+interface UserAd {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  link_url: string;
+  views: number;
+  clicks: number;
+  created_at: string;
+  users?: {
+    email: string;
+  };
+}
+
 const REGIONS = [
   '전국',
   '서울',
@@ -44,10 +58,12 @@ const EVENT_TYPES = [
   { value: 'all', label: '전체', icon: '📋' },
   { value: 'festival', label: '축제', icon: '🎉' },
   { value: 'local_feature', label: '지역 특색', icon: '🏞️' },
+  { value: 'ad', label: '광고', icon: '📢' },
 ];
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [ads, setAds] = useState<UserAd[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRegion, setSelectedRegion] = useState('전국');
@@ -58,6 +74,7 @@ export default function EventsPage() {
 
   useEffect(() => {
     loadEvents();
+    loadAds();
   }, []);
 
   useEffect(() => {
@@ -93,6 +110,50 @@ export default function EventsPage() {
       console.error('이벤트 로딩 오류:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAds = async () => {
+    try {
+      const response = await fetch('/api/ads');
+      const data = await response.json();
+      
+      if (data.ads) {
+        setAds(data.ads);
+        console.log('📢 광고 데이터:', data.ads);
+      }
+    } catch (error) {
+      console.error('광고 로딩 오류:', error);
+    }
+  };
+
+  const handleAdClick = async (ad: UserAd) => {
+    try {
+      // 클릭 추적
+      await fetch('/api/ads/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ad_id: ad.id })
+      });
+
+      // 외부 링크로 이동
+      window.open(ad.link_url, '_blank');
+    } catch (error) {
+      console.error('광고 클릭 처리 오류:', error);
+      // 오류가 있어도 링크는 열기
+      window.open(ad.link_url, '_blank');
+    }
+  };
+
+  const handleAdView = async (adId: string) => {
+    try {
+      await fetch('/api/ads/view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ad_id: adId })
+      });
+    } catch (error) {
+      console.error('광고 조회 추적 오류:', error);
     }
   };
 
@@ -248,8 +309,77 @@ export default function EventsPage() {
         </p>
       </div>
 
-      {/* Events Grid */}
-      {filteredEvents.length === 0 ? (
+      {/* Events/Ads Grid */}
+      {selectedType === 'ad' ? (
+        // 광고 탭
+        ads.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+            <div className="text-5xl mb-4">📢</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">등록된 광고가 없습니다</h3>
+            <p className="text-gray-600">유료 구독자가 광고를 등록하면 여기에 표시됩니다.</p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {ads.map((ad) => {
+              // 광고가 화면에 나타날 때 조회수 추적
+              if (typeof window !== 'undefined') {
+                setTimeout(() => handleAdView(ad.id), 1000);
+              }
+              
+              return (
+                <div
+                  key={ad.id}
+                  onClick={() => handleAdClick(ad)}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all cursor-pointer border-2 border-purple-200 hover:border-purple-400"
+                >
+                  {ad.image_url && (
+                    <div className="h-48 bg-gray-200 overflow-hidden">
+                      <img
+                        src={ad.image_url}
+                        alt={ad.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">📢</span>
+                        <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded">
+                          광고
+                        </span>
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">{ad.title}</h3>
+                    {ad.description && (
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">{ad.description}</p>
+                    )}
+
+                    <div className="flex items-center gap-4 text-sm text-gray-500 mt-4 pt-4 border-t">
+                      <div className="flex items-center gap-1">
+                        <span>👁️</span>
+                        <span>{ad.views.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span>👆</span>
+                        <span>{ad.clicks.toLocaleString()}</span>
+                      </div>
+                      {ad.views > 0 && (
+                        <div className="text-xs text-gray-400">
+                          클릭률 {((ad.clicks / ad.views) * 100).toFixed(1)}%
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : (
+        // 일반 이벤트 탭
+        filteredEvents.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <div className="text-5xl mb-4">📅</div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">이벤트가 없습니다</h3>
@@ -334,6 +464,7 @@ export default function EventsPage() {
             </div>
           ))}
         </div>
+      )
       )}
     </div>
   );
