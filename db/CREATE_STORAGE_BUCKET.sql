@@ -11,13 +11,19 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 2. Storage 정책 설정
 
+-- 기존 정책 삭제 (있을 경우)
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own files" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own files" ON storage.objects;
+
 -- 모든 사람이 public 버킷의 파일을 볼 수 있음
-CREATE POLICY IF NOT EXISTS "Public Access"
+CREATE POLICY "Public Access"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'public');
 
 -- 인증된 사용자만 업로드 가능
-CREATE POLICY IF NOT EXISTS "Authenticated users can upload"
+CREATE POLICY "Authenticated users can upload"
 ON storage.objects FOR INSERT
 WITH CHECK (
   bucket_id = 'public' 
@@ -25,7 +31,7 @@ WITH CHECK (
 );
 
 -- 본인이 업로드한 파일만 수정 가능
-CREATE POLICY IF NOT EXISTS "Users can update own files"
+CREATE POLICY "Users can update own files"
 ON storage.objects FOR UPDATE
 USING (
   bucket_id = 'public' 
@@ -37,7 +43,7 @@ WITH CHECK (
 );
 
 -- 본인이 업로드한 파일만 삭제 가능
-CREATE POLICY IF NOT EXISTS "Users can delete own files"
+CREATE POLICY "Users can delete own files"
 ON storage.objects FOR DELETE
 USING (
   bucket_id = 'public' 
