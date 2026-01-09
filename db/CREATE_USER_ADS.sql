@@ -157,7 +157,26 @@ CREATE TRIGGER trigger_deactivate_ads_on_subscription_end
   FOR EACH ROW
   EXECUTE FUNCTION deactivate_ads_on_subscription_end();
 
--- 9. 샘플 데이터 확인 쿼리
+-- 9. 종료일이 지난 광고 자동 비활성화 함수
+-- 이 함수는 정기적으로 실행되어야 합니다 (Vercel Cron 또는 Supabase Edge Function)
+CREATE OR REPLACE FUNCTION deactivate_expired_ads()
+RETURNS void AS $$
+BEGIN
+  UPDATE user_ads 
+  SET status = 'inactive',
+      updated_at = NOW()
+  WHERE status = 'active'
+    AND end_date IS NOT NULL
+    AND end_date < NOW();
+    
+  RAISE NOTICE '만료된 광고가 비활성화되었습니다.';
+END;
+$$ LANGUAGE plpgsql;
+
+-- 수동 실행 예시:
+-- SELECT deactivate_expired_ads();
+
+-- 10. 샘플 데이터 확인 쿼리
 -- SELECT 
 --   ua.id,
 --   ua.title,

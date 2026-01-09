@@ -939,6 +939,9 @@ export default function SettingsPage() {
                       onChange={(e) => setAdForm({ ...adForm, end_date: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      💡 미설정 시 구독 유지 기간 동안 계속 노출됩니다. 특정 기간만 노출하려면 종료일을 설정하세요.
+                    </p>
                   </div>
 
                   <div className="flex gap-2">
