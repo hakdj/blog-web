@@ -72,11 +72,11 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
     const eventEndDate = futureDate.toISOString().slice(0, 10).replace(/-/g, '');
 
     const params = new URLSearchParams({
-      serviceKey: TOUR_API_KEY,
+      serviceKey: decodeURIComponent(TOUR_API_KEY), // API 키 디코딩
       numOfRows: '100',
       pageNo: '1',
       MobileOS: 'ETC',
-      MobileApp: 'LaттeBanggusuk',
+      MobileApp: 'LatтeBanggusuk',
       _type: 'json',
       listYN: 'Y',
       arrange: 'A', // 제목순

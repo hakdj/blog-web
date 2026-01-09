@@ -66,6 +66,8 @@ export default function AdminPage() {
   const [paymentMode, setPaymentMode] = useState<'test' | 'live'>('test');
   const [syncingEvents, setSyncingEvents] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [subscriptionHistory, setSubscriptionHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const supabase = createClient();
   const router = useRouter();
 
@@ -75,6 +77,12 @@ export default function AdminPage() {
     const mode = process.env.NEXT_PUBLIC_PORTONE_MODE || 'test';
     setPaymentMode(mode as 'test' | 'live');
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      loadSubscriptionHistory();
+    }
+  }, [activeTab]);
 
   const checkAdminAndLoadData = async () => {
     try {
@@ -324,6 +332,31 @@ export default function AdminPage() {
       alert('메시지 전송 중 오류가 발생했습니다.');
     } finally {
       setSendingMessage(false);
+    }
+  };
+
+  const loadSubscriptionHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('subscription_history')
+        .select(`
+          *,
+          users:user_id (email)
+        `)
+        .order('started_at', { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.error('구독 이력 조회 오류:', error);
+        return;
+      }
+
+      setSubscriptionHistory(data || []);
+    } catch (error) {
+      console.error('구독 이력 조회 중 오류:', error);
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -808,12 +841,62 @@ export default function AdminPage() {
                 </p>
               </div>
               
-              <div className="text-center py-12 text-gray-500">
-                <div className="text-6xl mb-4">📊</div>
-                <p className="text-lg font-medium mb-2">구독 이력 데이터</p>
-                <p className="text-sm">데이터베이스에 subscription_history 테이블을 생성하면 이력이 자동으로 추적됩니다.</p>
-                <p className="text-xs text-gray-400 mt-2">SQL 파일: db/CREATE_SUBSCRIPTION_HISTORY.sql</p>
-              </div>
+              {loadingHistory ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-600">이력 데이터 로딩 중...</p>
+                </div>
+              ) : subscriptionHistory.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <div className="text-6xl mb-4">📊</div>
+                  <p className="text-lg font-medium mb-2">구독 이력 데이터가 없습니다</p>
+                  <p className="text-sm">구독 변경이 발생하면 자동으로 이력이 기록됩니다.</p>
+                  <p className="text-xs text-gray-400 mt-2">SQL 파일: db/CREATE_SUBSCRIPTION_HISTORY.sql</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">사용자</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">플랜</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">가격</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">시작일</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">종료일</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">사유</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {subscriptionHistory.map((history) => (
+                        <tr key={history.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {history.users?.email || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {history.plan_name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ₩{history.plan_price?.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(history.started_at).toLocaleDateString('ko-KR')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {history.ended_at ? new Date(history.ended_at).toLocaleDateString('ko-KR') : '현재'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {history.change_reason === 'initial' && '최초 가입'}
+                            {history.change_reason === 'upgrade' && '업그레이드'}
+                            {history.change_reason === 'downgrade' && '다운그레이드'}
+                            {history.change_reason === 'cancel' && '취소'}
+                            {history.change_reason === 'renew' && '갱신'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
