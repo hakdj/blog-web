@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { title, description, image_url, link_url, end_date } = body;
 
-    console.log('📝 Ad data:', { title, link_url, has_image: !!image_url });
+    console.log('📝 Ad data:', { title, link_url, has_image: !!image_url, end_date });
 
     // 입력 검증
     if (!title || !link_url) {
@@ -121,6 +121,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // end_date 처리: 빈 문자열이면 null로 변환
+    const processedEndDate = end_date && end_date.trim() !== '' ? end_date : null;
+    console.log('📅 Processed end_date:', processedEndDate);
+
     // 광고 생성
     console.log('💾 Inserting ad into database...');
     const { data, error } = await supabase
@@ -128,10 +132,10 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         title,
-        description,
-        image_url,
+        description: description || null,
+        image_url: image_url || null,
         link_url,
-        end_date,
+        end_date: processedEndDate,
         status: 'active'
       })
       .select()
@@ -216,16 +220,19 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // end_date 처리: 빈 문자열이면 null로 변환
+    const processedEndDate = end_date && end_date.trim() !== '' ? end_date : null;
+
     // 광고 수정
     const { data, error } = await supabase
       .from('user_ads')
       .update({
         title,
-        description,
-        image_url,
+        description: description || null,
+        image_url: image_url || null,
         link_url,
         status,
-        end_date
+        end_date: processedEndDate
       })
       .eq('id', id)
       .select()

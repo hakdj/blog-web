@@ -577,7 +577,7 @@ export default function AdminPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              이력 관리
+              구독 이력 관리
             </button>
             <button
               onClick={() => setActiveTab('revenue')}
