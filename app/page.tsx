@@ -167,10 +167,10 @@ export default async function HomePage() {
         {showCTA && (
           <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 rounded-3xl shadow-2xl p-12 text-center text-white">
             <h2 className="text-4xl font-bold mb-4">
-              🎉 지금 구독하고 추억을 되살려보세요!
+              🎉 지금 가입하고 추억을 되살려보세요!
             </h2>
             <p className="text-xl mb-8 opacity-90">
-              월 14,900원으로 모든 콘텐츠 무제한 이용
+              다양한 요금제로 모든 콘텐츠 무제한 이용
             </p>
             <div className="flex justify-center gap-4">
               <Link
@@ -217,7 +217,7 @@ export default async function HomePage() {
               합리적인 가격
             </h3>
             <p className="text-gray-600">
-              월 14,900원으로 무제한 이용
+              합리적인 요금으로 무제한 이용
             </p>
           </div>
         </div>
