@@ -51,12 +51,19 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
     
     console.log('🔍 Culture API 요청 URL 생성 완료');
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
 
     console.log('📡 Culture API 응답 상태:', response.status);
 
     if (!response.ok) {
       console.error(`❌ Culture API HTTP 오류: ${response.status}`);
+      const errorText = await response.text();
+      console.error('오류 내용:', errorText.substring(0, 200));
       throw new Error(`Culture API 오류: ${response.status}`);
     }
 

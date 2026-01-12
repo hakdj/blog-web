@@ -130,10 +130,17 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
     
     console.log('🔍 Gyeonggi API 요청:', url.replace(GYEONGGI_API_KEY, 'API_KEY_HIDDEN'));
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
 
     if (!response.ok) {
       console.error(`❌ Gyeonggi API HTTP 오류: ${response.status}`);
+      const errorText = await response.text();
+      console.error('오류 내용:', errorText.substring(0, 200));
       throw new Error(`Gyeonggi API 오류: ${response.status}`);
     }
 
