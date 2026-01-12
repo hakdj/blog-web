@@ -61,27 +61,46 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log('📢 POST /api/ads - 광고 생성 요청');
     const supabase = await createClient();
     
     // 사용자 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (authError || !user) {
+    if (authError) {
+      console.error('❌ Auth error:', authError);
+      return NextResponse.json(
+        { error: 'Unauthorized', details: authError.message },
+        { status: 401 }
+      );
+    }
+    
+    if (!user) {
+      console.error('❌ No user found');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
+    console.log('✅ User authenticated:', user.id);
+
     // 유료 구독자 확인
-    const { data: subscription } = await supabase
+    const { data: subscription, error: subError } = await supabase
       .from('subscriptions')
       .select('status')
       .eq('user_id', user.id)
       .eq('status', 'active')
       .single();
 
+    if (subError) {
+      console.error('❌ Subscription query error:', subError);
+    }
+
+    console.log('📋 Subscription status:', subscription);
+
     if (!subscription) {
+      console.error('❌ No active subscription found');
       return NextResponse.json(
         { error: '유료 구독자만 광고를 등록할 수 있습니다.' },
         { status: 403 }
@@ -91,8 +110,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { title, description, image_url, link_url, end_date } = body;
 
+    console.log('📝 Ad data:', { title, link_url, has_image: !!image_url });
+
     // 입력 검증
     if (!title || !link_url) {
+      console.error('❌ Missing required fields');
       return NextResponse.json(
         { error: '제목과 링크 URL은 필수입니다.' },
         { status: 400 }
@@ -100,6 +122,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 광고 생성
+    console.log('💾 Inserting ad into database...');
     const { data, error } = await supabase
       .from('user_ads')
       .insert({
@@ -115,21 +138,22 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating ad:', error);
+      console.error('❌ Database error:', error);
       return NextResponse.json(
-        { error: '광고 생성에 실패했습니다.' },
+        { error: '광고 생성에 실패했습니다.', details: error.message },
         { status: 500 }
       );
     }
 
+    console.log('✅ Ad created successfully:', data.id);
     return NextResponse.json({ 
       success: true, 
       ad: data 
     });
   } catch (error) {
-    console.error('Error in POST /api/ads:', error);
+    console.error('❌ Unexpected error in POST /api/ads:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: (error as Error).message },
       { status: 500 }
     );
   }
