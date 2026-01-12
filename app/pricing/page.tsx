@@ -115,15 +115,16 @@ export default function PricingPage() {
           .select('*')
           .eq('interval', 'month')
           .eq('is_active', true)
-          .maybeSingle();
+          .order('price', { ascending: true })
+          .limit(1);
         
         if (error) {
           console.error('월간 플랜 가져오기 오류:', error);
           return;
         }
         
-        if (data) {
-          setMonthlyPlan(data as Plan);
+        if (data && data.length > 0) {
+          setMonthlyPlan(data[0] as Plan);
         }
       } catch (err) {
         console.error('월간 플랜 가져오기 중 예외:', err);
@@ -141,14 +142,25 @@ export default function PricingPage() {
       
       // Check if user has active subscription
       if (user) {
-        const { data: subscription } = await supabase
+        const { data: subscriptions } = await supabase
           .from('subscriptions')
-          .select('*, plan:plans(*)')
+          .select('*')
           .eq('user_id', user.id)
           .eq('status', 'active')
-          .maybeSingle();
+          .order('created_at', { ascending: false });
         
-        setCurrentSubscription(subscription);
+        if (subscriptions && subscriptions.length > 0) {
+          const sub = subscriptions[0];
+          
+          // Get plan separately
+          const { data: plan } = await supabase
+            .from('plans')
+            .select('*')
+            .eq('id', sub.plan_id)
+            .single();
+          
+          setCurrentSubscription({ ...sub, plan });
+        }
       }
     };
     checkUser();
