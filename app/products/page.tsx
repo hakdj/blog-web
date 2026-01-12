@@ -5,7 +5,11 @@ export default async function ProductsPage() {
   const user = await requireAuth();
   const subscription = await getActiveSubscription();
 
+  console.log('🛍️ Products page - User:', user?.id);
+  console.log('🛍️ Products page - Subscription:', subscription ? 'Active' : 'None');
+
   if (!subscription) {
+    console.log('❌ No active subscription found, showing paywall');
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center">
@@ -24,6 +28,8 @@ export default async function ProductsPage() {
       </div>
     );
   }
+
+  console.log('✅ Active subscription found, showing products page');
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">

@@ -34,9 +34,17 @@ export async function getUserProfile() {
 
 export async function getActiveSubscription() {
   const user = await getUser();
-  if (!user) return null;
+  if (!user) {
+    console.log('🔍 getActiveSubscription: No user found');
+    return null;
+  }
+
+  console.log('🔍 getActiveSubscription: Checking for user', user.id);
 
   const supabase = await createClient();
+  const now = new Date().toISOString();
+  console.log('🔍 Current time:', now);
+
   const { data: subscription, error } = await supabase
     .from('subscriptions')
     .select(`
@@ -45,12 +53,22 @@ export async function getActiveSubscription() {
     `)
     .eq('user_id', user.id)
     .eq('status', 'active')
-    .gt('current_period_end', new Date().toISOString())
+    .gt('current_period_end', now)
     .maybeSingle();
 
   if (error) {
-    console.error('Error getting subscription:', error);
+    console.error('❌ Error getting subscription:', error);
     return null;
+  }
+
+  if (subscription) {
+    console.log('✅ Active subscription found:', {
+      id: subscription.id,
+      plan: subscription.plan?.name,
+      end: subscription.current_period_end
+    });
+  } else {
+    console.log('❌ No active subscription found');
   }
 
   return subscription;
