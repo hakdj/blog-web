@@ -379,11 +379,14 @@ export default function AdminPage() {
     setSyncResult(null);
 
     try {
+      console.log('🔄 이벤트 동기화 시작...');
       const response = await fetch('/api/events/sync', {
         method: 'GET',
       });
 
+      console.log('📡 응답 상태:', response.status);
       const data = await response.json();
+      console.log('📦 응답 데이터:', data);
 
       if (response.ok && data.success) {
         const debugInfo = data.debug || {};
@@ -404,12 +407,15 @@ export default function AdminPage() {
 
 ✅ 총 ${data.synced}개의 이벤트가 동기화되었습니다.`;
         
+        console.log('✅ 동기화 성공:', details);
         setSyncResult(details);
       } else {
-        setSyncResult(`❌ 실패: ${data.error || '알 수 없는 오류'}`);
+        const errorMsg = `❌ 실패: ${data.error || '알 수 없는 오류'}\n상세: ${JSON.stringify(data, null, 2)}`;
+        console.error('❌ 동기화 실패:', errorMsg);
+        setSyncResult(errorMsg);
       }
     } catch (error) {
-      console.error('Event sync error:', error);
+      console.error('❌ Event sync error:', error);
       setSyncResult(`❌ 오류: ${(error as Error).message}`);
     } finally {
       setSyncingEvents(false);
