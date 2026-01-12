@@ -39,13 +39,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 이미 활성 구독이 있는지 확인
-    const { data: existingSubscription } = await supabase
+    // 이미 활성 구독이 있는지 확인 (가장 최근 것)
+    const { data: existingSubscriptions } = await supabase
       .from('subscriptions')
       .select('id, plan_id, current_period_end')
       .eq('user_id', user.id)
       .eq('status', 'active')
-      .maybeSingle();
+      .order('created_at', { ascending: false });
+
+    const existingSubscription = existingSubscriptions?.[0] || null;
 
     if (existingSubscription) {
       // 기존 구독 종료일 가져오기

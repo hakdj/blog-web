@@ -45,7 +45,7 @@ export async function getActiveSubscription() {
   const now = new Date().toISOString();
   console.log('🔍 Current time:', now);
 
-  const { data: subscription, error } = await supabase
+  const { data: subscriptions, error } = await supabase
     .from('subscriptions')
     .select(`
       *,
@@ -54,7 +54,9 @@ export async function getActiveSubscription() {
     .eq('user_id', user.id)
     .eq('status', 'active')
     .gt('current_period_end', now)
-    .maybeSingle();
+    .order('created_at', { ascending: false });
+
+  const subscription = subscriptions?.[0] || null;
 
   if (error) {
     console.error('❌ Error getting subscription:', error);
