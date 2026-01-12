@@ -5,11 +5,11 @@ export default async function ProductsPage() {
   const user = await requireAuth();
   const subscription = await getActiveSubscription();
 
-  console.log('🛍️ [v4-FIX] Products page - User:', user?.id);
-  console.log('🛍️ [v4-FIX] Products page - Subscription:', subscription ? 'Active' : 'None');
+  console.log('🛍️ [v5-SIMPLE] Products page - User:', user?.id);
+  console.log('🛍️ [v5-SIMPLE] Products page - Subscription:', subscription ? 'Active' : 'None');
 
   if (!subscription) {
-    console.log('❌ [v4-FIX] No active subscription found, showing paywall');
+    console.log('❌ [v5-SIMPLE] No active subscription found, showing paywall');
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center">
@@ -29,7 +29,7 @@ export default async function ProductsPage() {
     );
   }
 
-  console.log('✅ [v4-FIX] Active subscription found, showing products page');
+  console.log('✅ [v5-SIMPLE] Active subscription found, showing products page');
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">

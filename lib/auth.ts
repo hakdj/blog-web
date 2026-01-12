@@ -39,42 +39,37 @@ export async function getActiveSubscription() {
     return null;
   }
 
-  console.log('🔍 [v4-FIX] getActiveSubscription: Checking for user', user.id);
+  console.log('🔍 [v5-SIMPLE] getActiveSubscription: Checking for user', user.id);
 
   const supabase = await createClient();
 
-  // 모든 active 구독 가져오기 (날짜 필터링은 클라이언트에서)
+  // 단순하게: 모든 필드만 가져오기 (plan은 별도 조회)
   const { data: subscriptions, error } = await supabase
     .from('subscriptions')
-    .select(`
-      *,
-      plan:plans(*)
-    `)
+    .select('*')
     .eq('user_id', user.id)
     .eq('status', 'active')
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('❌ Error getting subscription:', error);
+    console.error('❌ [v5-SIMPLE] Error getting subscription:', error);
     return null;
   }
 
-  console.log('🔍 [v4-FIX] Found subscriptions:', subscriptions?.length || 0);
+  console.log('🔍 [v5-SIMPLE] Found subscriptions:', subscriptions?.length || 0);
 
   if (!subscriptions || subscriptions.length === 0) {
-    console.log('❌ No active subscriptions found');
+    console.log('❌ [v5-SIMPLE] No active subscriptions');
     return null;
   }
 
-  // 클라이언트에서 날짜 필터링
+  // 날짜 체크
   const now = new Date();
   const validSubscription = subscriptions.find(sub => {
     const endDate = new Date(sub.current_period_end);
     const isValid = endDate > now;
-    console.log('🔍 [v4-FIX] Checking subscription:', {
-      id: sub.id,
-      end: sub.current_period_end,
-      endDate: endDate.toISOString(),
+    console.log('🔍 [v5-SIMPLE] Checking:', {
+      end: endDate.toISOString(),
       now: now.toISOString(),
       isValid
     });
@@ -82,16 +77,20 @@ export async function getActiveSubscription() {
   });
 
   if (validSubscription) {
-    console.log('✅ [v4-FIX] Valid subscription found:', {
-      id: validSubscription.id,
-      plan: validSubscription.plan?.name,
-      end: validSubscription.current_period_end
-    });
-  } else {
-    console.log('❌ No valid subscription found (all expired)');
+    // Plan 정보 별도 조회
+    const { data: plan } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('id', validSubscription.plan_id)
+      .single();
+    
+    const result = { ...validSubscription, plan };
+    console.log('✅ [v5-SIMPLE] Valid subscription found');
+    return result;
   }
 
-  return validSubscription || null;
+  console.log('❌ [v5-SIMPLE] No valid subscription (all expired)');
+  return null;
 }
 
 export async function requireAuth() {
