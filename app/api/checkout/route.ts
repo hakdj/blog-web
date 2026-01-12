@@ -42,25 +42,55 @@ export async function POST(request: NextRequest) {
     // 이미 활성 구독이 있는지 확인
     const { data: existingSubscription } = await supabase
       .from('subscriptions')
-      .select('id, plan_id')
+      .select('id, plan_id, current_period_end')
       .eq('user_id', user.id)
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
 
     if (existingSubscription) {
-      // 같은 플랜인지 확인
-      if (existingSubscription.plan_id === planId) {
-        return NextResponse.json(
-          { error: '이미 해당 플랜을 구독 중입니다.' },
-          { status: 400 }
-        );
+      // 기존 구독 종료일 가져오기
+      const currentEndDate = new Date(existingSubscription.current_period_end);
+      
+      // 새 플랜 기간 계산 (기존 종료일에 추가)
+      const newPeriodEnd = new Date(currentEndDate);
+      if (plan.interval === 'year') {
+        newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
+      } else {
+        newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
       }
 
-      // 다른 플랜으로 변경
+      // 같은 플랜인지 확인
+      if (existingSubscription.plan_id === planId) {
+        // 같은 플랜 재구독 → 기간 연장
+        const { error: updateError } = await supabase
+          .from('subscriptions')
+          .update({
+            current_period_end: newPeriodEnd.toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingSubscription.id);
+
+        if (updateError) {
+          console.error('Subscription extension error:', updateError);
+          return NextResponse.json(
+            { error: '구독 연장 실패: ' + updateError.message },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: `구독이 ${newPeriodEnd.toLocaleDateString('ko-KR')}까지 연장되었습니다!`,
+          new_period_end: newPeriodEnd.toISOString(),
+        });
+      }
+
+      // 다른 플랜으로 변경 → 플랜 변경 + 기간 연장
       const { error: updateError } = await supabase
         .from('subscriptions')
         .update({
           plan_id: planId,
+          current_period_end: newPeriodEnd.toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', existingSubscription.id);
@@ -75,7 +105,8 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: '플랜이 변경되었습니다!',
+        message: `플랜이 변경되고 ${newPeriodEnd.toLocaleDateString('ko-KR')}까지 연장되었습니다!`,
+        new_period_end: newPeriodEnd.toISOString(),
       });
     }
 

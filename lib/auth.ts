@@ -46,7 +46,7 @@ export async function getActiveSubscription() {
     .eq('user_id', user.id)
     .eq('status', 'active')
     .gt('current_period_end', new Date().toISOString())
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Error getting subscription:', error);
