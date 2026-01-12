@@ -5,8 +5,9 @@ export default async function ProductsPage() {
   const user = await requireAuth();
   const subscription = await getActiveSubscription();
 
-  console.log('🛍️ Products page - User:', user?.id);
-  console.log('🛍️ Products page - Subscription:', subscription ? 'Active' : 'None');
+  console.log('🛍️ [v2] Products page - User:', user?.id);
+  console.log('🛍️ [v2] Products page - Subscription:', subscription ? 'Active' : 'None');
+  console.log('🛍️ [v2] Subscription data:', subscription);
 
   if (!subscription) {
     console.log('❌ No active subscription found, showing paywall');
