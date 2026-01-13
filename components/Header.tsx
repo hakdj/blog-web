@@ -27,7 +27,7 @@ export default function Header() {
           .eq('status', 'active')
           .gt('current_period_end', new Date().toISOString());
         
-        setHasActiveSubscription(subscriptions && subscriptions.length > 0);
+        setHasActiveSubscription(Boolean(subscriptions && subscriptions.length > 0));
       }
       
       setIsLoading(false);
@@ -48,7 +48,7 @@ export default function Header() {
             .eq('status', 'active')
             .gt('current_period_end', new Date().toISOString());
           
-          setHasActiveSubscription(subscriptions && subscriptions.length > 0);
+          setHasActiveSubscription(Boolean(subscriptions && subscriptions.length > 0));
         } else {
           setHasActiveSubscription(false);
         }
