@@ -16,6 +16,7 @@ interface Plan {
 }
 
 export default function PlansManagePage() {
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -32,6 +33,7 @@ export default function PlansManagePage() {
   const router = useRouter();
 
   useEffect(() => {
+    setMounted(true);
     checkAdminAndLoadData();
   }, []);
 
@@ -168,7 +170,7 @@ export default function PlansManagePage() {
     }
   };
 
-  if (loading || !isAdmin) {
+  if (!mounted || loading || !isAdmin) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
