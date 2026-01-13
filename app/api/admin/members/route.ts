@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/server';
 
 const ADMIN_EMAILS = ['hakdjhakdj@naver.com', 'hakdjhakdj@gmail.com'];
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServiceClient();
+    // Use regular client for auth check
+    const supabase = await createClient();
     
     // Check if user is admin
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -20,13 +22,16 @@ export async function GET(request: NextRequest) {
 
     const type = request.nextUrl.searchParams.get('type'); // 'paid' or 'free'
 
+    // Use service client for admin operations
+    const serviceSupabase = createServiceClient();
+    
     // Get all users
-    const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
+    const { data: { users }, error: usersError } = await serviceSupabase.auth.admin.listUsers();
 
     if (usersError) throw usersError;
 
     // Get active subscriptions
-    const { data: subscriptions, error: subError } = await supabase
+    const { data: subscriptions, error: subError } = await serviceSupabase
       .from('subscriptions')
       .select('user_id, plan_id, current_period_end, created_at')
       .eq('status', 'active')
@@ -39,7 +44,7 @@ export async function GET(request: NextRequest) {
     if (type === 'paid') {
       // Get plan details
       const planIds = [...new Set(subscriptions?.map(s => s.plan_id) || [])];
-      const { data: plans, error: plansError } = await supabase
+      const { data: plans, error: plansError } = await serviceSupabase
         .from('plans')
         .select('*')
         .in('id', planIds);
