@@ -124,7 +124,9 @@ export default function PlansManagePage() {
     try {
       const features = Array.isArray(editingPlan.features) 
         ? editingPlan.features 
-        : editingPlan.features.split('\n').map(f => f.trim()).filter(f => f.length > 0);
+        : (typeof editingPlan.features === 'string' 
+            ? editingPlan.features.split('\n').map(f => f.trim()).filter(f => f.length > 0)
+            : []);
 
       const { error } = await supabase
         .from('plans')
@@ -291,8 +293,8 @@ export default function PlansManagePage() {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         />
                         <textarea
-                          value={Array.isArray(editingPlan.features) ? editingPlan.features.join('\n') : editingPlan.features || ''}
-                          onChange={(e) => setEditingPlan({ ...editingPlan, features: e.target.value.split('\n') })}
+                          value={Array.isArray(editingPlan.features) ? editingPlan.features.join('\n') : (editingPlan.features || '')}
+                          onChange={(e) => setEditingPlan({ ...editingPlan, features: e.target.value.split('\n') as any })}
                           rows={3}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         />
