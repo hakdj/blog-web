@@ -919,7 +919,7 @@ export default function SettingsPage() {
 
         {/* 광고 관리 섹션 (유료 구독자만) */}
         {subscription?.status === 'active' && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div id="ads" className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">내 광고 관리</h2>
               {!showAdForm && (

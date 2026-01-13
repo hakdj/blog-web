@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const supabase = createClient();
   const router = useRouter();
 
@@ -16,14 +17,42 @@ export default function Header() {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      
+      // Check if user has active subscription
+      if (user) {
+        const { data: subscriptions } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .gt('current_period_end', new Date().toISOString());
+        
+        setHasActiveSubscription(subscriptions && subscriptions.length > 0);
+      }
+      
       setIsLoading(false);
     };
 
     getUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setUser(session?.user ?? null);
+        
+        // Check subscription when auth state changes
+        if (session?.user) {
+          const { data: subscriptions } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .eq('status', 'active')
+            .gt('current_period_end', new Date().toISOString());
+          
+          setHasActiveSubscription(subscriptions && subscriptions.length > 0);
+        } else {
+          setHasActiveSubscription(false);
+        }
+        
         setIsLoading(false);
       }
     );
@@ -55,18 +84,26 @@ export default function Header() {
               href="/pricing"
               className="text-gray-600 hover:text-gray-900 font-medium"
             >
-              구독
+              구독신청
             </Link>
 
             {isLoading ? (
               <div className="w-20 h-8 bg-gray-200 rounded animate-pulse"></div>
             ) : user ? (
               <div className="flex items-center space-x-4">
+                {hasActiveSubscription && (
+                  <Link
+                    href="/settings#ads"
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                  >
+                    광고 등록
+                  </Link>
+                )}
                 <Link
                   href="/settings"
                   className="text-gray-600 hover:text-gray-900 font-medium"
                 >
-                  설정
+                  마이페이지
                 </Link>
                 {['hakdjhakdj@naver.com', 'hakdjhakdj@gmail.com'].includes(user.email || '') && (
                   <Link
