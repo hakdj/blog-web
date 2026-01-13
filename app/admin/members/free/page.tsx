@@ -13,7 +13,6 @@ interface Member {
 }
 
 export default function FreeMembersPage() {
-  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
@@ -22,7 +21,6 @@ export default function FreeMembersPage() {
   const router = useRouter();
 
   useEffect(() => {
-    setMounted(true);
     checkAdminAndLoadData();
   }, []);
 
@@ -70,7 +68,7 @@ export default function FreeMembersPage() {
     member.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (!mounted || loading || !isAdmin) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -79,6 +77,10 @@ export default function FreeMembersPage() {
         </div>
       </div>
     );
+  }
+
+  if (!isAdmin) {
+    return null;
   }
 
   return (

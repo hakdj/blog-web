@@ -12,11 +12,10 @@ interface Plan {
   price: number;
   tier: string;
   interval: string;
-  features: string[] | string;
+  features: string[];
 }
 
 export default function PlansManagePage() {
-  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -33,7 +32,6 @@ export default function PlansManagePage() {
   const router = useRouter();
 
   useEffect(() => {
-    setMounted(true);
     checkAdminAndLoadData();
   }, []);
 
@@ -74,6 +72,7 @@ export default function PlansManagePage() {
       setPlans(data || []);
     } catch (error) {
       console.error('Error loading plans:', error);
+      setPlans([]);
     }
   };
 
@@ -124,19 +123,13 @@ export default function PlansManagePage() {
     if (!editingPlan) return;
 
     try {
-      const features = Array.isArray(editingPlan.features) 
-        ? editingPlan.features 
-        : (typeof editingPlan.features === 'string' 
-            ? editingPlan.features.split('\n').map(f => f.trim()).filter(f => f.length > 0)
-            : []);
-
       const { error } = await supabase
         .from('plans')
         .update({
           name: editingPlan.name,
           price: editingPlan.price,
           tier: editingPlan.tier,
-          features: features
+          features: editingPlan.features
         })
         .eq('id', editingPlan.id);
 
@@ -170,7 +163,7 @@ export default function PlansManagePage() {
     }
   };
 
-  if (!mounted || loading || !isAdmin) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -179,6 +172,10 @@ export default function PlansManagePage() {
         </div>
       </div>
     );
+  }
+
+  if (!isAdmin) {
+    return null;
   }
 
   return (
@@ -291,8 +288,8 @@ export default function PlansManagePage() {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         />
                         <textarea
-                          value={Array.isArray(editingPlan.features) ? editingPlan.features.join('\n') : (editingPlan.features || '')}
-                          onChange={(e) => setEditingPlan({ ...editingPlan, features: e.target.value.split('\n') as any })}
+                          value={Array.isArray(editingPlan.features) ? editingPlan.features.join('\n') : ''}
+                          onChange={(e) => setEditingPlan({ ...editingPlan, features: e.target.value.split('\n') })}
                           rows={3}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         />
@@ -338,9 +335,6 @@ export default function PlansManagePage() {
                           {Array.isArray(plan.features) && plan.features.map((feature, idx) => (
                             <li key={idx}>{feature}</li>
                           ))}
-                          {!Array.isArray(plan.features) && plan.features && (
-                            <li>{plan.features}</li>
-                          )}
                         </ul>
                       </div>
                     )}
