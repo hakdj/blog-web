@@ -56,55 +56,14 @@ export default function PaidMembersPage() {
 
   const loadPaidMembers = async () => {
     try {
-      // Get all users with active subscriptions
-      const { data: subscriptions, error: subError } = await supabase
-        .from('subscriptions')
-        .select('user_id, plan_id, current_period_end, created_at')
-        .eq('status', 'active')
-        .gt('current_period_end', new Date().toISOString());
+      const response = await fetch('/api/admin/members?type=paid');
+      const data = await response.json();
 
-      if (subError) throw subError;
-
-      if (!subscriptions || subscriptions.length === 0) {
-        setMembers([]);
-        return;
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load members');
       }
 
-      // Get user details
-      const userIds = subscriptions.map(s => s.user_id);
-      const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
-
-      if (usersError) throw usersError;
-
-      // Get plan details
-      const planIds = [...new Set(subscriptions.map(s => s.plan_id))];
-      const { data: plans, error: plansError } = await supabase
-        .from('plans')
-        .select('*')
-        .in('id', planIds);
-
-      if (plansError) throw plansError;
-
-      const planMap = new Map(plans?.map(p => [p.id, p]) || []);
-      const userMap = new Map(users?.map(u => [u.id, u.email]) || []);
-
-      const paidMembers = subscriptions
-        .filter(sub => userMap.has(sub.user_id))
-        .map(sub => {
-          const plan = planMap.get(sub.plan_id);
-          return {
-            id: sub.user_id,
-            email: userMap.get(sub.user_id) || '',
-            created_at: sub.created_at,
-            subscription: {
-              plan_name: plan?.name || 'Unknown',
-              plan_price: plan?.price || 0,
-              current_period_end: sub.current_period_end,
-            }
-          };
-        });
-
-      setMembers(paidMembers);
+      setMembers(data.members || []);
     } catch (error) {
       console.error('Error loading paid members:', error);
     }

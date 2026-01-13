@@ -68,6 +68,7 @@ export default function AdminPage() {
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [subscriptionHistory, setSubscriptionHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showRevenue, setShowRevenue] = useState(false);
   const [showRevenueDetails, setShowRevenueDetails] = useState(false);
   const supabase = createClient();
   const router = useRouter();
@@ -622,18 +623,33 @@ export default function AdminPage() {
               <p className="text-3xl font-bold text-gray-600 mt-2">{adminData.freeMembers}</p>
               <p className="text-xs text-gray-600 mt-2">클릭하여 명단 보기 →</p>
             </button>
-            <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
+            <button 
+              onClick={() => setShowRevenue(!showRevenue)}
+              className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500 hover:bg-blue-50 transition-colors text-left cursor-pointer w-full"
+            >
               <h3 className="text-sm font-medium text-gray-500">총 매출</h3>
-              <p className="text-3xl font-bold text-blue-600 mt-2">
-                ₩{adminData.totalRevenue.toLocaleString()}
-              </p>
-              <button
-                onClick={() => setShowRevenueDetails(!showRevenueDetails)}
-                className="mt-2 text-xs text-blue-600 hover:text-blue-700 underline"
-              >
-                {showRevenueDetails ? '세부수익 숨기기 ↑' : '세부수익 확인하기 →'}
-              </button>
-            </div>
+              {showRevenue ? (
+                <>
+                  <p className="text-3xl font-bold text-blue-600 mt-2">
+                    ₩{adminData.totalRevenue.toLocaleString()}
+                  </p>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowRevenueDetails(!showRevenueDetails);
+                    }}
+                    className="mt-2 text-xs text-blue-600 hover:text-blue-700 underline"
+                  >
+                    {showRevenueDetails ? '세부수익 숨기기 ↑' : '세부수익 확인하기 →'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-3xl font-bold text-gray-400 mt-2">••••••</p>
+                  <p className="text-xs text-gray-600 mt-2">클릭하여 보기 →</p>
+                </>
+              )}
+            </button>
           </div>
         )}
 

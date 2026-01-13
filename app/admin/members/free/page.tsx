@@ -51,32 +51,14 @@ export default function FreeMembersPage() {
 
   const loadFreeMembers = async () => {
     try {
-      // Get all users
-      const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
+      const response = await fetch('/api/admin/members?type=free');
+      const data = await response.json();
 
-      if (usersError) throw usersError;
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load members');
+      }
 
-      // Get users with active subscriptions
-      const { data: subscriptions, error: subError } = await supabase
-        .from('subscriptions')
-        .select('user_id')
-        .eq('status', 'active')
-        .gt('current_period_end', new Date().toISOString());
-
-      if (subError) throw subError;
-
-      const paidUserIds = new Set(subscriptions?.map(s => s.user_id) || []);
-
-      // Filter free members (users without active subscriptions)
-      const freeMembers = users
-        ?.filter(u => !paidUserIds.has(u.id))
-        .map(u => ({
-          id: u.id,
-          email: u.email || '',
-          created_at: u.created_at,
-        })) || [];
-
-      setMembers(freeMembers);
+      setMembers(data.members || []);
     } catch (error) {
       console.error('Error loading free members:', error);
     }
