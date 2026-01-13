@@ -28,6 +28,7 @@ export default function PlansManagePage() {
     features: '' 
   });
   const [showAddForm, setShowAddForm] = useState(false);
+  const [activeInterval, setActiveInterval] = useState<'month' | 'year'>('month');
   const supabase = createClient();
   const router = useRouter();
 
@@ -258,14 +259,40 @@ export default function PlansManagePage() {
         {/* Plans List */}
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">기존 요금제 목록</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">기존 요금제 목록</h2>
+            
+            {/* Interval Tabs */}
+            <div className="flex gap-4 border-b border-gray-200">
+              <button
+                onClick={() => setActiveInterval('month')}
+                className={`pb-3 px-4 font-medium transition-colors ${
+                  activeInterval === 'month'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                월간 요금제
+              </button>
+              <button
+                onClick={() => setActiveInterval('year')}
+                className={`pb-3 px-4 font-medium transition-colors ${
+                  activeInterval === 'year'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                연간 요금제
+              </button>
+            </div>
           </div>
           <div className="p-6">
-            {plans.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">등록된 요금제가 없습니다.</p>
+            {plans.filter(plan => plan.interval === activeInterval).length === 0 ? (
+              <p className="text-center text-gray-500 py-8">
+                {activeInterval === 'month' ? '월간' : '연간'} 요금제가 없습니다.
+              </p>
             ) : (
               <div className="space-y-4">
-                {plans.map((plan) => (
+                {plans.filter(plan => plan.interval === activeInterval).map((plan) => (
                   <div key={plan.id} className="border border-gray-200 rounded-lg p-4">
                     {editingPlan?.id === plan.id ? (
                       <div className="space-y-3">
