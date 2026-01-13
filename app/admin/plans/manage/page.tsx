@@ -12,7 +12,7 @@ interface Plan {
   price: number;
   tier: string;
   interval: string;
-  features: string[];
+  features: string[] | string;
 }
 
 export default function PlansManagePage() {
