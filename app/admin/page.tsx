@@ -68,10 +68,7 @@ export default function AdminPage() {
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [subscriptionHistory, setSubscriptionHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [showRevenue, setShowRevenue] = useState(false);
-  const [showAddPlanForm, setShowAddPlanForm] = useState(false);
-  const [showMembersModal, setShowMembersModal] = useState<'paid' | 'free' | null>(null);
-  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [showRevenueDetails, setShowRevenueDetails] = useState(false);
   const supabase = createClient();
   const router = useRouter();
 
@@ -610,7 +607,7 @@ export default function AdminPage() {
               <p className="text-3xl font-bold text-gray-900 mt-2">{adminData.totalUsers}</p>
             </div>
             <button 
-              onClick={() => setShowMembersModal('paid')}
+              onClick={() => router.push('/admin/members/paid')}
               className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500 hover:bg-green-50 transition-colors text-left cursor-pointer"
             >
               <h3 className="text-sm font-medium text-gray-500">유료회원 수</h3>
@@ -618,32 +615,53 @@ export default function AdminPage() {
               <p className="text-xs text-green-600 mt-2">클릭하여 명단 보기 →</p>
             </button>
             <button 
-              onClick={() => setShowMembersModal('free')}
+              onClick={() => router.push('/admin/members/free')}
               className="bg-white p-6 rounded-lg shadow border-l-4 border-gray-400 hover:bg-gray-50 transition-colors text-left cursor-pointer"
             >
               <h3 className="text-sm font-medium text-gray-500">무료회원 수</h3>
               <p className="text-3xl font-bold text-gray-600 mt-2">{adminData.freeMembers}</p>
               <p className="text-xs text-gray-600 mt-2">클릭하여 명단 보기 →</p>
             </button>
-            <button 
-              onClick={() => setShowRevenue(!showRevenue)}
-              className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500 hover:bg-blue-50 transition-colors text-left cursor-pointer"
-            >
+            <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
               <h3 className="text-sm font-medium text-gray-500">총 매출</h3>
-              {showRevenue ? (
-                <>
-                  <p className="text-3xl font-bold text-blue-600 mt-2">
-                    ₩{adminData.totalRevenue.toLocaleString()}
-                  </p>
-                  <p className="text-xs text-blue-600 mt-2">클릭하여 숨기기 ↑</p>
-                </>
-              ) : (
-                <>
-                  <p className="text-3xl font-bold text-gray-400 mt-2">••••••</p>
-                  <p className="text-xs text-gray-600 mt-2">클릭하여 보기 →</p>
-                </>
-              )}
-            </button>
+              <p className="text-3xl font-bold text-blue-600 mt-2">
+                ₩{adminData.totalRevenue.toLocaleString()}
+              </p>
+              <button
+                onClick={() => setShowRevenueDetails(!showRevenueDetails)}
+                className="mt-2 text-xs text-blue-600 hover:text-blue-700 underline"
+              >
+                {showRevenueDetails ? '세부수익 숨기기 ↑' : '세부수익 확인하기 →'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Revenue Details */}
+        {activeTab === 'overview' && showRevenueDetails && adminData && (
+          <div className="bg-white rounded-lg shadow mb-8">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">세부 수익 관리</h2>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h3 className="text-sm font-medium text-gray-600">구독 수익</h3>
+                  <p className="text-2xl font-bold text-blue-600 mt-2">₩0</p>
+                  <p className="text-xs text-gray-500 mt-1">상품 판매대여</p>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h3 className="text-sm font-medium text-gray-600">구멍가게 수익</h3>
+                  <p className="text-2xl font-bold text-green-600 mt-2">₩0</p>
+                  <p className="text-xs text-gray-500 mt-1">이벤트, 광고 등</p>
+                </div>
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <h3 className="text-sm font-medium text-gray-600">기타 수익</h3>
+                  <p className="text-2xl font-bold text-purple-600 mt-2">₩0</p>
+                  <p className="text-xs text-gray-500 mt-1">이벤트, 광고 등</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -993,212 +1011,49 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Plan Management */}
+        {/* Plan View */}
         {activeTab === 'overview' && (
         <div className="bg-white rounded-lg shadow mb-8">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">구독 관리</h2>
+          <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-xl font-bold text-gray-900">요금제 View</h2>
+            <button
+              onClick={() => router.push('/admin/plans/manage')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              + 요금제 추가
+            </button>
           </div>
           
-          {/* Existing Plans */}
           <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">기존 요금제</h3>
-              <button
-                onClick={() => setShowAddPlanForm(!showAddPlanForm)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-              >
-                {showAddPlanForm ? '✕ 취소' : '+ 요금제 추가'}
-              </button>
-            </div>
-
-            {/* Add New Plan Form (Collapsible) */}
-            {showAddPlanForm && (
-              <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                <h4 className="text-md font-semibold mb-3">새 요금제 추가</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    placeholder="플랜 이름"
-                    value={newPlan.name}
-                    onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <input
-                    type="number"
-                    placeholder="가격"
-                    value={newPlan.price}
-                    onChange={(e) => setNewPlan({ ...newPlan, price: e.target.value })}
-                    min="0"
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <input
-                    type="text"
-                    placeholder="티어 (예: basic, premium, custom)"
-                    value={newPlan.tier}
-                    onChange={(e) => setNewPlan({ ...newPlan, tier: e.target.value })}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <select
-                    value={newPlan.interval}
-                    onChange={(e) => setNewPlan({ ...newPlan, interval: e.target.value })}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="month">월간</option>
-                    <option value="year">연간</option>
-                  </select>
-                  <textarea
-                    placeholder="기능 (한 줄에 하나씩)"
-                    value={newPlan.features}
-                    onChange={(e) => setNewPlan({ ...newPlan, features: e.target.value })}
-                    rows={3}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent md:col-span-2"
-                  />
-                </div>
-                <button
-                  onClick={handleAddPlan}
-                  className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  추가하기
-                </button>
+            {plans.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">등록된 요금제가 없습니다.</p>
+            ) : (
+              <div className="space-y-4">
+                {plans.map((plan) => (
+                  <div key={plan.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="text-lg font-semibold">{plan.name}</h4>
+                        <p className="text-2xl font-bold text-blue-600">₩{plan.price.toLocaleString()}/월</p>
+                        <p className="text-sm text-gray-500">티어: {plan.tier}</p>
+                      </div>
+                    </div>
+                    <ul className="list-disc list-inside text-gray-600 space-y-1 mt-3">
+                      {Array.isArray(plan.features) && plan.features.map((feature, idx) => (
+                        <li key={idx}>{feature}</li>
+                      ))}
+                      {!Array.isArray(plan.features) && plan.features && (
+                        <li>{plan.features}</li>
+                      )}
+                    </ul>
+                  </div>
+                ))}
               </div>
             )}
-            <div className="space-y-4">
-              {plans.map((plan) => (
-                <div key={plan.id} className="border border-gray-200 rounded-lg p-4">
-                  {editingPlan?.id === plan.id ? (
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        value={editingPlan.name}
-                        onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      />
-                      <input
-                        type="number"
-                        value={editingPlan.price}
-                        onChange={(e) => setEditingPlan({ ...editingPlan, price: parseInt(e.target.value) })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      />
-                      <input
-                        type="text"
-                        value={editingPlan.tier}
-                        onChange={(e) => setEditingPlan({ ...editingPlan, tier: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      />
-                      <textarea
-                        value={Array.isArray(editingPlan.features) ? editingPlan.features.join('\n') : editingPlan.features || ''}
-                        onChange={(e) => setEditingPlan({ ...editingPlan, features: e.target.value.split('\n') })}
-                        rows={3}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      />
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={handleUpdatePlan}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                        >
-                          저장
-                        </button>
-                        <button
-                          onClick={() => setEditingPlan(null)}
-                          className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-                        >
-                          취소
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="text-lg font-semibold">{plan.name}</h4>
-                          <p className="text-2xl font-bold text-blue-600">₩{plan.price.toLocaleString()}/월</p>
-                          <p className="text-sm text-gray-500">티어: {plan.tier}</p>
-                        </div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => setEditingPlan(plan)}
-                            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-                          >
-                            수정
-                          </button>
-                          <button
-                            onClick={() => handleDeletePlan(plan.id)}
-                            className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 font-medium"
-                          >
-                            삭제
-                          </button>
-                        </div>
-                      </div>
-                      <ul className="list-disc list-inside text-gray-600 space-y-1">
-                        {Array.isArray(plan.features) && plan.features.map((feature, idx) => (
-                          <li key={idx}>{feature}</li>
-                        ))}
-                        {!Array.isArray(plan.features) && plan.features && (
-                          <li>{plan.features}</li>
-                        )}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
           </div>
         </div>
         )}
 
-        {/* Active Subscribers */}
-        {activeTab === 'overview' && adminData && adminData.subscribers && adminData.subscribers.length > 0 && (
-          <div className="bg-white rounded-lg shadow mb-8">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">유료회원 명단 관리</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      이메일
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      플랜
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      가격
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      구독일
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      만료일
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {adminData.subscribers.map((subscriber) => (
-                    <tr key={subscriber.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {subscriber.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {subscriber.plan_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ₩{subscriber.plan_price.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(subscriber.created_at).toLocaleDateString('ko-KR')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(subscriber.current_period_end).toLocaleDateString('ko-KR')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
         {/* Recent Users */}
         {activeTab === 'overview' && adminData && adminData.recentUsers.length > 0 && (
@@ -1361,73 +1216,6 @@ export default function AdminPage() {
                   <p>무료회원이 없습니다.</p>
                 </div>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* Members Modal */}
-        {showMembersModal && adminData && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {showMembersModal === 'paid' ? '유료 회원 명단' : '무료 회원 명단'}
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setShowMembersModal(null);
-                      setMemberSearchQuery('');
-                    }}
-                    className="text-gray-500 hover:text-gray-700 text-2xl"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  placeholder="이름 또는 이메일로 검색..."
-                  value={memberSearchQuery}
-                  onChange={(e) => setMemberSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="space-y-3">
-                  {(showMembersModal === 'paid' ? adminData.paidMembersList : adminData.freeMembersList)
-                    .filter(member => 
-                      member.email.toLowerCase().includes(memberSearchQuery.toLowerCase())
-                    )
-                    .map((member) => (
-                      <div key={member.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <p className="font-semibold text-gray-900">{member.email}</p>
-                            <p className="text-sm text-gray-500">
-                              가입일: {new Date(member.created_at).toLocaleDateString('ko-KR')}
-                            </p>
-                            {member.subscription && (
-                              <div className="mt-2 text-sm">
-                                <p className="text-green-600 font-medium">
-                                  {member.subscription.plan_name} - ₩{member.subscription.plan_price.toLocaleString()}
-                                </p>
-                                <p className="text-gray-500">
-                                  만료일: {new Date(member.subscription.current_period_end).toLocaleDateString('ko-KR')}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  {(showMembersModal === 'paid' ? adminData.paidMembersList : adminData.freeMembersList)
-                    .filter(member => 
-                      member.email.toLowerCase().includes(memberSearchQuery.toLowerCase())
-                    ).length === 0 && (
-                    <p className="text-center text-gray-500 py-8">검색 결과가 없습니다.</p>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
         )}
