@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         image_url: image_url || null,
         link_url,
         end_date: processedEndDate,
-        status: 'active'
+        status: 'pending'
       })
       .select()
       .single();
@@ -149,10 +149,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Ad created successfully:', data.id);
+    console.log('✅ Ad created successfully (pending approval):', data.id);
     return NextResponse.json({ 
       success: true, 
-      ad: data 
+      ad: data,
+      message: '광고가 등록되었습니다. 관리자 승인 후 노출됩니다.'
     });
   } catch (error) {
     console.error('❌ Unexpected error in POST /api/ads:', error);
@@ -197,7 +198,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, title, description, image_url, link_url, status, end_date } = body;
+    const { id, title, description, image_url, link_url, end_date } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -209,7 +210,7 @@ export async function PUT(request: NextRequest) {
     // 광고 소유자 확인
     const { data: existingAd } = await supabase
       .from('user_ads')
-      .select('user_id')
+      .select('user_id, status')
       .eq('id', id)
       .single();
 
@@ -223,6 +224,9 @@ export async function PUT(request: NextRequest) {
     // end_date 처리: 빈 문자열이면 null로 변환
     const processedEndDate = end_date && end_date.trim() !== '' ? end_date : null;
 
+    // 유저가 수정하면 다시 승인 대기(pending)로 돌림 (inactive은 그대로 유지)
+    const nextStatus = existingAd?.status === 'inactive' ? 'inactive' : 'pending';
+
     // 광고 수정
     const { data, error } = await supabase
       .from('user_ads')
@@ -231,7 +235,7 @@ export async function PUT(request: NextRequest) {
         description: description || null,
         image_url: image_url || null,
         link_url,
-        status,
+        status: nextStatus,
         end_date: processedEndDate
       })
       .eq('id', id)

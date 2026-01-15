@@ -129,12 +129,28 @@ export default function EventsPage() {
 
   const handleAdClick = async (ad: UserAd) => {
     try {
-      // 클릭 추적
-      await fetch('/api/ads/click', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ad_id: ad.id })
-      });
+      // 클릭 추적 (네비게이션/탭 이동을 막지 않도록 fire-and-forget)
+      const payload = JSON.stringify({ ad_id: ad.id });
+      if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
+        try {
+          const blob = new Blob([payload], { type: 'application/json' });
+          navigator.sendBeacon('/api/ads/click', blob);
+        } catch {
+          fetch('/api/ads/click', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true,
+          }).catch(() => {});
+        }
+      } else {
+        fetch('/api/ads/click', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
 
       // 외부 링크로 이동
       window.open(ad.link_url, '_blank');
