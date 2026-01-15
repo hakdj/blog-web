@@ -93,7 +93,7 @@ export default function Header() {
               <div className="flex items-center space-x-4">
                 {hasActiveSubscription && (
                   <Link
-                    href="/settings#ads"
+                    href="/ads"
                     className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
                   >
                     광고 등록
