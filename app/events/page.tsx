@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 
@@ -69,6 +69,7 @@ export default function EventsPage() {
   const [selectedRegion, setSelectedRegion] = useState('전국');
   const [selectedType, setSelectedType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const viewedAdIdsRef = useRef<Set<string>>(new Set());
 
   const supabase = createClient();
 
@@ -80,6 +81,27 @@ export default function EventsPage() {
   useEffect(() => {
     filterEvents();
   }, [events, selectedRegion, selectedType, searchQuery]);
+
+  // 광고 탭에서 "한 번만" 조회수 추적 (렌더링 중 setTimeout 생성 금지)
+  useEffect(() => {
+    if (selectedType !== 'ad') return;
+    if (!ads || ads.length === 0) return;
+
+    const idsToTrack = ads
+      .map((a) => a.id)
+      .filter((id) => id && !viewedAdIdsRef.current.has(id));
+
+    if (idsToTrack.length === 0) return;
+
+    const timer = setTimeout(() => {
+      idsToTrack.forEach((id) => {
+        viewedAdIdsRef.current.add(id);
+        trackAdView(id);
+      });
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [selectedType, ads]);
 
   const loadEvents = async () => {
     try {
@@ -161,13 +183,29 @@ export default function EventsPage() {
     }
   };
 
-  const handleAdView = async (adId: string) => {
+  const trackAdView = (adId: string) => {
     try {
-      await fetch('/api/ads/view', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ad_id: adId })
-      });
+      const payload = JSON.stringify({ ad_id: adId });
+      if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
+        try {
+          const blob = new Blob([payload], { type: 'application/json' });
+          navigator.sendBeacon('/api/ads/view', blob);
+        } catch {
+          fetch('/api/ads/view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true,
+          }).catch(() => {});
+        }
+      } else {
+        fetch('/api/ads/view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
     } catch (error) {
       console.error('광고 조회 추적 오류:', error);
     }
@@ -337,11 +375,6 @@ export default function EventsPage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {ads.map((ad) => {
-              // 광고가 화면에 나타날 때 조회수 추적
-              if (typeof window !== 'undefined') {
-                setTimeout(() => handleAdView(ad.id), 1000);
-              }
-              
               return (
                 <div
                   key={ad.id}
