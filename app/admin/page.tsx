@@ -393,6 +393,7 @@ export default function AdminPage() {
       if (response.ok && data.success) {
         const debugInfo = data.debug || {};
         const results = data.results || {};
+        const apiErrors = debugInfo.apiErrors || {};
         
         const details = `
 📊 API 응답 개수:
@@ -400,6 +401,11 @@ export default function AdminPage() {
 - Culture API (공연/전시): ${debugInfo.cultureApiCount || 0}개
 - Seoul API (서울): ${debugInfo.seoulApiCount || 0}개
 - Gyeonggi API (경기): ${debugInfo.gyeonggiApiCount || 0}개
+
+🧯 API 에러(있으면 표시):
+- Tour: ${apiErrors.tour || '없음'}
+- Culture: ${apiErrors.culture || '없음'}
+- Gyeonggi: ${apiErrors.gyeonggi || '없음'}
 
 💾 DB 저장 결과:
 - Tour: ${results.tour?.synced || 0}개 성공, ${results.tour?.skipped || 0}개 실패
