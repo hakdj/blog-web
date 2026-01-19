@@ -8,6 +8,13 @@ const ADMIN_EMAILS = ['hakdjhakdj@naver.com', 'hakdjhakdj@gmail.com'];
 
 type AdStatus = 'pending' | 'active' | 'inactive' | 'rejected' | 'all';
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: '승인 대기',
+  active: '승인됨(노출)',
+  inactive: '비활성',
+  rejected: '반려',
+};
+
 interface AdminAd {
   id: string;
   user_id: string;
@@ -244,7 +251,7 @@ export default function AdminAdsPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
-                            {ad.status}
+                            {STATUS_LABELS[ad.status] || ad.status}
                           </span>
                           {ad.user_email && (
                             <span className="text-xs text-gray-500">{ad.user_email}</span>
@@ -327,10 +334,10 @@ export default function AdminAdsPage() {
                     onChange={(e) => setEditForm((p) => ({ ...p, status: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   >
-                    <option value="pending">pending</option>
-                    <option value="active">active</option>
-                    <option value="inactive">inactive</option>
-                    <option value="rejected">rejected</option>
+                    <option value="pending">승인 대기</option>
+                    <option value="active">승인됨(노출)</option>
+                    <option value="inactive">비활성</option>
+                    <option value="rejected">반려</option>
                   </select>
                 </div>
                 <div>
