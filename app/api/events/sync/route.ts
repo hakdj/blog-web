@@ -25,10 +25,17 @@ async function syncEvents() {
   let totalSynced = 0;
   let totalSkipped = 0;
   const results: any = {};
+  const apiErrors: any = {};
 
   // 1. 한국관광공사 Tour API - 전국 축제
   console.log('📍 1/4: Tour API 축제 정보 수집 중...');
-  const festivals = await fetchCurrentFestivals();
+  let festivals: any[] = [];
+  try {
+    festivals = await fetchCurrentFestivals();
+  } catch (e) {
+    apiErrors.tour = (e as Error).message;
+    festivals = [];
+  }
   console.log(`Tour API 응답: ${festivals.length}개의 축제 데이터`);
 
     let tourSynced = 0;
@@ -85,7 +92,13 @@ async function syncEvents() {
 
     // 2. 문화체육관광부 공연전시정보 API
     console.log('📍 2/4: Culture API 공연/전시 정보 수집 중...');
-    const cultureEvents = await fetchCurrentCultureEvents();
+    let cultureEvents: any[] = [];
+    try {
+      cultureEvents = await fetchCurrentCultureEvents();
+    } catch (e) {
+      apiErrors.culture = (e as Error).message;
+      cultureEvents = [];
+    }
     console.log(`Culture API 응답: ${cultureEvents.length}개의 공연/전시 데이터`);
     let cultureSynced = 0;
     let cultureSkipped = 0;
@@ -157,7 +170,13 @@ async function syncEvents() {
 
     // 4. 경기데이터드림
     console.log('📍 4/4: Gyeonggi API 행사 정보 수집 중...');
-    const gyeonggiEvents = await fetchGyeonggiEvents();
+    let gyeonggiEvents: any[] = [];
+    try {
+      gyeonggiEvents = await fetchGyeonggiEvents();
+    } catch (e) {
+      apiErrors.gyeonggi = (e as Error).message;
+      gyeonggiEvents = [];
+    }
     console.log(`Gyeonggi API 응답: ${gyeonggiEvents.length}개의 행사 데이터`);
     let gyeonggiSynced = 0;
     let gyeonggiSkipped = 0;
@@ -213,6 +232,7 @@ async function syncEvents() {
       cultureApiCount: cultureEvents.length,
       seoulApiCount: seoulEvents.length,
       gyeonggiApiCount: gyeonggiEvents.length,
+      apiErrors,
     }
   };
 }

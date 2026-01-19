@@ -4,7 +4,22 @@
  */
 
 const CULTURE_API_KEY = process.env.CULTURE_API_KEY || process.env.NEXT_PUBLIC_CULTURE_API_KEY;
-const CULTURE_API_BASE_URL = 'http://www.culture.go.kr/openapi/rest/publicperformancedisplays';
+const CULTURE_API_BASE_URL = 'https://www.culture.go.kr/openapi/rest/publicperformancedisplays';
+
+function decodeXml(text: string) {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function getXmlTag(block: string, tag: string) {
+  const re = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`);
+  const m = block.match(re);
+  return m ? decodeXml(m[1].trim()) : '';
+}
 
 export interface CultureEvent {
   seq: string; // 공연ID
@@ -67,25 +82,60 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
       throw new Error(`Culture API 오류: ${response.status}`);
     }
 
-    const data = await response.json();
-    console.log('📦 Culture API 응답 구조:', Object.keys(data));
-    
-    const items = data?.msgBody;
-    
-    if (!items || items.length === 0) {
-      console.warn('⚠️ Culture API 응답에 이벤트가 없습니다.');
-      console.log('📦 응답 데이터:', JSON.stringify(data).substring(0, 200));
-      return [];
+    const rawText = await response.text();
+
+    // 1) JSON 시도
+    try {
+      const data = JSON.parse(rawText);
+      console.log('📦 Culture API(JSON) 응답 구조:', Object.keys(data));
+
+      const items = data?.msgBody;
+      if (!items || items.length === 0) {
+        console.warn('⚠️ Culture API(JSON) 응답에 이벤트가 없습니다.');
+        console.log('📦 응답 데이터:', rawText.substring(0, 200));
+        return [];
+      }
+
+      console.log(`✅ Culture API(JSON)에서 ${items.length}개의 원본 데이터 수신`);
+      return items;
+    } catch {
+      // 2) XML 파싱 (culture.go.kr은 XML이 기본인 경우가 많음)
+      if (!rawText.trim().startsWith('<')) {
+        console.warn('⚠️ Culture API 응답이 JSON/XML이 아님:', rawText.substring(0, 200));
+        return [];
+      }
+
+      const blocks =
+        rawText.match(/<perforList>[\s\S]*?<\/perforList>/g) ||
+        rawText.match(/<item>[\s\S]*?<\/item>/g) ||
+        [];
+
+      if (blocks.length === 0) {
+        console.warn('⚠️ Culture API(XML)에서 목록을 찾지 못했습니다.');
+        console.log('📦 XML 앞부분:', rawText.substring(0, 300));
+        return [];
+      }
+
+      const parsed: CultureEvent[] = blocks.map((b) => ({
+        seq: getXmlTag(b, 'seq') || getXmlTag(b, 'seqNo'),
+        title: getXmlTag(b, 'title'),
+        startDate: getXmlTag(b, 'startDate'),
+        endDate: getXmlTag(b, 'endDate'),
+        place: getXmlTag(b, 'place'),
+        realmName: getXmlTag(b, 'realmName'),
+        area: getXmlTag(b, 'area'),
+        thumbnail: getXmlTag(b, 'thumbnail'),
+        gpsX: getXmlTag(b, 'gpsX'),
+        gpsY: getXmlTag(b, 'gpsY'),
+      }));
+
+      const filtered = parsed.filter((x) => x.seq && x.title);
+      console.log(`✅ Culture API(XML)에서 ${filtered.length}개의 원본 데이터 수신`);
+      return filtered;
     }
-
-    console.log(`✅ Culture API에서 ${items.length}개의 원본 데이터 수신`);
-
-    console.log(`Culture API에서 ${items.length}개의 공연/전시 정보를 가져왔습니다.`);
-    
-    return items;
   } catch (error) {
     console.error('Culture API 호출 오류:', error);
-    return [];
+    throw error;
   }
 }
 

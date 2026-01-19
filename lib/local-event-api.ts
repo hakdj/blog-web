@@ -148,7 +148,11 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
     console.log('📦 Gyeonggi API 응답 구조:', Object.keys(data));
     console.log('📦 GgCultEvnt:', data?.GgCultEvnt ? 'exists' : 'missing');
     
-    const items = data?.GgCultEvnt?.[1]?.row;
+    const root = data?.GgCultEvnt;
+    const items =
+      (Array.isArray(root) ? root.find((x: any) => Array.isArray(x?.row))?.row : undefined) ||
+      root?.row ||
+      data?.row;
     
     if (!items || items.length === 0) {
       console.warn('⚠️ Gyeonggi API 응답에 이벤트가 없습니다.');
@@ -160,6 +164,7 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
 
     // 현재 진행 중이거나 예정된 이벤트만 필터링
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const currentEvents = items.filter((event: GyeonggiEvent) => {
       const endDateStr = event.END_DE;
       if (!endDateStr) return false;
@@ -177,7 +182,7 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
     return currentEvents;
   } catch (error) {
     console.error('Gyeonggi API 호출 오류:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -187,14 +192,13 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
 function parseGyeonggiDate(dateStr: string): Date {
   if (!dateStr) throw new Error('Invalid date');
   
-  // 하이픈 제거
-  const cleanDate = dateStr.replace(/-/g, '');
-  
-  if (cleanDate.length !== 8) throw new Error('Invalid date format');
-  
-  const year = parseInt(cleanDate.slice(0, 4));
-  const month = parseInt(cleanDate.slice(4, 6)) - 1; // JS Date는 0부터 시작
-  const day = parseInt(cleanDate.slice(6, 8));
+  // YYYY-MM-DD / YYYYMMDD / YYYY-MM-DD HH:mm:ss 등 대응
+  const m = dateStr.match(/(\d{4})\D?(\d{2})\D?(\d{2})/);
+  if (!m) throw new Error('Invalid date format');
+
+  const year = parseInt(m[1]);
+  const month = parseInt(m[2]) - 1;
+  const day = parseInt(m[3]);
   
   return new Date(year, month, day);
 }

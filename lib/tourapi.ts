@@ -66,11 +66,6 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
     const today = new Date();
     const eventStartDate = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
     
-    // 3개월 후까지의 이벤트 조회
-    const futureDate = new Date(today);
-    futureDate.setMonth(futureDate.getMonth() + 3);
-    const eventEndDate = futureDate.toISOString().slice(0, 10).replace(/-/g, '');
-
     const params = new URLSearchParams({
       serviceKey: TOUR_API_KEY,
       numOfRows: '100',
@@ -81,7 +76,6 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
       listYN: 'Y',
       arrange: 'A', // 제목순
       eventStartDate: eventStartDate,
-      eventEndDate: eventEndDate,
     });
 
     const url = `${TOUR_API_BASE_URL}/searchFestival1?${params.toString()}`;
@@ -126,7 +120,7 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
     return eventList;
   } catch (error) {
     console.error('Tour API 호출 오류:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -174,7 +168,7 @@ export async function fetchFestivalsByArea(areaCode: string): Promise<TourEvent[
       numOfRows: '50',
       pageNo: '1',
       MobileOS: 'ETC',
-      MobileApp: 'LaттeBanggusuk',
+      MobileApp: 'LatteBanggusuk',
       _type: 'json',
       listYN: 'Y',
       arrange: 'A',
@@ -199,7 +193,7 @@ export async function fetchFestivalsByArea(areaCode: string): Promise<TourEvent[
     return Array.isArray(items) ? items : [items];
   } catch (error) {
     console.error('Tour API 호출 오류:', error);
-    return [];
+    throw error;
   }
 }
 
