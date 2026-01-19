@@ -14,50 +14,63 @@ export default function Header() {
   const router = useRouter();
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      // Check if user has active subscription
-      if (user) {
+    let cancelled = false;
+
+    const checkSubscription = async (userId: string) => {
+      try {
         const { data: subscriptions } = await supabase
           .from('subscriptions')
-          .select('*')
-          .eq('user_id', user.id)
+          .select('id')
+          .eq('user_id', userId)
           .eq('status', 'active')
-          .gt('current_period_end', new Date().toISOString());
-        
+          .gt('current_period_end', new Date().toISOString())
+          .limit(1);
+
+        if (cancelled) return;
         setHasActiveSubscription(Boolean(subscriptions && subscriptions.length > 0));
+      } catch {
+        if (cancelled) return;
+        setHasActiveSubscription(false);
       }
-      
+    };
+
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled) return;
+
+      setUser(user);
+      // 로딩 스켈레톤은 즉시 종료 (구독조회가 느려도 UI는 정상 렌더)
       setIsLoading(false);
+
+      if (user) {
+        // 구독 체크는 백그라운드로 (await로 UI 막지 않음)
+        void checkSubscription(user.id);
+      } else {
+        setHasActiveSubscription(false);
+      }
     };
 
     getUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (cancelled) return;
+
         setUser(session?.user ?? null);
-        
-        // Check subscription when auth state changes
+        setIsLoading(false);
+
         if (session?.user) {
-          const { data: subscriptions } = await supabase
-            .from('subscriptions')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .eq('status', 'active')
-            .gt('current_period_end', new Date().toISOString());
-          
-          setHasActiveSubscription(Boolean(subscriptions && subscriptions.length > 0));
+          void checkSubscription(session.user.id);
         } else {
           setHasActiveSubscription(false);
         }
-        
-        setIsLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, [supabase.auth]);
 
   const handleLogout = async () => {
