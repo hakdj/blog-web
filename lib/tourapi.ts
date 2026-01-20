@@ -4,7 +4,8 @@
  */
 
 const TOUR_API_KEY = process.env.TOUR_API_KEY || process.env.NEXT_PUBLIC_TOUR_API_KEY;
-const TOUR_API_BASE_URL = 'https://apis.data.go.kr/B551011/KorService1';
+// 공공데이터포털 기준 Endpoint (KorService2)
+const TOUR_API_BASE_URL = 'https://apis.data.go.kr/B551011/KorService2';
 
 function formatServiceKey(key: string) {
   // data.go.kr 키는 종종 이미 %2F 같은 형태로 인코딩되어 저장됨
@@ -85,10 +86,11 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
       eventStartDate: eventStartDate,
     });
 
-    // 일부 환경에서 KorService1/searchFestival1이 500을 내는 경우가 있어 폴백을 둠
+    // 일부 환경에서 서비스 버전별 500이 발생할 수 있어 폴백을 둠
     const candidateUrls = [
       `${TOUR_API_BASE_URL}/searchFestival1?serviceKey=${serviceKey}&${params.toString()}`,
       // 구버전 서비스/엔드포인트 폴백
+      `https://apis.data.go.kr/B551011/KorService1/searchFestival1?serviceKey=${serviceKey}&${params.toString()}`,
       `https://apis.data.go.kr/B551011/KorService/searchFestival1?serviceKey=${serviceKey}&${params.toString()}`,
       `https://apis.data.go.kr/B551011/KorService/searchFestival?serviceKey=${serviceKey}&${params.toString()}`,
     ];

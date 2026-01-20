@@ -1,10 +1,10 @@
 /**
- * 문화체육관광부 공연전시정보 조회 API
- * https://www.culture.go.kr/data
+ * 전국 박물관 미술관-공연행사 (KCISA)
+ * https://api.kcisa.kr/openapi/API_CNV_066/request
  */
 
 const CULTURE_API_KEY = process.env.CULTURE_API_KEY || process.env.NEXT_PUBLIC_CULTURE_API_KEY;
-const CULTURE_API_BASE_URL = 'https://www.culture.go.kr/openapi/rest/publicperformancedisplays';
+const CULTURE_API_BASE_URL = 'https://api.kcisa.kr/openapi/API_CNV_066/request';
 
 function decodeXml(text: string) {
   return text
@@ -22,16 +22,24 @@ function getXmlTag(block: string, tag: string) {
 }
 
 export interface CultureEvent {
-  seq: string; // 공연ID
-  title: string; // 공연명
-  startDate: string; // 공연시작일
-  endDate: string; // 공연종료일
-  place: string; // 공연장소
-  realmName: string; // 장르
-  area: string; // 지역
-  thumbnail: string; // 썸네일
-  gpsX: string; // GPS X좌표
-  gpsY: string; // GPS Y좌표
+  museumNm?: string; // 박물관/미술관명
+  museumRoadNmAddr?: string; // 박물관 도로명주소
+  museumOperHmpgAddr?: string; // 박물관 홈페이지
+  museumOperInstTelno?: string; // 박물관 운영기관 연락처
+  museumMngInstTelno?: string; // 박물관 관리기관 연락처
+  museumInfo?: string; // 박물관 정보
+  museumSubInfo?: string; // 박물관 부가정보
+  museumDataCtrlDt?: string; // 박물관 데이터기준일
+  evntNm?: string; // 공연행사명
+  evntPlcNm?: string; // 공연행사장소
+  evntInfo?: string; // 공연행사정보 (기간 포함)
+  evntSubInfo?: string; // 공연행사부가정보
+  evntHmpgAddr?: string; // 공연행사홈페이지
+  evntTelno?: string; // 공연행사전화번호
+  evntRoadNmAddr?: string; // 공연행사도로명주소
+  evntLatPos?: string; // 공연행사위도
+  evntLotPos?: string; // 공연행사경도
+  evntDataCrtlDt?: string; // 공연행사데이터기준일
 }
 
 /**
@@ -43,28 +51,18 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
     throw new Error('Culture API Key가 설정되지 않았습니다. (CULTURE_API_KEY 또는 NEXT_PUBLIC_CULTURE_API_KEY)');
   }
 
-  console.log('🔑 Culture API Key 확인: ', CULTURE_API_KEY ? '설정됨' : '없음');
+  console.log('🔑 Culture(KCISA) API Key 확인: ', CULTURE_API_KEY ? '설정됨' : '없음');
 
   try {
-    const today = new Date();
-    const from = today.toISOString().slice(0, 10).replace(/-/g, '');
-    
-    const futureDate = new Date(today);
-    futureDate.setMonth(futureDate.getMonth() + 3);
-    const to = futureDate.toISOString().slice(0, 10).replace(/-/g, '');
-
     const params = new URLSearchParams({
       serviceKey: CULTURE_API_KEY,
-      rows: '100',
-      cPage: '1',
-      from: from,
-      to: to,
-      sortStdr: '1', // 등록일순
+      numOfRows: '100',
+      pageNo: '1',
     });
 
-    const url = `${CULTURE_API_BASE_URL}/period?${params.toString()}`;
+    const url = `${CULTURE_API_BASE_URL}?${params.toString()}`;
     
-    console.log('🔍 Culture API 요청 URL 생성 완료');
+    console.log('🔍 Culture(KCISA) API 요청 URL 생성 완료');
 
     const response = await fetch(url, {
       method: 'GET',
@@ -73,7 +71,7 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
       },
     });
 
-    console.log('📡 Culture API 응답 상태:', response.status);
+    console.log('📡 Culture(KCISA) API 응답 상태:', response.status);
 
     if (!response.ok) {
       console.error(`❌ Culture API HTTP 오류: ${response.status}`);
@@ -93,22 +91,23 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
         const data = JSON.parse(rawText);
         console.log('📦 Culture API(JSON) 응답 구조:', Object.keys(data));
 
-        const header = data?.msgHeader || data?.header || data?.response?.header;
+        const header = data?.response?.header || data?.header || data?.msgHeader;
         const code = header?.resultCode || header?.code;
         const msg = header?.resultMsg || header?.message;
         if (code && code !== '0000') {
           throw new Error(`Culture API 오류: resultCode=${code} ${msg || ''}`.trim());
         }
 
-        const items = data?.msgBody;
-        if (!items || items.length === 0) {
+        const items = data?.response?.body?.items?.item;
+        const list = Array.isArray(items) ? items : items ? [items] : [];
+        if (list.length === 0) {
           console.warn('⚠️ Culture API(JSON) 응답에 이벤트가 없습니다.');
           console.log('📦 응답 데이터:', rawText.substring(0, 200));
           return [];
         }
 
-        console.log(`✅ Culture API(JSON)에서 ${items.length}개의 원본 데이터 수신`);
-        return items;
+        console.log(`✅ Culture API(JSON)에서 ${list.length}개의 원본 데이터 수신`);
+        return list;
       } catch (e) {
         // JSON도 아니고 XML도 아니면(HTML/텍스트 등) => 실제 오류 응답일 가능성이 높아서 에러로 올림
         const snippet = trimmed.substring(0, 200);
@@ -118,48 +117,54 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
       }
     }
 
-    // 2) XML 파싱 (culture.go.kr은 XML이 기본인 경우가 많음)
+    // 2) XML 파싱 (KCISA는 XML도 제공)
 
-      // culture.go.kr이 인증/오류 시 HTML 에러 페이지를 200으로 내려주는 경우가 있음
-      if (/<!doctype\s+html/i.test(trimmed) || /<html[\s>]/i.test(trimmed)) {
-        const title = (trimmed.match(/<title>(.*?)<\/title>/i) || [])[1] || 'HTML';
-        const snippet = trimmed.replace(/\s+/g, ' ').slice(0, 200);
-        throw new Error(`Culture API 오류: HTML 에러페이지 응답 (${title}) - ${snippet}`);
-      }
+    if (/<!doctype\s+html/i.test(trimmed) || /<html[\s>]/i.test(trimmed)) {
+      const title = (trimmed.match(/<title>(.*?)<\/title>/i) || [])[1] || 'HTML';
+      const snippet = trimmed.replace(/\s+/g, ' ').slice(0, 200);
+      throw new Error(`Culture API 오류: HTML 에러페이지 응답 (${title}) - ${snippet}`);
+    }
 
-      const headerCode = getXmlTag(rawText, 'resultCode');
-      const headerMsg = getXmlTag(rawText, 'resultMsg');
-      if (headerCode && headerCode !== '0000') {
-        throw new Error(`Culture API 오류: resultCode=${headerCode} ${headerMsg || ''}`.trim());
-      }
+    const headerCode = getXmlTag(rawText, 'resultCode');
+    const headerMsg = getXmlTag(rawText, 'resultMsg');
+    if (headerCode && headerCode !== '0000') {
+      throw new Error(`Culture API 오류: resultCode=${headerCode} ${headerMsg || ''}`.trim());
+    }
 
-      const blocks =
-        rawText.match(/<perforList>[\s\S]*?<\/perforList>/g) ||
-        rawText.match(/<item>[\s\S]*?<\/item>/g) ||
-        [];
+    const blocks =
+      rawText.match(/<item>[\s\S]*?<\/item>/g) ||
+      [];
 
-      if (blocks.length === 0) {
-        console.warn('⚠️ Culture API(XML)에서 목록을 찾지 못했습니다.');
-        console.log('📦 XML 앞부분:', rawText.substring(0, 300));
-        return [];
-      }
+    if (blocks.length === 0) {
+      console.warn('⚠️ Culture API(XML)에서 목록을 찾지 못했습니다.');
+      console.log('📦 XML 앞부분:', rawText.substring(0, 300));
+      return [];
+    }
 
-      const parsed: CultureEvent[] = blocks.map((b) => ({
-        seq: getXmlTag(b, 'seq') || getXmlTag(b, 'seqNo'),
-        title: getXmlTag(b, 'title'),
-        startDate: getXmlTag(b, 'startDate'),
-        endDate: getXmlTag(b, 'endDate'),
-        place: getXmlTag(b, 'place'),
-        realmName: getXmlTag(b, 'realmName'),
-        area: getXmlTag(b, 'area'),
-        thumbnail: getXmlTag(b, 'thumbnail'),
-        gpsX: getXmlTag(b, 'gpsX'),
-        gpsY: getXmlTag(b, 'gpsY'),
-      }));
+    const parsed: CultureEvent[] = blocks.map((b) => ({
+      museumNm: getXmlTag(b, 'museumNm'),
+      museumRoadNmAddr: getXmlTag(b, 'museumRoadNmAddr'),
+      museumOperHmpgAddr: getXmlTag(b, 'museumOperHmpgAddr'),
+      museumOperInstTelno: getXmlTag(b, 'museumOperInstTelno'),
+      museumMngInstTelno: getXmlTag(b, 'museumMngInstTelno'),
+      museumInfo: getXmlTag(b, 'museumInfo'),
+      museumSubInfo: getXmlTag(b, 'museumSubInfo'),
+      museumDataCtrlDt: getXmlTag(b, 'museumDataCtrlDt'),
+      evntNm: getXmlTag(b, 'evntNm'),
+      evntPlcNm: getXmlTag(b, 'evntPlcNm'),
+      evntInfo: getXmlTag(b, 'evntInfo'),
+      evntSubInfo: getXmlTag(b, 'evntSubInfo'),
+      evntHmpgAddr: getXmlTag(b, 'evntHmpgAddr'),
+      evntTelno: getXmlTag(b, 'evntTelno'),
+      evntRoadNmAddr: getXmlTag(b, 'evntRoadNmAddr'),
+      evntLatPos: getXmlTag(b, 'evntLatPos'),
+      evntLotPos: getXmlTag(b, 'evntLotPos'),
+      evntDataCrtlDt: getXmlTag(b, 'evntDataCrtlDt'),
+    }));
 
-      const filtered = parsed.filter((x) => x.seq && x.title);
-      console.log(`✅ Culture API(XML)에서 ${filtered.length}개의 원본 데이터 수신`);
-      return filtered;
+    const filtered = parsed.filter((x) => x.evntNm || x.museumNm);
+    console.log(`✅ Culture API(XML)에서 ${filtered.length}개의 원본 데이터 수신`);
+    return filtered;
   } catch (error) {
     console.error('Culture API 호출 오류:', error);
     throw error;
@@ -170,22 +175,41 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
  * Culture API 이벤트를 DB 형식으로 변환
  */
 export function convertCultureEventToDbFormat(cultureEvent: CultureEvent) {
-  const formatDate = (dateStr: string) => {
-    if (!dateStr || dateStr.length !== 8) return '';
-    return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
+  const parseEventDates = (info?: string) => {
+    if (!info) return { start: '', end: '' };
+    const m = info.match(/(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})/);
+    if (m) return { start: m[1], end: m[2] };
+    const single = info.match(/(\d{4}-\d{2}-\d{2})/);
+    if (single) return { start: single[1], end: single[1] };
+    return { start: '', end: '' };
   };
 
+  const regionFromAddress = (addr?: string) => {
+    if (!addr) return '전국';
+    const token = addr.split(' ')[0];
+    return token || '전국';
+  };
+
+  const dates = parseEventDates(cultureEvent.evntInfo);
+  const fallbackDate = cultureEvent.evntDataCrtlDt || cultureEvent.museumDataCtrlDt || '';
+
   return {
-    title: cultureEvent.title,
-    description: `${cultureEvent.realmName} - ${cultureEvent.place}`,
+    title: cultureEvent.evntNm || cultureEvent.museumNm || '행사 정보',
+    description: [cultureEvent.evntInfo, cultureEvent.evntSubInfo, cultureEvent.museumInfo, cultureEvent.museumSubInfo]
+      .filter(Boolean)
+      .join('\n'),
     event_type: 'local_feature' as const,
-    region: cultureEvent.area || '서울',
-    location: cultureEvent.place,
-    start_date: formatDate(cultureEvent.startDate),
-    end_date: formatDate(cultureEvent.endDate),
-    image_url: cultureEvent.thumbnail || null,
-    link_url: `http://www.culture.go.kr/festival/festival.do?seq=${cultureEvent.seq}`,
-    contact_info: null,
+    region: regionFromAddress(cultureEvent.evntRoadNmAddr || cultureEvent.museumRoadNmAddr),
+    location: cultureEvent.evntRoadNmAddr || cultureEvent.museumRoadNmAddr || cultureEvent.evntPlcNm || '',
+    start_date: dates.start || fallbackDate,
+    end_date: dates.end || fallbackDate,
+    image_url: null,
+    link_url: cultureEvent.evntHmpgAddr || cultureEvent.museumOperHmpgAddr || null,
+    contact_info:
+      cultureEvent.evntTelno ||
+      cultureEvent.museumOperInstTelno ||
+      cultureEvent.museumMngInstTelno ||
+      null,
     is_featured: false,
     is_active: true,
   };
