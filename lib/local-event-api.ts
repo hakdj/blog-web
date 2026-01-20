@@ -141,7 +141,7 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
       console.error(`❌ Gyeonggi API HTTP 오류: ${response.status}`);
       const errorText = await response.text();
       console.error('오류 내용:', errorText.substring(0, 200));
-      throw new Error(`Gyeonggi API 오류: ${response.status}`);
+      throw new Error(`Gyeonggi API 오류: ${response.status} - ${errorText.substring(0, 200)}`);
     }
 
     const data = await response.json();
@@ -149,6 +149,14 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
     console.log('📦 GgCultEvnt:', data?.GgCultEvnt ? 'exists' : 'missing');
     
     const root = data?.GgCultEvnt;
+    // 경기 오픈API는 head/row 구조로 결과코드를 담는 경우가 많음
+    if (Array.isArray(root) && root[0]?.head?.[1]?.RESULT?.CODE) {
+      const code = root[0].head[1].RESULT.CODE;
+      const msg = root[0].head[1].RESULT.MESSAGE;
+      if (code && code !== 'INFO-000') {
+        throw new Error(`Gyeonggi API 오류: ${code} ${msg || ''}`.trim());
+      }
+    }
     const items =
       (Array.isArray(root) ? root.find((x: any) => Array.isArray(x?.row))?.row : undefined) ||
       root?.row ||

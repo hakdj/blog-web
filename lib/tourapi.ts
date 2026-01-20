@@ -6,6 +6,13 @@
 const TOUR_API_KEY = process.env.TOUR_API_KEY || process.env.NEXT_PUBLIC_TOUR_API_KEY;
 const TOUR_API_BASE_URL = 'https://apis.data.go.kr/B551011/KorService1';
 
+function formatServiceKey(key: string) {
+  // data.go.kr 키는 종종 이미 %2F 같은 형태로 인코딩되어 저장됨
+  // URLSearchParams로 다시 인코딩하면 %가 %25로 변해 인증 실패 가능
+  const alreadyEncoded = key.includes('%');
+  return alreadyEncoded ? key : encodeURIComponent(key);
+}
+
 export interface TourEvent {
   title: string;
   addr1: string; // 주소
@@ -66,8 +73,8 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
     const today = new Date();
     const eventStartDate = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
     
+    const serviceKey = formatServiceKey(TOUR_API_KEY);
     const params = new URLSearchParams({
-      serviceKey: TOUR_API_KEY,
       numOfRows: '100',
       pageNo: '1',
       MobileOS: 'ETC',
@@ -78,7 +85,7 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
       eventStartDate: eventStartDate,
     });
 
-    const url = `${TOUR_API_BASE_URL}/searchFestival1?${params.toString()}`;
+    const url = `${TOUR_API_BASE_URL}/searchFestival1?serviceKey=${serviceKey}&${params.toString()}`;
     
     console.log('🔍 Tour API 요청 URL 생성 완료');
 
@@ -95,11 +102,17 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
       console.error(`❌ Tour API HTTP 오류: ${response.status}`);
       const errorText = await response.text();
       console.error('오류 내용:', errorText.substring(0, 200));
-      throw new Error(`Tour API 오류: ${response.status}`);
+      throw new Error(`Tour API 오류: ${response.status} - ${errorText.substring(0, 200)}`);
     }
 
     const data = await response.json();
     console.log('📦 Tour API 응답 구조:', Object.keys(data));
+
+    const resultCode = data?.response?.header?.resultCode;
+    const resultMsg = data?.response?.header?.resultMsg;
+    if (resultCode && resultCode !== '0000') {
+      throw new Error(`Tour API 오류: resultCode=${resultCode} ${resultMsg || ''}`.trim());
+    }
     
     // API 응답 구조 확인
     const items = data?.response?.body?.items?.item;

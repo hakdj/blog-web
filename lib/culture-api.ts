@@ -89,6 +89,13 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
       const data = JSON.parse(rawText);
       console.log('📦 Culture API(JSON) 응답 구조:', Object.keys(data));
 
+      const header = data?.msgHeader || data?.header || data?.response?.header;
+      const code = header?.resultCode || header?.code;
+      const msg = header?.resultMsg || header?.message;
+      if (code && code !== '0000') {
+        throw new Error(`Culture API 오류: resultCode=${code} ${msg || ''}`.trim());
+      }
+
       const items = data?.msgBody;
       if (!items || items.length === 0) {
         console.warn('⚠️ Culture API(JSON) 응답에 이벤트가 없습니다.');
@@ -103,6 +110,12 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
       if (!rawText.trim().startsWith('<')) {
         console.warn('⚠️ Culture API 응답이 JSON/XML이 아님:', rawText.substring(0, 200));
         return [];
+      }
+
+      const headerCode = getXmlTag(rawText, 'resultCode');
+      const headerMsg = getXmlTag(rawText, 'resultMsg');
+      if (headerCode && headerCode !== '0000') {
+        throw new Error(`Culture API 오류: resultCode=${headerCode} ${headerMsg || ''}`.trim());
       }
 
       const blocks =
