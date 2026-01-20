@@ -99,24 +99,28 @@ export function convertSeoulEventToDbFormat(seoulEvent: SeoulEvent) {
 
 /**
  * 경기도 문화행사 정보 API
+ *
+ * 기존 openapi.gg.go.kr 서비스명은 ERROR-310(서비스 없음) 응답이 발생할 수 있어
+ * 경기문화재단 지지씨(ggc.ggcf.kr) OpenAPI(playongoing)로 연동합니다.
  */
 const GYEONGGI_API_KEY = process.env.GYEONGGI_API_KEY || process.env.NEXT_PUBLIC_GYEONGGI_API_KEY;
+const GYEONGGI_GGC_BASE_URL = 'https://ggc.ggcf.kr/open/json/playongoing';
 
 export interface GyeonggiEvent {
-  INST_NM?: string; // 기관명
-  TITLE_NM?: string; // 제목
-  CLASS_NM?: string; // 분류명
-  ADDR?: string; // 주소
-  TM?: string; // 시간
-  EXPN?: string; // 비용
-  TELNO?: string; // 문의할 연락처
-  MNGT_NM?: string; // 주최 주관
-  HMPG_NM?: string; // 홈페이지
-  PARTCPTN_WRITR_NM?: string; // 참여작가
-  IMAGE_URL_NM?: string; // 이미지 URL
-  BGNG_DE?: string; // 시작일
-  END_DE?: string; // 종료일
-  URL_NM?: string; // 자세히 보기 URL
+  INST_NM?: string; // 기관명(writer)
+  TITLE_NM?: string; // 제목(subject)
+  CLASS_NM?: string; // 분류명(category)
+  ADDR?: string; // 주소(address)
+  TM?: string; // 시간(intime)
+  EXPN?: string; // 비용(incost)
+  TELNO?: string; // 문의(inquiry)
+  MNGT_NM?: string; // 주최/주관(inarea)
+  HMPG_NM?: string; // 홈페이지(homepage)
+  PARTCPTN_WRITR_NM?: string; // 참여작가/기타(members)
+  IMAGE_URL_NM?: string; // 이미지 URL(thumbnail)
+  BGNG_DE?: string; // 시작일(startdate)
+  END_DE?: string; // 종료일(enddate)
+  URL_NM?: string; // 자세히 보기 URL(href)
 }
 
 export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
@@ -126,41 +130,31 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
   }
 
   try {
-    const url = `https://openapi.gg.go.kr/GgCultEvnt?KEY=${GYEONGGI_API_KEY}&Type=json&pIndex=1&pSize=100`;
-    
-    console.log('🔍 Gyeonggi API 요청:', url.replace(GYEONGGI_API_KEY, 'API_KEY_HIDDEN'));
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
+    const params = new URLSearchParams({
+      KEY: GYEONGGI_API_KEY,
+      page: '0',
+      perpage: '100',
     });
 
+    const url = `${GYEONGGI_GGC_BASE_URL}?${params.toString()}`;
+    console.log('🔍 Gyeonggi(GGC) API 요청:', url.replace(GYEONGGI_API_KEY, 'API_KEY_HIDDEN'));
+
+    const response = await fetch(url, { method: 'GET' });
+
     if (!response.ok) {
-      console.error(`❌ Gyeonggi API HTTP 오류: ${response.status}`);
       const errorText = await response.text();
-      console.error('오류 내용:', errorText.substring(0, 200));
-      throw new Error(`Gyeonggi API 오류: ${response.status} - ${errorText.substring(0, 200)}`);
+      throw new Error(`Gyeonggi(GGC) API 오류: ${response.status} - ${errorText.substring(0, 200)}`);
     }
 
     const data = await response.json();
-    console.log('📦 Gyeonggi API 응답 구조:', Object.keys(data));
-    console.log('📦 GgCultEvnt:', data?.GgCultEvnt ? 'exists' : 'missing');
-    
-    const root = data?.GgCultEvnt;
-    // 경기 오픈API는 head/row 구조로 결과코드를 담는 경우가 많음
-    if (Array.isArray(root) && root[0]?.head?.[1]?.RESULT?.CODE) {
-      const code = root[0].head[1].RESULT.CODE;
-      const msg = root[0].head[1].RESULT.MESSAGE;
-      if (code && code !== 'INFO-000') {
-        throw new Error(`Gyeonggi API 오류: ${code} ${msg || ''}`.trim());
-      }
+    const info = data?.INFO;
+    if (typeof info !== 'undefined' && info !== 0) {
+      // INFO: 0 정상
+      throw new Error(`Gyeonggi(GGC) API 오류: INFO=${info}`);
     }
-    const items =
-      (Array.isArray(root) ? root.find((x: any) => Array.isArray(x?.row))?.row : undefined) ||
-      root?.row ||
-      data?.row;
+
+    const rows = data?.DATA;
+    const items = Array.isArray(rows) ? rows : [];
     
     if (!items || items.length === 0) {
       console.warn('⚠️ Gyeonggi API 응답에 이벤트가 없습니다.');
@@ -168,13 +162,31 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
       return [];
     }
 
-    console.log(`✅ Gyeonggi API에서 ${items.length}개의 원본 데이터 수신`);
+    console.log(`✅ Gyeonggi(GGC) API에서 ${items.length}개의 원본 데이터 수신`);
 
     // 현재 진행 중이거나 예정된 이벤트만 필터링
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const currentEvents = items.filter((event: GyeonggiEvent) => {
-      const endDateStr = event.END_DE;
+    const currentEvents = items
+      .map((row: any): GyeonggiEvent => ({
+        INST_NM: row.writer,
+        TITLE_NM: row.subject,
+        CLASS_NM: row.category,
+        ADDR: row.address,
+        TM: row.intime,
+        EXPN: row.incost,
+        TELNO: row.inquiry,
+        MNGT_NM: row.inarea,
+        HMPG_NM: row.homepage,
+        PARTCPTN_WRITR_NM: row.members,
+        IMAGE_URL_NM: row.thumbnail,
+        BGNG_DE: row.startdate,
+        // enddate 키가 'enddate:' 로 올 수도 있어 방어
+        END_DE: row.enddate || row['enddate:'],
+        URL_NM: row.href,
+      }))
+      .filter((event: GyeonggiEvent) => {
+        const endDateStr = event.END_DE;
       if (!endDateStr) return false;
       
       try {
@@ -183,7 +195,7 @@ export async function fetchGyeonggiEvents(): Promise<GyeonggiEvent[]> {
       } catch {
         return false;
       }
-    });
+      });
 
     console.log(`Gyeonggi API에서 ${currentEvents.length}개의 행사 정보를 가져왔습니다.`);
     
