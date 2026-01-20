@@ -84,33 +84,41 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
 
     const rawText = await response.text();
 
+    const trimmed = rawText.trim();
+    const looksLikeXml = trimmed.startsWith('<');
+
     // 1) JSON 시도
-    try {
-      const data = JSON.parse(rawText);
-      console.log('📦 Culture API(JSON) 응답 구조:', Object.keys(data));
+    if (!looksLikeXml) {
+      try {
+        const data = JSON.parse(rawText);
+        console.log('📦 Culture API(JSON) 응답 구조:', Object.keys(data));
 
-      const header = data?.msgHeader || data?.header || data?.response?.header;
-      const code = header?.resultCode || header?.code;
-      const msg = header?.resultMsg || header?.message;
-      if (code && code !== '0000') {
-        throw new Error(`Culture API 오류: resultCode=${code} ${msg || ''}`.trim());
-      }
+        const header = data?.msgHeader || data?.header || data?.response?.header;
+        const code = header?.resultCode || header?.code;
+        const msg = header?.resultMsg || header?.message;
+        if (code && code !== '0000') {
+          throw new Error(`Culture API 오류: resultCode=${code} ${msg || ''}`.trim());
+        }
 
-      const items = data?.msgBody;
-      if (!items || items.length === 0) {
-        console.warn('⚠️ Culture API(JSON) 응답에 이벤트가 없습니다.');
-        console.log('📦 응답 데이터:', rawText.substring(0, 200));
-        return [];
-      }
+        const items = data?.msgBody;
+        if (!items || items.length === 0) {
+          console.warn('⚠️ Culture API(JSON) 응답에 이벤트가 없습니다.');
+          console.log('📦 응답 데이터:', rawText.substring(0, 200));
+          return [];
+        }
 
-      console.log(`✅ Culture API(JSON)에서 ${items.length}개의 원본 데이터 수신`);
-      return items;
-    } catch {
-      // 2) XML 파싱 (culture.go.kr은 XML이 기본인 경우가 많음)
-      if (!rawText.trim().startsWith('<')) {
-        console.warn('⚠️ Culture API 응답이 JSON/XML이 아님:', rawText.substring(0, 200));
-        return [];
+        console.log(`✅ Culture API(JSON)에서 ${items.length}개의 원본 데이터 수신`);
+        return items;
+      } catch (e) {
+        // JSON도 아니고 XML도 아니면(HTML/텍스트 등) => 실제 오류 응답일 가능성이 높아서 에러로 올림
+        const snippet = trimmed.substring(0, 200);
+        throw new Error(
+          `Culture API 오류: 알 수 없는 응답 형식 (키/권한/서버 응답 확인 필요) - ${snippet}`.trim()
+        );
       }
+    }
+
+    // 2) XML 파싱 (culture.go.kr은 XML이 기본인 경우가 많음)
 
       const headerCode = getXmlTag(rawText, 'resultCode');
       const headerMsg = getXmlTag(rawText, 'resultMsg');
@@ -145,7 +153,6 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
       const filtered = parsed.filter((x) => x.seq && x.title);
       console.log(`✅ Culture API(XML)에서 ${filtered.length}개의 원본 데이터 수신`);
       return filtered;
-    }
   } catch (error) {
     console.error('Culture API 호출 오류:', error);
     throw error;
