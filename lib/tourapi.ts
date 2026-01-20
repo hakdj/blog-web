@@ -65,8 +65,8 @@ function formatDate(dateStr: string): string {
  */
 export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
   if (!TOUR_API_KEY) {
-    console.error('Tour API Key가 설정되지 않았습니다.');
-    return [];
+    // 동기화 화면에서 원인을 바로 보이게 하기 위해 "조용히 0건"으로 끝내지 않음
+    throw new Error('Tour API Key가 설정되지 않았습니다. (TOUR_API_KEY 또는 NEXT_PUBLIC_TOUR_API_KEY)');
   }
 
   try {
@@ -85,52 +85,64 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
       eventStartDate: eventStartDate,
     });
 
-    const url = `${TOUR_API_BASE_URL}/searchFestival1?serviceKey=${serviceKey}&${params.toString()}`;
+    // 일부 환경에서 KorService1/searchFestival1이 500을 내는 경우가 있어 폴백을 둠
+    const candidateUrls = [
+      `${TOUR_API_BASE_URL}/searchFestival1?serviceKey=${serviceKey}&${params.toString()}`,
+      // 구버전 서비스/엔드포인트 폴백
+      `https://apis.data.go.kr/B551011/KorService/searchFestival1?serviceKey=${serviceKey}&${params.toString()}`,
+      `https://apis.data.go.kr/B551011/KorService/searchFestival?serviceKey=${serviceKey}&${params.toString()}`,
+    ];
+
+    let lastError: string | null = null;
+    for (const url of candidateUrls) {
+      console.log('🔍 Tour API 요청 URL 생성 완료');
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      console.log('📡 Tour API 응답 상태:', response.status);
+
+      // 500 등 비정상은 다음 후보로 폴백
+      if (!response.ok) {
+        const errorText = await response.text();
+        lastError = `Tour API 오류: ${response.status} - ${errorText.substring(0, 200)}`.trim();
+        continue;
+      }
+
+      const data = await response.json();
+      console.log('📦 Tour API 응답 구조:', Object.keys(data));
+
+      const resultCode = data?.response?.header?.resultCode;
+      const resultMsg = data?.response?.header?.resultMsg;
+      if (resultCode && resultCode !== '0000') {
+        lastError = `Tour API 오류: resultCode=${resultCode} ${resultMsg || ''}`.trim();
+        continue;
+      }
+
+      // API 응답 구조 확인
+      const items = data?.response?.body?.items?.item;
     
-    console.log('🔍 Tour API 요청 URL 생성 완료');
+      if (!items) {
+        // 정상 응답인데 items가 비어있으면 그건 "0건"이므로 여기서 종료
+        console.warn('⚠️ Tour API 응답에 이벤트가 없습니다.');
+        console.log('📦 응답 body:', data?.response?.body);
+        return [];
+      }
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
+      console.log(`✅ Tour API에서 ${Array.isArray(items) ? items.length : 1}개의 원본 데이터 수신`);
 
-    console.log('📡 Tour API 응답 상태:', response.status);
+      // 배열이 아닌 경우 배열로 변환
+      const eventList = Array.isArray(items) ? items : [items];
 
-    if (!response.ok) {
-      console.error(`❌ Tour API HTTP 오류: ${response.status}`);
-      const errorText = await response.text();
-      console.error('오류 내용:', errorText.substring(0, 200));
-      throw new Error(`Tour API 오류: ${response.status} - ${errorText.substring(0, 200)}`);
+      console.log(`Tour API에서 ${eventList.length}개의 축제 정보를 가져왔습니다.`);
+      return eventList;
     }
 
-    const data = await response.json();
-    console.log('📦 Tour API 응답 구조:', Object.keys(data));
-
-    const resultCode = data?.response?.header?.resultCode;
-    const resultMsg = data?.response?.header?.resultMsg;
-    if (resultCode && resultCode !== '0000') {
-      throw new Error(`Tour API 오류: resultCode=${resultCode} ${resultMsg || ''}`.trim());
-    }
-    
-    // API 응답 구조 확인
-    const items = data?.response?.body?.items?.item;
-    
-    if (!items) {
-      console.warn('⚠️ Tour API 응답에 이벤트가 없습니다.');
-      console.log('📦 응답 body:', data?.response?.body);
-      return [];
-    }
-
-    console.log(`✅ Tour API에서 ${Array.isArray(items) ? items.length : 1}개의 원본 데이터 수신`);
-
-    // 배열이 아닌 경우 배열로 변환
-    const eventList = Array.isArray(items) ? items : [items];
-    
-    console.log(`Tour API에서 ${eventList.length}개의 축제 정보를 가져왔습니다.`);
-    
-    return eventList;
+    throw new Error(lastError || 'Tour API 오류: 알 수 없는 오류');
   } catch (error) {
     console.error('Tour API 호출 오류:', error);
     throw error;
@@ -164,8 +176,7 @@ export function convertTourEventToDbFormat(tourEvent: TourEvent) {
  */
 export async function fetchFestivalsByArea(areaCode: string): Promise<TourEvent[]> {
   if (!TOUR_API_KEY) {
-    console.error('Tour API Key가 설정되지 않았습니다.');
-    return [];
+    throw new Error('Tour API Key가 설정되지 않았습니다. (TOUR_API_KEY 또는 NEXT_PUBLIC_TOUR_API_KEY)');
   }
 
   try {
@@ -176,8 +187,8 @@ export async function fetchFestivalsByArea(areaCode: string): Promise<TourEvent[
     futureDate.setMonth(futureDate.getMonth() + 3);
     const eventEndDate = futureDate.toISOString().slice(0, 10).replace(/-/g, '');
 
+    const serviceKey = formatServiceKey(TOUR_API_KEY);
     const params = new URLSearchParams({
-      serviceKey: TOUR_API_KEY,
       numOfRows: '50',
       pageNo: '1',
       MobileOS: 'ETC',
@@ -190,7 +201,7 @@ export async function fetchFestivalsByArea(areaCode: string): Promise<TourEvent[
       eventEndDate: eventEndDate,
     });
 
-    const url = `${TOUR_API_BASE_URL}/searchFestival1?${params.toString()}`;
+    const url = `${TOUR_API_BASE_URL}/searchFestival1?serviceKey=${serviceKey}&${params.toString()}`;
     
     const response = await fetch(url);
 

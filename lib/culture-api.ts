@@ -39,8 +39,8 @@ export interface CultureEvent {
  */
 export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
   if (!CULTURE_API_KEY) {
-    console.error('❌ Culture API Key가 설정되지 않았습니다.');
-    return [];
+    // 동기화 화면에서 원인을 바로 보이게 하기 위해 "조용히 0건"으로 끝내지 않음
+    throw new Error('Culture API Key가 설정되지 않았습니다. (CULTURE_API_KEY 또는 NEXT_PUBLIC_CULTURE_API_KEY)');
   }
 
   console.log('🔑 Culture API Key 확인: ', CULTURE_API_KEY ? '설정됨' : '없음');
@@ -119,6 +119,13 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
     }
 
     // 2) XML 파싱 (culture.go.kr은 XML이 기본인 경우가 많음)
+
+      // culture.go.kr이 인증/오류 시 HTML 에러 페이지를 200으로 내려주는 경우가 있음
+      if (/<!doctype\s+html/i.test(trimmed) || /<html[\s>]/i.test(trimmed)) {
+        const title = (trimmed.match(/<title>(.*?)<\/title>/i) || [])[1] || 'HTML';
+        const snippet = trimmed.replace(/\s+/g, ' ').slice(0, 200);
+        throw new Error(`Culture API 오류: HTML 에러페이지 응답 (${title}) - ${snippet}`);
+      }
 
       const headerCode = getXmlTag(rawText, 'resultCode');
       const headerMsg = getXmlTag(rawText, 'resultMsg');
