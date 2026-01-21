@@ -54,43 +54,40 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
   console.log('🔑 Culture(KCISA) API Key 확인: ', CULTURE_API_KEY ? '설정됨' : '없음');
 
   try {
-    const params = new URLSearchParams({
-      serviceKey: CULTURE_API_KEY,
-      numOfRows: '100',
-      pageNo: '1',
-    });
+    const PAGE_SIZE = 1000;
 
-    const url = `${CULTURE_API_BASE_URL}?${params.toString()}`;
-    
-    console.log('🔍 Culture(KCISA) API 요청 URL 생성 완료');
+    const fetchPage = async (pageNo: number) => {
+      const params = new URLSearchParams({
+        serviceKey: CULTURE_API_KEY,
+        numOfRows: String(PAGE_SIZE),
+        pageNo: String(pageNo),
+      });
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
+      const url = `${CULTURE_API_BASE_URL}?${params.toString()}`;
+      console.log(`🔍 Culture(KCISA) API 요청 URL 생성 완료 (page ${pageNo})`);
 
-    console.log('📡 Culture(KCISA) API 응답 상태:', response.status);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
 
-    if (!response.ok) {
-      console.error(`❌ Culture API HTTP 오류: ${response.status}`);
-      const errorText = await response.text();
-      console.error('오류 내용:', errorText.substring(0, 200));
-      throw new Error(`Culture API 오류: ${response.status}`);
-    }
+      console.log('📡 Culture(KCISA) API 응답 상태:', response.status);
 
-    const rawText = await response.text();
+      if (!response.ok) {
+        console.error(`❌ Culture API HTTP 오류: ${response.status}`);
+        const errorText = await response.text();
+        console.error('오류 내용:', errorText.substring(0, 200));
+        throw new Error(`Culture API 오류: ${response.status}`);
+      }
 
-    const trimmed = rawText.trim();
-    const looksLikeXml = trimmed.startsWith('<');
+      const rawText = await response.text();
+      const trimmed = rawText.trim();
+      const looksLikeXml = trimmed.startsWith('<');
 
-    // 1) JSON 시도
-    if (!looksLikeXml) {
-      try {
+      if (!looksLikeXml) {
         const data = JSON.parse(rawText);
-        console.log('📦 Culture API(JSON) 응답 구조:', Object.keys(data));
-
         const header = data?.response?.header || data?.header || data?.msgHeader;
         const code = header?.resultCode || header?.code;
         const msg = header?.resultMsg || header?.message;
@@ -100,70 +97,68 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
 
         const items = data?.response?.body?.items?.item;
         const list = Array.isArray(items) ? items : items ? [items] : [];
-        if (list.length === 0) {
-          console.warn('⚠️ Culture API(JSON) 응답에 이벤트가 없습니다.');
-          console.log('📦 응답 데이터:', rawText.substring(0, 200));
-          return [];
-        }
-
-        console.log(`✅ Culture API(JSON)에서 ${list.length}개의 원본 데이터 수신`);
-        return list;
-      } catch (e) {
-        // JSON도 아니고 XML도 아니면(HTML/텍스트 등) => 실제 오류 응답일 가능성이 높아서 에러로 올림
-        const snippet = trimmed.substring(0, 200);
-        throw new Error(
-          `Culture API 오류: 알 수 없는 응답 형식 (키/권한/서버 응답 확인 필요) - ${snippet}`.trim()
-        );
+        const totalCount = data?.response?.body?.totalCount;
+        return { list, totalCount };
       }
-    }
 
-    // 2) XML 파싱 (KCISA는 XML도 제공)
+      if (/<!doctype\s+html/i.test(trimmed) || /<html[\s>]/i.test(trimmed)) {
+        const title = (trimmed.match(/<title>(.*?)<\/title>/i) || [])[1] || 'HTML';
+        const snippet = trimmed.replace(/\s+/g, ' ').slice(0, 200);
+        throw new Error(`Culture API 오류: HTML 에러페이지 응답 (${title}) - ${snippet}`);
+      }
 
-    if (/<!doctype\s+html/i.test(trimmed) || /<html[\s>]/i.test(trimmed)) {
-      const title = (trimmed.match(/<title>(.*?)<\/title>/i) || [])[1] || 'HTML';
-      const snippet = trimmed.replace(/\s+/g, ' ').slice(0, 200);
-      throw new Error(`Culture API 오류: HTML 에러페이지 응답 (${title}) - ${snippet}`);
-    }
+      const headerCode = getXmlTag(rawText, 'resultCode');
+      const headerMsg = getXmlTag(rawText, 'resultMsg');
+      if (headerCode && headerCode !== '0000') {
+        throw new Error(`Culture API 오류: resultCode=${headerCode} ${headerMsg || ''}`.trim());
+      }
 
-    const headerCode = getXmlTag(rawText, 'resultCode');
-    const headerMsg = getXmlTag(rawText, 'resultMsg');
-    if (headerCode && headerCode !== '0000') {
-      throw new Error(`Culture API 오류: resultCode=${headerCode} ${headerMsg || ''}`.trim());
-    }
+      const blocks = rawText.match(/<item>[\s\S]*?<\/item>/g) || [];
+      const parsed: CultureEvent[] = blocks.map((b) => ({
+        museumNm: getXmlTag(b, 'museumNm'),
+        museumRoadNmAddr: getXmlTag(b, 'museumRoadNmAddr'),
+        museumOperHmpgAddr: getXmlTag(b, 'museumOperHmpgAddr'),
+        museumOperInstTelno: getXmlTag(b, 'museumOperInstTelno'),
+        museumMngInstTelno: getXmlTag(b, 'museumMngInstTelno'),
+        museumInfo: getXmlTag(b, 'museumInfo'),
+        museumSubInfo: getXmlTag(b, 'museumSubInfo'),
+        museumDataCtrlDt: getXmlTag(b, 'museumDataCtrlDt'),
+        evntNm: getXmlTag(b, 'evntNm'),
+        evntPlcNm: getXmlTag(b, 'evntPlcNm'),
+        evntInfo: getXmlTag(b, 'evntInfo'),
+        evntSubInfo: getXmlTag(b, 'evntSubInfo'),
+        evntHmpgAddr: getXmlTag(b, 'evntHmpgAddr'),
+        evntTelno: getXmlTag(b, 'evntTelno'),
+        evntRoadNmAddr: getXmlTag(b, 'evntRoadNmAddr'),
+        evntLatPos: getXmlTag(b, 'evntLatPos'),
+        evntLotPos: getXmlTag(b, 'evntLotPos'),
+        evntDataCrtlDt: getXmlTag(b, 'evntDataCrtlDt'),
+      }));
 
-    const blocks =
-      rawText.match(/<item>[\s\S]*?<\/item>/g) ||
-      [];
+      const totalCountRaw = getXmlTag(rawText, 'totalCount');
+      const totalCount = totalCountRaw ? Number(totalCountRaw) : undefined;
+      return { list: parsed, totalCount };
+    };
 
-    if (blocks.length === 0) {
-      console.warn('⚠️ Culture API(XML)에서 목록을 찾지 못했습니다.');
-      console.log('📦 XML 앞부분:', rawText.substring(0, 300));
+    const first = await fetchPage(1);
+    const firstList = first.list || [];
+    const totalCount = first.totalCount || firstList.length;
+    if (firstList.length === 0) {
+      console.warn('⚠️ Culture API 응답에 이벤트가 없습니다.');
       return [];
     }
 
-    const parsed: CultureEvent[] = blocks.map((b) => ({
-      museumNm: getXmlTag(b, 'museumNm'),
-      museumRoadNmAddr: getXmlTag(b, 'museumRoadNmAddr'),
-      museumOperHmpgAddr: getXmlTag(b, 'museumOperHmpgAddr'),
-      museumOperInstTelno: getXmlTag(b, 'museumOperInstTelno'),
-      museumMngInstTelno: getXmlTag(b, 'museumMngInstTelno'),
-      museumInfo: getXmlTag(b, 'museumInfo'),
-      museumSubInfo: getXmlTag(b, 'museumSubInfo'),
-      museumDataCtrlDt: getXmlTag(b, 'museumDataCtrlDt'),
-      evntNm: getXmlTag(b, 'evntNm'),
-      evntPlcNm: getXmlTag(b, 'evntPlcNm'),
-      evntInfo: getXmlTag(b, 'evntInfo'),
-      evntSubInfo: getXmlTag(b, 'evntSubInfo'),
-      evntHmpgAddr: getXmlTag(b, 'evntHmpgAddr'),
-      evntTelno: getXmlTag(b, 'evntTelno'),
-      evntRoadNmAddr: getXmlTag(b, 'evntRoadNmAddr'),
-      evntLatPos: getXmlTag(b, 'evntLatPos'),
-      evntLotPos: getXmlTag(b, 'evntLotPos'),
-      evntDataCrtlDt: getXmlTag(b, 'evntDataCrtlDt'),
-    }));
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    const allItems = [...firstList];
 
-    const filtered = parsed.filter((x) => x.evntNm || x.museumNm);
-    console.log(`✅ Culture API(XML)에서 ${filtered.length}개의 원본 데이터 수신`);
+    for (let page = 2; page <= totalPages; page += 1) {
+      const { list } = await fetchPage(page);
+      if (list.length === 0) break;
+      allItems.push(...list);
+    }
+
+    const filtered = allItems.filter((x) => x.evntNm || x.museumNm);
+    console.log(`✅ Culture API에서 ${filtered.length}개의 원본 데이터 수신`);
     return filtered;
   } catch (error) {
     console.error('Culture API 호출 오류:', error);
