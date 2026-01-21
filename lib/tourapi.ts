@@ -73,8 +73,12 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
   try {
     const today = new Date();
     const eventStartDate = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const futureDate = new Date(today);
+    futureDate.setMonth(futureDate.getMonth() + 3);
+    const eventEndDate = futureDate.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
     
-    const serviceKey = formatServiceKey(TOUR_API_KEY);
+    const serviceKeyEncoded = formatServiceKey(TOUR_API_KEY);
+    const serviceKeyRaw = TOUR_API_KEY;
     const params = new URLSearchParams({
       numOfRows: '100',
       pageNo: '1',
@@ -84,16 +88,24 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
       listYN: 'Y',
       arrange: 'A', // 제목순
       eventStartDate: eventStartDate,
+      eventEndDate: eventEndDate,
     });
 
-    // 일부 환경에서 서비스 버전별 500이 발생할 수 있어 폴백을 둠
-    const candidateUrls = [
-      `${TOUR_API_BASE_URL}/searchFestival1?serviceKey=${serviceKey}&${params.toString()}`,
-      // 구버전 서비스/엔드포인트 폴백
-      `https://apis.data.go.kr/B551011/KorService1/searchFestival1?serviceKey=${serviceKey}&${params.toString()}`,
-      `https://apis.data.go.kr/B551011/KorService/searchFestival1?serviceKey=${serviceKey}&${params.toString()}`,
-      `https://apis.data.go.kr/B551011/KorService/searchFestival?serviceKey=${serviceKey}&${params.toString()}`,
+    const keysToTry = Array.from(new Set([serviceKeyEncoded, serviceKeyRaw])).filter(Boolean);
+    const baseUrls = [
+      `${TOUR_API_BASE_URL}/searchFestival1`,
+      'https://apis.data.go.kr/B551011/KorService1/searchFestival1',
+      'https://apis.data.go.kr/B551011/KorService/searchFestival1',
+      'https://apis.data.go.kr/B551011/KorService/searchFestival',
     ];
+
+    // 일부 환경에서 서비스 버전/키 인코딩 조합에 따라 500이 발생할 수 있어 폴백을 둠
+    const candidateUrls: string[] = [];
+    baseUrls.forEach((base) => {
+      keysToTry.forEach((key) => {
+        candidateUrls.push(`${base}?serviceKey=${key}&${params.toString()}`);
+      });
+    });
 
     let lastError: string | null = null;
     for (const url of candidateUrls) {
@@ -189,7 +201,8 @@ export async function fetchFestivalsByArea(areaCode: string): Promise<TourEvent[
     futureDate.setMonth(futureDate.getMonth() + 3);
     const eventEndDate = futureDate.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const serviceKey = formatServiceKey(TOUR_API_KEY);
+    const serviceKeyEncoded = formatServiceKey(TOUR_API_KEY);
+    const serviceKeyRaw = TOUR_API_KEY;
     const params = new URLSearchParams({
       numOfRows: '50',
       pageNo: '1',
@@ -203,15 +216,27 @@ export async function fetchFestivalsByArea(areaCode: string): Promise<TourEvent[
       eventEndDate: eventEndDate,
     });
 
-    const url = `${TOUR_API_BASE_URL}/searchFestival1?serviceKey=${serviceKey}&${params.toString()}`;
-    
-    const response = await fetch(url);
+    const urls = Array.from(new Set([
+      `${TOUR_API_BASE_URL}/searchFestival1?serviceKey=${serviceKeyEncoded}&${params.toString()}`,
+      `${TOUR_API_BASE_URL}/searchFestival1?serviceKey=${serviceKeyRaw}&${params.toString()}`,
+    ]));
 
-    if (!response.ok) {
-      throw new Error(`Tour API 오류: ${response.status}`);
+    let data: any = null;
+    let lastError: string | null = null;
+    for (const url of urls) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        const errorText = await response.text();
+        lastError = `Tour API 오류: ${response.status} - ${errorText.substring(0, 200)}`.trim();
+        continue;
+      }
+      data = await response.json();
+      break;
     }
 
-    const data = await response.json();
+    if (!data) {
+      throw new Error(lastError || 'Tour API 오류: 알 수 없는 오류');
+    }
     const items = data?.response?.body?.items?.item;
     
     if (!items) return [];
