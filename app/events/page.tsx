@@ -61,6 +61,29 @@ const EVENT_TYPES = [
   { value: 'ad', label: '광고', icon: '📢' },
 ];
 
+const ITEMS_PER_PAGE = 24;
+const REGION_ALIASES: Record<string, string> = {
+  서울특별시: '서울',
+  부산광역시: '부산',
+  대구광역시: '대구',
+  인천광역시: '인천',
+  광주광역시: '광주',
+  대전광역시: '대전',
+  울산광역시: '울산',
+  세종특별자치시: '세종',
+  경기도: '경기',
+  강원특별자치도: '강원',
+  강원도: '강원',
+  충청북도: '충북',
+  충청남도: '충남',
+  전라북도: '전북',
+  전라남도: '전남',
+  경상북도: '경북',
+  경상남도: '경남',
+  제주특별자치도: '제주',
+  제주도: '제주',
+};
+
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [ads, setAds] = useState<UserAd[]>([]);
@@ -69,6 +92,7 @@ export default function EventsPage() {
   const [selectedRegion, setSelectedRegion] = useState('전국');
   const [selectedType, setSelectedType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const viewedAdIdsRef = useRef<Set<string>>(new Set());
 
   const supabase = createClient();
@@ -81,6 +105,10 @@ export default function EventsPage() {
   useEffect(() => {
     filterEvents();
   }, [events, selectedRegion, selectedType, searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedRegion, selectedType, searchQuery]);
 
   // 광고 탭에서 "한 번만" 조회수 추적 (렌더링 중 setTimeout 생성 금지)
   useEffect(() => {
@@ -216,7 +244,18 @@ export default function EventsPage() {
 
     // 지역 필터
     if (selectedRegion !== '전국') {
-      filtered = filtered.filter((event) => event.region === selectedRegion);
+      filtered = filtered.filter((event) => {
+        const raw = event.region || '';
+        const normalized =
+          REGION_ALIASES[raw] ||
+          REGION_ALIASES[raw.split(' ')[0]] ||
+          raw;
+        if (normalized === selectedRegion) return true;
+        const location = event.location || '';
+        const token = location.split(' ')[0];
+        const fromLocation = REGION_ALIASES[token] || token;
+        return fromLocation === selectedRegion;
+      });
     }
 
     // 유형 필터
@@ -278,6 +317,16 @@ export default function EventsPage() {
     const end = endDate ? new Date(endDate) : start;
     return start <= today && end >= today;
   };
+
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / ITEMS_PER_PAGE));
+  const pageStart = (currentPage - 1) * ITEMS_PER_PAGE;
+  const pagedEvents = filteredEvents.slice(pageStart, pageStart + ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   if (loading) {
     return (
@@ -359,7 +408,7 @@ export default function EventsPage() {
       <div className="mb-4">
         <p className="text-gray-600">
           총 <span className="font-semibold text-gray-900">{filteredEvents.length}개</span>의 이벤트가
-          있습니다.
+          있습니다. (페이지 {currentPage}/{totalPages})
         </p>
       </div>
 
@@ -436,7 +485,7 @@ export default function EventsPage() {
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEvents.map((event) => (
+          {pagedEvents.map((event) => (
             <div
               key={event.id}
               className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all ${
@@ -514,6 +563,36 @@ export default function EventsPage() {
           ))}
         </div>
       )
+      )}
+
+      {selectedType !== 'ad' && filteredEvents.length > 0 && totalPages > 1 && (
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-2 rounded border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            이전
+          </button>
+          {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`px-3 py-2 rounded border text-sm ${
+                page === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-2 rounded border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            다음
+          </button>
+        </div>
       )}
     </div>
   );
