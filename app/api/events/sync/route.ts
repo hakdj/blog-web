@@ -99,6 +99,12 @@ async function syncEvents() {
       apiErrors.culture = (e as Error).message;
       cultureEvents = [];
     }
+    const maxCultureItems = Number(process.env.KCISA_MAX_ITEMS || 5000);
+    if (cultureEvents.length > maxCultureItems) {
+      cultureEvents = cultureEvents.slice(0, maxCultureItems);
+      const limitNote = `KCISA_MAX_ITEMS 적용: 상위 ${maxCultureItems}건만 동기화`;
+      apiErrors.culture = apiErrors.culture ? `${apiErrors.culture} | ${limitNote}` : limitNote;
+    }
     console.log(`Culture API 응답: ${cultureEvents.length}개의 공연/전시 데이터`);
     let cultureSynced = 0;
     let cultureSkipped = 0;
@@ -106,6 +112,11 @@ async function syncEvents() {
     for (const event of cultureEvents) {
       try {
         const eventData = convertCultureEventToDbFormat(event);
+        if (!eventData.start_date) {
+          cultureSkipped++;
+          continue;
+        }
+
         const { data: existing } = await supabase
           .from('events')
           .select('id')

@@ -382,15 +382,24 @@ export default function AdminPage() {
 
     try {
       console.log('🔄 이벤트 동기화 시작...');
-      const response = await fetch('/api/events/sync', {
-        method: 'GET',
-      });
+      const response = await fetch('/api/events/sync', { method: 'GET' });
 
       console.log('📡 응답 상태:', response.status);
-      const data = await response.json();
+      const rawText = await response.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        const snippet = rawText.slice(0, 200);
+        const msg = `❌ 실패: ${response.status} - JSON 파싱 실패\n응답: ${snippet}`;
+        console.error('❌ 동기화 실패:', msg);
+        setSyncResult(msg);
+        return;
+      }
+
       console.log('📦 응답 데이터:', data);
 
-      if (response.ok && data.success) {
+      if (response.ok && data?.success) {
         const debugInfo = data.debug || {};
         const results = data.results || {};
         const apiErrors = debugInfo.apiErrors || {};
@@ -418,7 +427,7 @@ export default function AdminPage() {
         console.log('✅ 동기화 성공:', details);
         setSyncResult(details);
       } else {
-        const errorMsg = `❌ 실패: ${data.error || '알 수 없는 오류'}\n상세: ${JSON.stringify(data, null, 2)}`;
+        const errorMsg = `❌ 실패: ${data?.error || '알 수 없는 오류'}\n상세: ${JSON.stringify(data, null, 2)}`;
         console.error('❌ 동기화 실패:', errorMsg);
         setSyncResult(errorMsg);
       }
