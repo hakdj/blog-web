@@ -166,9 +166,12 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
     }
 
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    const maxPagesEnv = process.env.KCISA_MAX_PAGES;
+    const maxPages = maxPagesEnv ? Math.max(1, Number(maxPagesEnv)) : 5;
+    const pagesToFetch = Math.min(totalPages, maxPages);
     const allItems = [...firstList];
 
-    for (let page = 2; page <= totalPages; page += 1) {
+    for (let page = 2; page <= pagesToFetch; page += 1) {
       try {
         const { list } = await fetchPage(page);
         if (list.length === 0) break;
@@ -178,6 +181,10 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
         // 전체 실패로 보이지 않도록, 이미 가져온 데이터는 유지하고 종료
         break;
       }
+    }
+
+    if (pagesToFetch < totalPages) {
+      console.warn(`⚠️ KCISA 전체 ${totalPages}페이지 중 ${pagesToFetch}페이지만 로딩했습니다.`);
     }
 
     const filtered = allItems.filter((x) => x.evntNm || x.museumNm);
