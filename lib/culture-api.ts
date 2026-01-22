@@ -54,7 +54,7 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
   console.log('🔑 Culture(KCISA) API Key 확인: ', CULTURE_API_KEY ? '설정됨' : '없음');
 
   try {
-    const PAGE_SIZE = 1000;
+    const PAGE_SIZE = 500;
 
     const fetchPage = async (pageNo: number) => {
       const params = new URLSearchParams({
@@ -167,7 +167,7 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
 
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
     const maxPagesEnv = process.env.KCISA_MAX_PAGES;
-    const maxPages = maxPagesEnv ? Math.max(1, Number(maxPagesEnv)) : 5;
+    const maxPages = maxPagesEnv ? Math.max(1, Number(maxPagesEnv)) : 1;
     const pagesToFetch = Math.min(totalPages, maxPages);
     const allItems = [...firstList];
 
