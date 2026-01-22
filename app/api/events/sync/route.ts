@@ -99,7 +99,7 @@ async function syncEvents() {
       apiErrors.culture = (e as Error).message;
       cultureEvents = [];
     }
-    const maxCultureItems = Number(process.env.KCISA_MAX_ITEMS || 200);
+    const maxCultureItems = Number(process.env.KCISA_MAX_ITEMS || 1000);
     if (cultureEvents.length > maxCultureItems) {
       cultureEvents = cultureEvents.slice(0, maxCultureItems);
       const limitNote = `KCISA_MAX_ITEMS 적용: 상위 ${maxCultureItems}건만 동기화`;

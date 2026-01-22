@@ -37,7 +37,9 @@ export async function fetchSeoulEvents(): Promise<SeoulEvent[]> {
   }
 
   try {
-    const url = `${SEOUL_API_BASE_URL}/${SEOUL_API_KEY}/json/culturalEventInfo/1/100/`;
+    const maxRows = Number(process.env.SEOUL_MAX_ROWS || 500);
+    const safeRows = Number.isFinite(maxRows) ? Math.max(1, maxRows) : 500;
+    const url = `${SEOUL_API_BASE_URL}/${SEOUL_API_KEY}/json/culturalEventInfo/1/${safeRows}/`;
     
     console.log('Seoul API 요청:', url);
 
