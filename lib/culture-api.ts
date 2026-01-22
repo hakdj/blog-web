@@ -54,7 +54,7 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
   console.log('🔑 Culture(KCISA) API Key 확인: ', CULTURE_API_KEY ? '설정됨' : '없음');
 
   try {
-    const PAGE_SIZE = 500;
+    const PAGE_SIZE = 200;
 
     const fetchPage = async (pageNo: number) => {
       const params = new URLSearchParams({
