@@ -66,23 +66,40 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
       const url = `${CULTURE_API_BASE_URL}?${params.toString()}`;
       console.log(`🔍 Culture(KCISA) API 요청 URL 생성 완료 (page ${pageNo})`);
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-        },
-      });
+      const MAX_RETRIES = 3;
+      let rawText = '';
+      let lastError: Error | null = null;
 
-      console.log('📡 Culture(KCISA) API 응답 상태:', response.status);
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+        try {
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              Accept: 'application/json',
+            },
+          });
 
-      if (!response.ok) {
-        console.error(`❌ Culture API HTTP 오류: ${response.status}`);
-        const errorText = await response.text();
-        console.error('오류 내용:', errorText.substring(0, 200));
-        throw new Error(`Culture API 오류: ${response.status}`);
+          console.log('📡 Culture(KCISA) API 응답 상태:', response.status);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`❌ Culture API HTTP 오류: ${response.status}`);
+            console.error('오류 내용:', errorText.substring(0, 200));
+            throw new Error(`Culture API 오류: ${response.status}`);
+          }
+
+          rawText = await response.text();
+          lastError = null;
+          break;
+        } catch (err) {
+          lastError = err as Error;
+          console.warn(`⚠️ Culture API 재시도 ${attempt}/${MAX_RETRIES}:`, lastError.message);
+        }
       }
 
-      const rawText = await response.text();
+      if (!rawText && lastError) {
+        throw lastError;
+      }
       const trimmed = rawText.trim();
       const looksLikeXml = trimmed.startsWith('<');
 
@@ -152,9 +169,15 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
     const allItems = [...firstList];
 
     for (let page = 2; page <= totalPages; page += 1) {
-      const { list } = await fetchPage(page);
-      if (list.length === 0) break;
-      allItems.push(...list);
+      try {
+        const { list } = await fetchPage(page);
+        if (list.length === 0) break;
+        allItems.push(...list);
+      } catch (pageError) {
+        console.error(`Culture API 페이지 ${page} 로딩 실패:`, pageError);
+        // 전체 실패로 보이지 않도록, 이미 가져온 데이터는 유지하고 종료
+        break;
+      }
     }
 
     const filtered = allItems.filter((x) => x.evntNm || x.museumNm);
