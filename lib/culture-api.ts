@@ -42,10 +42,16 @@ export interface CultureEvent {
   evntDataCrtlDt?: string; // 공연행사데이터기준일
 }
 
+export interface CultureFetchOptions {
+  pageSize?: number;
+  maxPages?: number;
+  maxItems?: number;
+}
+
 /**
  * 현재 진행 중인 공연/전시 정보 가져오기
  */
-export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
+export async function fetchCurrentCultureEvents(options: CultureFetchOptions = {}): Promise<CultureEvent[]> {
   if (!CULTURE_API_KEY) {
     // 동기화 화면에서 원인을 바로 보이게 하기 위해 "조용히 0건"으로 끝내지 않음
     throw new Error('Culture API Key가 설정되지 않았습니다. (CULTURE_API_KEY 또는 NEXT_PUBLIC_CULTURE_API_KEY)');
@@ -54,7 +60,10 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
   console.log('🔑 Culture(KCISA) API Key 확인: ', CULTURE_API_KEY ? '설정됨' : '없음');
 
   try {
-    const PAGE_SIZE = Number(process.env.KCISA_PAGE_SIZE || 500);
+    const pageSizeEnv = Number(process.env.KCISA_PAGE_SIZE || 500);
+    const PAGE_SIZE = Number.isFinite(options.pageSize)
+      ? Math.max(1, options.pageSize as number)
+      : pageSizeEnv;
 
     const fetchPage = async (pageNo: number) => {
       const params = new URLSearchParams({
@@ -167,8 +176,11 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
 
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
     const maxPagesEnv = process.env.KCISA_MAX_PAGES;
-    const maxPages = maxPagesEnv ? Math.max(1, Number(maxPagesEnv)) : 2;
-    const pagesToFetch = Math.min(totalPages, maxPages);
+    const envMaxPages = maxPagesEnv ? Math.max(1, Number(maxPagesEnv)) : 2;
+    const requestedMaxPages = Number.isFinite(options.maxPages)
+      ? Math.max(1, options.maxPages as number)
+      : envMaxPages;
+    const pagesToFetch = Math.min(totalPages, requestedMaxPages);
     const allItems = [...firstList];
 
     for (let page = 2; page <= pagesToFetch; page += 1) {
@@ -187,7 +199,11 @@ export async function fetchCurrentCultureEvents(): Promise<CultureEvent[]> {
       console.warn(`⚠️ KCISA 전체 ${totalPages}페이지 중 ${pagesToFetch}페이지만 로딩했습니다.`);
     }
 
-    const filtered = allItems.filter((x) => x.evntNm || x.museumNm);
+    const maxItemsEnv = Number(process.env.KCISA_MAX_ITEMS || 1000);
+    const requestedMaxItems = Number.isFinite(options.maxItems)
+      ? Math.max(1, options.maxItems as number)
+      : maxItemsEnv;
+    const filtered = allItems.filter((x) => x.evntNm || x.museumNm).slice(0, requestedMaxItems);
     console.log(`✅ Culture API에서 ${filtered.length}개의 원본 데이터 수신`);
     return filtered;
   } catch (error) {

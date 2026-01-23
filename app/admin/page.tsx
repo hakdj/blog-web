@@ -382,7 +382,10 @@ export default function AdminPage() {
 
     try {
       console.log('🔄 이벤트 동기화 시작...');
-      const response = await fetch('/api/events/sync', { method: 'GET' });
+      const response = await fetch(
+        '/api/events/sync?kcisaPageSize=200&kcisaMaxPages=1&kcisaMaxItems=200',
+        { method: 'GET' }
+      );
 
       console.log('📡 응답 상태:', response.status);
       const rawText = await response.text();

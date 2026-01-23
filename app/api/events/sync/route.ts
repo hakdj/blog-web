@@ -18,7 +18,7 @@ import { fetchSeoulEvents, convertSeoulEventToDbFormat, fetchGyeonggiEvents, con
  * POST /api/events/sync (Vercel Cron용, 인증 필요)
  */
 
-async function syncEvents() {
+async function syncEvents(request?: NextRequest) {
   console.log('🔄 다중 API 이벤트 정보 동기화 시작...');
 
   const supabase = createServiceClient();
@@ -94,7 +94,16 @@ async function syncEvents() {
     console.log('📍 2/4: Culture API 공연/전시 정보 수집 중...');
     let cultureEvents: any[] = [];
     try {
-      cultureEvents = await fetchCurrentCultureEvents();
+      const searchParams = request?.nextUrl?.searchParams;
+      const kcisaPageSize = searchParams?.get('kcisaPageSize');
+      const kcisaMaxPages = searchParams?.get('kcisaMaxPages');
+      const kcisaMaxItems = searchParams?.get('kcisaMaxItems');
+
+      cultureEvents = await fetchCurrentCultureEvents({
+        pageSize: kcisaPageSize ? Number(kcisaPageSize) : undefined,
+        maxPages: kcisaMaxPages ? Number(kcisaMaxPages) : undefined,
+        maxItems: kcisaMaxItems ? Number(kcisaMaxItems) : undefined,
+      });
     } catch (e) {
       apiErrors.culture = (e as Error).message;
       cultureEvents = [];
@@ -265,7 +274,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await syncEvents();
+    const result = await syncEvents(request);
     return NextResponse.json(result);
   } catch (error) {
     console.error('축제 정보 동기화 오류:', error);
@@ -282,7 +291,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     console.log('📞 GET 요청으로 수동 동기화 시작');
-    const result = await syncEvents();
+    const result = await syncEvents(request);
     return NextResponse.json(result);
   } catch (error) {
     console.error('축제 정보 동기화 오류:', error);
