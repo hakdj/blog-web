@@ -75,14 +75,14 @@ export async function fetchCurrentCultureEvents(options: CultureFetchOptions = {
       const url = `${CULTURE_API_BASE_URL}?${params.toString()}`;
       console.log(`🔍 Culture(KCISA) API 요청 URL 생성 완료 (page ${pageNo})`);
 
-      const MAX_RETRIES = 3;
+      const MAX_RETRIES = 5;
       let rawText = '';
       let lastError: Error | null = null;
 
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 8000);
+          const timeout = setTimeout(() => controller.abort(), 20000);
           const response = await fetch(url, {
             method: 'GET',
             headers: {
@@ -109,7 +109,7 @@ export async function fetchCurrentCultureEvents(options: CultureFetchOptions = {
         } catch (err) {
           lastError = err as Error;
           console.warn(`⚠️ Culture API 재시도 ${attempt}/${MAX_RETRIES}:`, lastError.message);
-          await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
+          await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
         }
       }
 
