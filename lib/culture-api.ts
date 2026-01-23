@@ -81,12 +81,18 @@ export async function fetchCurrentCultureEvents(options: CultureFetchOptions = {
 
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
         try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 8000);
           const response = await fetch(url, {
             method: 'GET',
             headers: {
               Accept: 'application/json',
+              'User-Agent': 'Mozilla/5.0 (KCISA Sync)',
             },
+            cache: 'no-store',
+            signal: controller.signal,
           });
+          clearTimeout(timeout);
 
           console.log('📡 Culture(KCISA) API 응답 상태:', response.status);
 
@@ -103,6 +109,7 @@ export async function fetchCurrentCultureEvents(options: CultureFetchOptions = {
         } catch (err) {
           lastError = err as Error;
           console.warn(`⚠️ Culture API 재시도 ${attempt}/${MAX_RETRIES}:`, lastError.message);
+          await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
         }
       }
 
