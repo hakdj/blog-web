@@ -46,7 +46,28 @@ INSERT INTO plans (tier, interval, name, price, features, is_active) VALUES
   ('ultra', 'year', 'Ultra 연간', 199000, '{"agent_mode": 840, "bulk_mode": 25200, "ai_models": ["chatgpt", "gemini", "claude"], "storage_months": 3, "seo_check": true, "tone_preset": true, "pros_cons_analysis": true, "auto_synthesis": true}', true);
 
 -- ============================================
--- 5단계: 블로그 글 저장 테이블 만들기
+-- 5단계: 구독 테이블 만들기
+-- ============================================
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  plan_id UUID REFERENCES plans(id) ON DELETE SET NULL,
+  status TEXT DEFAULT 'active',
+  current_period_start TIMESTAMPTZ DEFAULT NOW(),
+  current_period_end TIMESTAMPTZ,
+  billing_key TEXT,
+  auto_renew BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_plan_id ON subscriptions(plan_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_period_end ON subscriptions(current_period_end DESC);
+
+-- ============================================
+-- 6단계: 블로그 글 저장 테이블 만들기
 -- ============================================
 CREATE TABLE IF NOT EXISTS blog_posts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -62,7 +83,7 @@ CREATE TABLE IF NOT EXISTS blog_posts (
 );
 
 -- ============================================
--- 6단계: 사용량 추적 테이블 만들기
+-- 7단계: 사용량 추적 테이블 만들기
 -- ============================================
 CREATE TABLE IF NOT EXISTS usage_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -74,7 +95,7 @@ CREATE TABLE IF NOT EXISTS usage_logs (
 );
 
 -- ============================================
--- 7단계: 빠른 검색을 위한 인덱스 만들기 (없으면 만들기)
+-- 8단계: 빠른 검색을 위한 인덱스 만들기 (없으면 만들기)
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_blog_posts_user_id ON blog_posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_blog_posts_status ON blog_posts(status);
@@ -82,14 +103,15 @@ CREATE INDEX IF NOT EXISTS idx_usage_logs_user_id ON usage_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_usage_logs_subscription_id ON usage_logs(subscription_id);
 
 -- ============================================
--- 8단계: 보안 설정 (RLS 활성화)
+-- 9단계: 보안 설정 (RLS 활성화)
 -- ============================================
 ALTER TABLE plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE blog_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE usage_logs ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 9단계: 보안 정책 만들기 (기존 정책 있으면 삭제 후 재생성)
+-- 10단계: 보안 정책 만들기 (기존 정책 있으면 삭제 후 재생성)
 -- ============================================
 
 -- plans: 누구나 볼 수 있음
@@ -113,6 +135,19 @@ CREATE POLICY "Users can update own blog posts" ON blog_posts
 DROP POLICY IF EXISTS "Users can delete own blog posts" ON blog_posts;
 CREATE POLICY "Users can delete own blog posts" ON blog_posts
   FOR DELETE USING (auth.uid() = user_id);
+
+-- subscriptions: 본인 것만 볼 수 있음
+DROP POLICY IF EXISTS "Users can view own subscriptions" ON subscriptions;
+CREATE POLICY "Users can view own subscriptions" ON subscriptions
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own subscriptions" ON subscriptions;
+CREATE POLICY "Users can insert own subscriptions" ON subscriptions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own subscriptions" ON subscriptions;
+CREATE POLICY "Users can update own subscriptions" ON subscriptions
+  FOR UPDATE USING (auth.uid() = user_id);
 
 -- usage_logs: 본인 것만 볼 수 있음
 DROP POLICY IF EXISTS "Users can view own usage logs" ON usage_logs;

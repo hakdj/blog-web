@@ -23,6 +23,15 @@
 
 ## 🚀 지금 실행해야 할 SQL 파일 (순서대로)
 
+### 0단계: subscriptions 테이블 생성 (없을 때만)
+**파일:** `db/CREATE_SUBSCRIPTIONS_TABLE.sql`
+
+**효과:**
+- 구독 상태/자동 갱신을 저장하는 `subscriptions` 테이블 생성
+- 결제 및 광고 관련 API가 정상 동작하기 위한 필수 테이블
+
+---
+
 ### 1단계: 닉네임 컬럼 추가
 **파일:** `db/ADD_NICKNAME_TO_PROFILES.sql`
 
@@ -73,6 +82,9 @@ INSERT INTO plans (tier, interval, name, price, features, is_active) VALUES
 ---
 
 ## 📝 실행 순서
+
+0. **`CREATE_SUBSCRIPTIONS_TABLE.sql`** 실행 (없을 때만)
+   - `subscriptions` 테이블 생성
 
 1. **`ADD_NICKNAME_TO_PROFILES.sql`** 실행
    - 닉네임 컬럼 추가

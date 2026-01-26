@@ -46,12 +46,23 @@ export interface CultureFetchOptions {
   pageSize?: number;
   maxPages?: number;
   maxItems?: number;
+  startPage?: number;
+}
+
+export interface CultureFetchResult {
+  items: CultureEvent[];
+  totalCount: number;
+  totalPages: number;
+  startPage: number;
+  pagesFetched: number;
+  maxItems: number;
+  limitedByMaxItems: boolean;
 }
 
 /**
  * 현재 진행 중인 공연/전시 정보 가져오기
  */
-export async function fetchCurrentCultureEvents(options: CultureFetchOptions = {}): Promise<CultureEvent[]> {
+export async function fetchCurrentCultureEvents(options: CultureFetchOptions = {}): Promise<CultureFetchResult> {
   if (!CULTURE_API_KEY) {
     // 동기화 화면에서 원인을 바로 보이게 하기 위해 "조용히 0건"으로 끝내지 않음
     throw new Error('Culture API Key가 설정되지 않았습니다. (CULTURE_API_KEY 또는 NEXT_PUBLIC_CULTURE_API_KEY)');
@@ -173,12 +184,23 @@ export async function fetchCurrentCultureEvents(options: CultureFetchOptions = {
       return { list: parsed, totalCount };
     };
 
-    const first = await fetchPage(1);
+    const startPage = Number.isFinite(options.startPage)
+      ? Math.max(1, options.startPage as number)
+      : 1;
+    const first = await fetchPage(startPage);
     const firstList = first.list || [];
     const totalCount = first.totalCount || firstList.length;
     if (firstList.length === 0) {
       console.warn('⚠️ Culture API 응답에 이벤트가 없습니다.');
-      return [];
+      return {
+        items: [],
+        totalCount: totalCount || 0,
+        totalPages: 0,
+        startPage,
+        pagesFetched: 1,
+        maxItems: 0,
+        limitedByMaxItems: false,
+      };
     }
 
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -187,10 +209,11 @@ export async function fetchCurrentCultureEvents(options: CultureFetchOptions = {
     const requestedMaxPages = Number.isFinite(options.maxPages)
       ? Math.max(1, options.maxPages as number)
       : envMaxPages;
-    const pagesToFetch = Math.min(totalPages, requestedMaxPages);
+    const remainingPages = totalPages - startPage + 1;
+    const pagesToFetch = Math.min(remainingPages, requestedMaxPages);
     const allItems = [...firstList];
 
-    for (let page = 2; page <= pagesToFetch; page += 1) {
+    for (let page = startPage + 1; page <= startPage + pagesToFetch - 1; page += 1) {
       try {
         const { list } = await fetchPage(page);
         if (list.length === 0) break;
@@ -210,9 +233,18 @@ export async function fetchCurrentCultureEvents(options: CultureFetchOptions = {
     const requestedMaxItems = Number.isFinite(options.maxItems)
       ? Math.max(1, options.maxItems as number)
       : maxItemsEnv;
-    const filtered = allItems.filter((x) => x.evntNm || x.museumNm).slice(0, requestedMaxItems);
+    const filteredAll = allItems.filter((x) => x.evntNm || x.museumNm);
+    const filtered = filteredAll.slice(0, requestedMaxItems);
     console.log(`✅ Culture API에서 ${filtered.length}개의 원본 데이터 수신`);
-    return filtered;
+    return {
+      items: filtered,
+      totalCount,
+      totalPages,
+      startPage,
+      pagesFetched: pagesToFetch,
+      maxItems: requestedMaxItems,
+      limitedByMaxItems: filteredAll.length > requestedMaxItems,
+    };
   } catch (error) {
     console.error('Culture API 호출 오류:', error);
     throw error;

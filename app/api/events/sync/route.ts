@@ -112,17 +112,75 @@ async function syncEvents(request?: NextRequest) {
     // 2. 문화체육관광부 공연전시정보 API
     console.log('📍 2/4: Culture API 공연/전시 정보 수집 중...');
     let cultureEvents: any[] = [];
+    let cultureMeta: {
+      startPage: number;
+      pagesFetched: number;
+      totalPages: number;
+      nextPage: number;
+    } | null = null;
     try {
       const searchParams = request?.nextUrl?.searchParams;
       const kcisaPageSize = searchParams?.get('kcisaPageSize');
       const kcisaMaxPages = searchParams?.get('kcisaMaxPages');
       const kcisaMaxItems = searchParams?.get('kcisaMaxItems');
+      const kcisaStartPage = searchParams?.get('kcisaStartPage');
 
-      cultureEvents = await fetchCurrentCultureEvents({
+      let startPage = kcisaStartPage ? Number(kcisaStartPage) : NaN;
+      if (!Number.isFinite(startPage)) {
+        const { data: state, error: stateError } = await supabase
+          .from('event_sync_state')
+          .select('next_page')
+          .eq('source', 'kcisa')
+          .maybeSingle();
+        if (stateError) {
+          apiErrors.culture = stateError.message;
+          startPage = 1;
+        } else {
+          startPage = state?.next_page || 1;
+        }
+      }
+
+      const cultureResult = await fetchCurrentCultureEvents({
         pageSize: kcisaPageSize ? Number(kcisaPageSize) : undefined,
         maxPages: kcisaMaxPages ? Number(kcisaMaxPages) : undefined,
         maxItems: kcisaMaxItems ? Number(kcisaMaxItems) : undefined,
+        startPage,
       });
+      cultureEvents = cultureResult.items;
+
+      let nextPage = cultureResult.startPage + cultureResult.pagesFetched;
+      if (nextPage > cultureResult.totalPages) {
+        nextPage = 1;
+      }
+
+      cultureMeta = {
+        startPage: cultureResult.startPage,
+        pagesFetched: cultureResult.pagesFetched,
+        totalPages: cultureResult.totalPages,
+        nextPage,
+      };
+
+      if (cultureResult.limitedByMaxItems) {
+        const limitNote = `KCISA_MAX_ITEMS 적용: 상위 ${cultureResult.maxItems}건만 동기화`;
+        apiErrors.culture = apiErrors.culture ? `${apiErrors.culture} | ${limitNote}` : limitNote;
+      }
+
+      if (!kcisaStartPage) {
+        const { error: stateUpsertError } = await supabase.from('event_sync_state').upsert(
+          {
+            source: 'kcisa',
+            next_page: nextPage,
+            total_pages: cultureResult.totalPages,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'source' }
+        );
+        if (stateUpsertError) {
+          apiErrors.culture = apiErrors.culture
+            ? `${apiErrors.culture} | ${stateUpsertError.message}`
+            : stateUpsertError.message;
+        }
+      }
     } catch (e) {
       apiErrors.culture = (e as Error).message;
       cultureEvents = [];
@@ -138,12 +196,6 @@ async function syncEvents(request?: NextRequest) {
         .ilike('description', '%행사기간%');
       cultureExistingCount = existingCulture?.length || 0;
       apiErrors.culture = `${apiErrors.culture} | 기존 Culture 데이터 ${cultureExistingCount}건 유지`;
-    }
-    const maxCultureItems = Number(process.env.KCISA_MAX_ITEMS || 1000);
-    if (cultureEvents.length > maxCultureItems) {
-      cultureEvents = cultureEvents.slice(0, maxCultureItems);
-      const limitNote = `KCISA_MAX_ITEMS 적용: 상위 ${maxCultureItems}건만 동기화`;
-      apiErrors.culture = apiErrors.culture ? `${apiErrors.culture} | ${limitNote}` : limitNote;
     }
     console.log(`Culture API 응답: ${cultureEvents.length}개의 공연/전시 데이터`);
     let cultureSynced = 0;
@@ -184,6 +236,7 @@ async function syncEvents(request?: NextRequest) {
       skipped: cultureSkipped,
       total: cultureEvents.length || cultureExistingCount,
       preserved: cultureExistingCount,
+      pagination: cultureMeta,
     };
     totalSynced += cultureSynced;
     totalSkipped += cultureSkipped;
@@ -289,6 +342,7 @@ async function syncEvents(request?: NextRequest) {
       seoulApiCount: seoulEvents.length,
       gyeonggiApiCount: gyeonggiEvents.length,
       apiErrors,
+      culturePagination: cultureMeta,
     }
   };
 }

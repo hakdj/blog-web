@@ -1,0 +1,9 @@
+-- KCISA 동기화 진행 상태 저장
+-- 여러 번 나눠서 실행해도 전체 페이지를 순환적으로 수집하기 위해 사용
+
+create table if not exists event_sync_state (
+  source text primary key,
+  next_page integer not null default 1,
+  total_pages integer,
+  updated_at timestamptz not null default now()
+);
