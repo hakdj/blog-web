@@ -38,6 +38,20 @@ async function syncEvents(request?: NextRequest) {
   }
   console.log(`Tour API 응답: ${festivals.length}개의 축제 데이터`);
 
+  // Tour API 실패 시, 기존 Tour 데이터는 유지 (대체/복구 전까지 서비스 연속성 확보)
+  let tourExistingCount = 0;
+  if (festivals.length === 0 && apiErrors.tour) {
+    const today = new Date().toISOString().split('T')[0];
+    const { data: existingTour } = await supabase
+      .from('events')
+      .select('id')
+      .eq('event_type', 'festival')
+      .gte('end_date', today)
+      .like('link_url', '%visitkorea.or.kr%');
+    tourExistingCount = existingTour?.length || 0;
+    apiErrors.tour = `${apiErrors.tour} | 기존 Tour 데이터 ${tourExistingCount}건 유지`;
+  }
+
     let tourSynced = 0;
     let tourSkipped = 0;
 
@@ -86,7 +100,12 @@ async function syncEvents(request?: NextRequest) {
       }
     }
 
-    results.tour = { synced: tourSynced, skipped: tourSkipped, total: festivals.length };
+    results.tour = {
+      synced: tourSynced,
+      skipped: tourSkipped,
+      total: festivals.length || tourExistingCount,
+      preserved: tourExistingCount,
+    };
     totalSynced += tourSynced;
     totalSkipped += tourSkipped;
 
