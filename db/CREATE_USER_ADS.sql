@@ -152,10 +152,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_deactivate_ads_on_subscription_end
-  AFTER UPDATE ON subscriptions
-  FOR EACH ROW
-  EXECUTE FUNCTION deactivate_ads_on_subscription_end();
+DO $$
+BEGIN
+  IF to_regclass('public.subscriptions') IS NOT NULL THEN
+    DROP TRIGGER IF EXISTS trigger_deactivate_ads_on_subscription_end ON subscriptions;
+    CREATE TRIGGER trigger_deactivate_ads_on_subscription_end
+      AFTER UPDATE ON subscriptions
+      FOR EACH ROW
+      EXECUTE FUNCTION deactivate_ads_on_subscription_end();
+  ELSE
+    RAISE NOTICE 'subscriptions 테이블이 없어 광고 비활성화 트리거를 건너뜁니다.';
+  END IF;
+END;
+$$;
 
 -- 9. 종료일이 지난 광고 자동 비활성화 함수
 -- 이 함수는 정기적으로 실행되어야 합니다 (Vercel Cron 또는 Supabase Edge Function)
