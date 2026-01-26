@@ -127,6 +127,18 @@ async function syncEvents(request?: NextRequest) {
       apiErrors.culture = (e as Error).message;
       cultureEvents = [];
     }
+    let cultureExistingCount = 0;
+    if (cultureEvents.length === 0 && apiErrors.culture) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: existingCulture } = await supabase
+        .from('events')
+        .select('id')
+        .eq('event_type', 'local_feature')
+        .gte('end_date', today)
+        .ilike('description', '%행사기간%');
+      cultureExistingCount = existingCulture?.length || 0;
+      apiErrors.culture = `${apiErrors.culture} | 기존 Culture 데이터 ${cultureExistingCount}건 유지`;
+    }
     const maxCultureItems = Number(process.env.KCISA_MAX_ITEMS || 1000);
     if (cultureEvents.length > maxCultureItems) {
       cultureEvents = cultureEvents.slice(0, maxCultureItems);
@@ -167,7 +179,12 @@ async function syncEvents(request?: NextRequest) {
       }
     }
 
-    results.culture = { synced: cultureSynced, skipped: cultureSkipped, total: cultureEvents.length };
+    results.culture = {
+      synced: cultureSynced,
+      skipped: cultureSkipped,
+      total: cultureEvents.length || cultureExistingCount,
+      preserved: cultureExistingCount,
+    };
     totalSynced += cultureSynced;
     totalSkipped += cultureSkipped;
 
