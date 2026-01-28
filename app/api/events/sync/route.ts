@@ -140,12 +140,60 @@ async function syncEvents(request?: NextRequest) {
         }
       }
 
-      const cultureResult = await fetchCurrentCultureEvents({
-        pageSize: kcisaPageSize ? Number(kcisaPageSize) : undefined,
-        maxPages: kcisaMaxPages ? Number(kcisaMaxPages) : undefined,
-        maxItems: kcisaMaxItems ? Number(kcisaMaxItems) : undefined,
-        startPage,
-      });
+      const pageSizeOption = kcisaPageSize ? Number(kcisaPageSize) : undefined;
+      const maxPagesOption = kcisaMaxPages ? Number(kcisaMaxPages) : undefined;
+      const maxItemsOption = kcisaMaxItems ? Number(kcisaMaxItems) : undefined;
+
+      const attempts = [
+        {
+          label: 'primary',
+          options: {
+            pageSize: pageSizeOption,
+            maxPages: maxPagesOption,
+            maxItems: maxItemsOption,
+            startPage,
+          },
+        },
+        {
+          label: 'fallback-100',
+          options: {
+            pageSize: 100,
+            maxPages: 1,
+            maxItems: 100,
+            startPage,
+          },
+        },
+        {
+          label: 'fallback-50',
+          options: {
+            pageSize: 50,
+            maxPages: 1,
+            maxItems: 50,
+            startPage,
+          },
+        },
+      ];
+
+      let cultureResult = null;
+      let fallbackLabel: string | null = null;
+      let lastError: Error | null = null;
+
+      for (const attempt of attempts) {
+        try {
+          cultureResult = await fetchCurrentCultureEvents(attempt.options);
+          if (attempt.label !== 'primary') {
+            fallbackLabel = attempt.label;
+          }
+          break;
+        } catch (err) {
+          lastError = err as Error;
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
+
+      if (!cultureResult) {
+        throw lastError || new Error('Culture API fetch failed');
+      }
       cultureEvents = cultureResult.items;
 
       let nextPage = cultureResult.startPage + cultureResult.pagesFetched;
@@ -163,6 +211,10 @@ async function syncEvents(request?: NextRequest) {
       if (cultureResult.limitedByMaxItems) {
         const limitNote = `KCISA_MAX_ITEMS 적용: 상위 ${cultureResult.maxItems}건만 동기화`;
         apiErrors.culture = apiErrors.culture ? `${apiErrors.culture} | ${limitNote}` : limitNote;
+      }
+      if (fallbackLabel) {
+        const fallbackNote = `Culture API ${fallbackLabel}로 성공`;
+        apiErrors.culture = apiErrors.culture ? `${apiErrors.culture} | ${fallbackNote}` : fallbackNote;
       }
 
       if (!kcisaStartPage) {
