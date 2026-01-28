@@ -85,6 +85,14 @@ const AREA_CODE_MAP: { [key: string]: string } = {
   '39': '제주',
 };
 
+export const TOUR_AREA_CODES = Object.keys(AREA_CODE_MAP);
+
+export interface TourFetchOptions {
+  fallbackMode?: 'none' | 'area';
+  fallbackStartIndex?: number;
+  fallbackMaxAreas?: number;
+}
+
 /**
  * 날짜 포맷 변환 (YYYYMMDD -> YYYY-MM-DD)
  */
@@ -96,7 +104,7 @@ function formatDate(dateStr: string): string {
 /**
  * 현재 진행 중인 축제 정보 가져오기
  */
-export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
+export async function fetchCurrentFestivals(options: TourFetchOptions = {}): Promise<TourEvent[]> {
   if (!TOUR_API_KEY) {
     // 동기화 화면에서 원인을 바로 보이게 하기 위해 "조용히 0건"으로 끝내지 않음
     throw new Error('Tour API Key가 설정되지 않았습니다. (TOUR_API_KEY 또는 NEXT_PUBLIC_TOUR_API_KEY)');
@@ -193,29 +201,40 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
       return eventList;
     }
 
-    // 전체 호출이 실패하면 지역별로 분산 호출을 시도 (전국 데이터 확보 목적)
-    const aggregated: TourEvent[] = [];
-    const seen = new Set<string>();
-    let areaFailures = 0;
-    for (const code of Object.keys(AREA_CODE_MAP)) {
-      try {
-        const list = await fetchFestivalsByArea(code);
-        list.forEach((item) => {
-          const key = `${item.contentid}-${item.eventstartdate || ''}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            aggregated.push(item);
-          }
-        });
-      } catch {
-        areaFailures += 1;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 120));
-    }
+    if (options.fallbackMode === 'area') {
+      // 전체 호출이 실패하면 지역별로 분산 호출 (짧은 배치로만 실행)
+      const aggregated: TourEvent[] = [];
+      const seen = new Set<string>();
+      let areaFailures = 0;
+      const startIndex = Number.isFinite(options.fallbackStartIndex)
+        ? Math.max(0, options.fallbackStartIndex as number)
+        : 0;
+      const maxAreas = Number.isFinite(options.fallbackMaxAreas)
+        ? Math.max(1, options.fallbackMaxAreas as number)
+        : TOUR_AREA_CODES.length;
+      const endIndex = Math.min(startIndex + maxAreas, TOUR_AREA_CODES.length);
 
-    if (aggregated.length > 0) {
-      console.warn(`⚠️ Tour API 전체 실패로 지역별 폴백 사용 (실패 ${areaFailures}개)`);
-      return aggregated;
+      for (let i = startIndex; i < endIndex; i += 1) {
+        const code = TOUR_AREA_CODES[i];
+        try {
+          const list = await fetchFestivalsByArea(code);
+          list.forEach((item) => {
+            const key = `${item.contentid}-${item.eventstartdate || ''}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              aggregated.push(item);
+            }
+          });
+        } catch {
+          areaFailures += 1;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 120));
+      }
+
+      if (aggregated.length > 0) {
+        console.warn(`⚠️ Tour API 전체 실패로 지역별 폴백 사용 (실패 ${areaFailures}개)`);
+        return aggregated;
+      }
     }
 
     throw new Error(lastError || 'Tour API 오류: 알 수 없는 오류');

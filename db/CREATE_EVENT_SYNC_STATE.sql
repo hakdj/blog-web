@@ -5,5 +5,11 @@ create table if not exists event_sync_state (
   source text primary key,
   next_page integer not null default 1,
   total_pages integer,
+  next_area_index integer,
+  total_areas integer,
   updated_at timestamptz not null default now()
 );
+
+alter table if exists event_sync_state
+  add column if not exists next_area_index integer,
+  add column if not exists total_areas integer;

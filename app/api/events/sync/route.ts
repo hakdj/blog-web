@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
-import { fetchCurrentFestivals, convertTourEventToDbFormat } from '@/lib/tourapi';
+import { fetchCurrentFestivals, convertTourEventToDbFormat, TOUR_AREA_CODES } from '@/lib/tourapi';
 import { fetchCurrentCultureEvents, convertCultureEventToDbFormat } from '@/lib/culture-api';
 import { fetchSeoulEvents, convertSeoulEventToDbFormat, fetchGyeonggiEvents, convertGyeonggiEventToDbFormat } from '@/lib/local-event-api';
 
@@ -31,10 +31,50 @@ async function syncEvents(request?: NextRequest) {
   console.log('📍 1/4: Tour API 축제 정보 수집 중...');
   let festivals: any[] = [];
   try {
-    festivals = await fetchCurrentFestivals();
+    festivals = await fetchCurrentFestivals({ fallbackMode: 'none' });
   } catch (e) {
     apiErrors.tour = (e as Error).message;
     festivals = [];
+
+    const { data: tourState, error: tourStateError } = await supabase
+      .from('event_sync_state')
+      .select('next_area_index')
+      .eq('source', 'tour')
+      .maybeSingle();
+    if (tourStateError) {
+      apiErrors.tour = `${apiErrors.tour} | ${tourStateError.message}`;
+    }
+
+    const maxAreas = Math.max(1, Number(process.env.TOUR_FALLBACK_BATCH || 5));
+    const startIndex = tourState?.next_area_index || 0;
+
+    try {
+      festivals = await fetchCurrentFestivals({
+        fallbackMode: 'area',
+        fallbackStartIndex: startIndex,
+        fallbackMaxAreas: maxAreas,
+      });
+
+      const nextIndex = (startIndex + maxAreas) % TOUR_AREA_CODES.length;
+      const { error: tourStateUpsertError } = await supabase.from('event_sync_state').upsert(
+        {
+          source: 'tour',
+          next_area_index: nextIndex,
+          total_areas: TOUR_AREA_CODES.length,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'source' }
+      );
+
+      if (tourStateUpsertError) {
+        apiErrors.tour = `${apiErrors.tour} | ${tourStateUpsertError.message}`;
+      } else {
+        apiErrors.tour = `${apiErrors.tour} | 지역별 배치 폴백 사용 (start ${startIndex + 1}/${TOUR_AREA_CODES.length})`;
+      }
+    } catch (fallbackError) {
+      apiErrors.tour = `${apiErrors.tour} | ${(fallbackError as Error).message}`;
+      festivals = [];
+    }
   }
   console.log(`Tour API 응답: ${festivals.length}개의 축제 데이터`);
 
