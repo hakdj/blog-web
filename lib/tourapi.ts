@@ -14,6 +14,38 @@ function formatServiceKey(key: string) {
   return alreadyEncoded ? key : encodeURIComponent(key);
 }
 
+async function fetchWithTimeout(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    return await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Tour Sync)',
+      },
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchJsonWithRetries(url: string, retries = 3) {
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    try {
+      const response = await fetchWithTimeout(url);
+      return response;
+    } catch (err) {
+      lastError = err as Error;
+      await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+    }
+  }
+  throw lastError || new Error('Tour API 네트워크 오류');
+}
+
 export interface TourEvent {
   title: string;
   addr1: string; // 주소
@@ -107,38 +139,16 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
       });
     });
 
-    const fetchWithTimeout = async (url: string) => {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 20000);
-      try {
-        return await fetch(url, {
-          method: 'GET',
-          headers: {
-            Accept: 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Tour Sync)',
-          },
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeout);
-      }
-    };
-
-    const MAX_RETRIES = 3;
     let lastError: string | null = null;
     for (const url of candidateUrls) {
       console.log('🔍 Tour API 요청 URL 생성 완료');
 
       let response: Response | null = null;
-      for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
-        try {
-          response = await fetchWithTimeout(url);
-          break;
-        } catch (err) {
-          lastError = `Tour API 네트워크 오류: ${(err as Error).message}`;
-          await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
-        }
+      try {
+        response = await fetchJsonWithRetries(url, 3);
+      } catch (err) {
+        lastError = `Tour API 네트워크 오류: ${(err as Error).message}`;
+        continue;
       }
 
       if (!response) {
@@ -181,6 +191,31 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
 
       console.log(`Tour API에서 ${eventList.length}개의 축제 정보를 가져왔습니다.`);
       return eventList;
+    }
+
+    // 전체 호출이 실패하면 지역별로 분산 호출을 시도 (전국 데이터 확보 목적)
+    const aggregated: TourEvent[] = [];
+    const seen = new Set<string>();
+    let areaFailures = 0;
+    for (const code of Object.keys(AREA_CODE_MAP)) {
+      try {
+        const list = await fetchFestivalsByArea(code);
+        list.forEach((item) => {
+          const key = `${item.contentid}-${item.eventstartdate || ''}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            aggregated.push(item);
+          }
+        });
+      } catch {
+        areaFailures += 1;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 120));
+    }
+
+    if (aggregated.length > 0) {
+      console.warn(`⚠️ Tour API 전체 실패로 지역별 폴백 사용 (실패 ${areaFailures}개)`);
+      return aggregated;
     }
 
     throw new Error(lastError || 'Tour API 오류: 알 수 없는 오류');
@@ -251,14 +286,18 @@ export async function fetchFestivalsByArea(areaCode: string): Promise<TourEvent[
     let data: any = null;
     let lastError: string | null = null;
     for (const url of urls) {
-      const response = await fetch(url);
-      if (!response.ok) {
-        const errorText = await response.text();
-        lastError = `Tour API 오류: ${response.status} - ${errorText.substring(0, 200)}`.trim();
-        continue;
+      try {
+        const response = await fetchJsonWithRetries(url, 3);
+        if (!response.ok) {
+          const errorText = await response.text();
+          lastError = `Tour API 오류: ${response.status} - ${errorText.substring(0, 200)}`.trim();
+          continue;
+        }
+        data = await response.json();
+        break;
+      } catch (err) {
+        lastError = `Tour API 네트워크 오류: ${(err as Error).message}`;
       }
-      data = await response.json();
-      break;
     }
 
     if (!data) {
