@@ -107,16 +107,43 @@ export async function fetchCurrentFestivals(): Promise<TourEvent[]> {
       });
     });
 
+    const fetchWithTimeout = async (url: string) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
+      try {
+        return await fetch(url, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Tour Sync)',
+          },
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
+
+    const MAX_RETRIES = 3;
     let lastError: string | null = null;
     for (const url of candidateUrls) {
       console.log('🔍 Tour API 요청 URL 생성 완료');
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-        },
-      });
+      let response: Response | null = null;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+        try {
+          response = await fetchWithTimeout(url);
+          break;
+        } catch (err) {
+          lastError = `Tour API 네트워크 오류: ${(err as Error).message}`;
+          await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+        }
+      }
+
+      if (!response) {
+        continue;
+      }
 
       console.log('📡 Tour API 응답 상태:', response.status);
 
