@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { fetchCurrentFestivals, convertTourEventToDbFormat, TOUR_AREA_CODES } from '@/lib/tourapi';
 import { fetchCurrentCultureEvents, convertCultureEventToDbFormat } from '@/lib/culture-api';
+import {
+  fetchOdcloudFestivals,
+  fetchOdcloudPerformances,
+  convertOdcloudFestivalToDbFormat,
+  convertOdcloudPerformanceToDbFormat,
+} from '@/lib/odcloud-api';
 import { fetchSeoulEvents, convertSeoulEventToDbFormat, fetchGyeonggiEvents, convertGyeonggiEventToDbFormat } from '@/lib/local-event-api';
 
 /**
@@ -30,6 +36,7 @@ async function syncEvents(request?: NextRequest) {
   // 1. 한국관광공사 Tour API - 전국 축제
   console.log('📍 1/4: Tour API 축제 정보 수집 중...');
   let festivals: any[] = [];
+  let odcloudFestivals: any[] = [];
   try {
     festivals = await fetchCurrentFestivals({ fallbackMode: 'none' });
   } catch (e) {
@@ -74,6 +81,14 @@ async function syncEvents(request?: NextRequest) {
     } catch (fallbackError) {
       apiErrors.tour = `${apiErrors.tour} | ${(fallbackError as Error).message}`;
       festivals = [];
+    }
+  }
+  if (festivals.length === 0) {
+    try {
+      odcloudFestivals = await fetchOdcloudFestivals();
+    } catch (e) {
+      apiErrors.odcloudFestival = (e as Error).message;
+      odcloudFestivals = [];
     }
   }
   console.log(`Tour API 응답: ${festivals.length}개의 축제 데이터`);
@@ -140,18 +155,56 @@ async function syncEvents(request?: NextRequest) {
       }
     }
 
+    let odcloudFestivalSynced = 0;
+    let odcloudFestivalSkipped = 0;
+    for (const row of odcloudFestivals) {
+      try {
+        const eventData = convertOdcloudFestivalToDbFormat(row);
+        if (!eventData.start_date) {
+          odcloudFestivalSkipped++;
+          continue;
+        }
+        const { data: existing } = await supabase
+          .from('events')
+          .select('id')
+          .eq('title', eventData.title)
+          .eq('start_date', eventData.start_date)
+          .maybeSingle();
+        if (existing) {
+          const { error } = await supabase
+            .from('events')
+            .update({ ...eventData, updated_at: new Date().toISOString() })
+            .eq('id', existing.id);
+          error ? odcloudFestivalSkipped++ : odcloudFestivalSynced++;
+        } else {
+          const { error } = await supabase.from('events').insert(eventData);
+          error ? odcloudFestivalSkipped++ : odcloudFestivalSynced++;
+        }
+      } catch {
+        odcloudFestivalSkipped++;
+      }
+    }
+
     results.tour = {
       synced: tourSynced,
       skipped: tourSkipped,
       total: festivals.length || tourExistingCount,
       preserved: tourExistingCount,
     };
+    results.odcloudFestival = {
+      synced: odcloudFestivalSynced,
+      skipped: odcloudFestivalSkipped,
+      total: odcloudFestivals.length,
+    };
     totalSynced += tourSynced;
     totalSkipped += tourSkipped;
+    totalSynced += odcloudFestivalSynced;
+    totalSkipped += odcloudFestivalSkipped;
 
     // 2. 문화체육관광부 공연전시정보 API
     console.log('📍 2/4: Culture API 공연/전시 정보 수집 중...');
     let cultureEvents: any[] = [];
+    let odcloudPerformances: any[] = [];
     let cultureMeta: {
       startPage: number;
       pagesFetched: number;
@@ -277,6 +330,14 @@ async function syncEvents(request?: NextRequest) {
       apiErrors.culture = (e as Error).message;
       cultureEvents = [];
     }
+    if (cultureEvents.length === 0) {
+      try {
+        odcloudPerformances = await fetchOdcloudPerformances();
+      } catch (e) {
+        apiErrors.odcloudPerformance = (e as Error).message;
+        odcloudPerformances = [];
+      }
+    }
     let cultureExistingCount = 0;
     if (cultureEvents.length === 0 && apiErrors.culture) {
       const today = new Date().toISOString().split('T')[0];
@@ -323,6 +384,36 @@ async function syncEvents(request?: NextRequest) {
       }
     }
 
+    let odcloudPerformanceSynced = 0;
+    let odcloudPerformanceSkipped = 0;
+    for (const row of odcloudPerformances) {
+      try {
+        const eventData = convertOdcloudPerformanceToDbFormat(row);
+        if (!eventData.start_date) {
+          odcloudPerformanceSkipped++;
+          continue;
+        }
+        const { data: existing } = await supabase
+          .from('events')
+          .select('id')
+          .eq('title', eventData.title)
+          .eq('start_date', eventData.start_date)
+          .maybeSingle();
+        if (existing) {
+          const { error } = await supabase
+            .from('events')
+            .update({ ...eventData, updated_at: new Date().toISOString() })
+            .eq('id', existing.id);
+          error ? odcloudPerformanceSkipped++ : odcloudPerformanceSynced++;
+        } else {
+          const { error } = await supabase.from('events').insert(eventData);
+          error ? odcloudPerformanceSkipped++ : odcloudPerformanceSynced++;
+        }
+      } catch {
+        odcloudPerformanceSkipped++;
+      }
+    }
+
     results.culture = {
       synced: cultureSynced,
       skipped: cultureSkipped,
@@ -330,8 +421,15 @@ async function syncEvents(request?: NextRequest) {
       preserved: cultureExistingCount,
       pagination: cultureMeta,
     };
+    results.odcloudPerformance = {
+      synced: odcloudPerformanceSynced,
+      skipped: odcloudPerformanceSkipped,
+      total: odcloudPerformances.length,
+    };
     totalSynced += cultureSynced;
     totalSkipped += cultureSkipped;
+    totalSynced += odcloudPerformanceSynced;
+    totalSkipped += odcloudPerformanceSkipped;
 
     // 3. 서울열린데이터광장
     console.log('📍 3/4: Seoul API 문화행사 정보 수집 중...');
@@ -433,6 +531,8 @@ async function syncEvents(request?: NextRequest) {
       cultureApiCount: cultureEvents.length,
       seoulApiCount: seoulEvents.length,
       gyeonggiApiCount: gyeonggiEvents.length,
+      odcloudFestivalCount: odcloudFestivals.length,
+      odcloudPerformanceCount: odcloudPerformances.length,
       apiErrors,
       culturePagination: cultureMeta,
     }
