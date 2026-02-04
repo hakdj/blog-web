@@ -1,0 +1,496 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+
+type Task = {
+  id: string;
+  title: string;
+  note: string | null;
+  due_date: string | null;
+  is_done: boolean;
+  created_at: string;
+};
+
+type EventItem = {
+  id: string;
+  title: string;
+  start_date: string;
+  end_date: string | null;
+  region: string;
+  event_type: string;
+  location: string | null;
+};
+
+type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+const REGIONS = [
+  '전국',
+  '서울',
+  '부산',
+  '경기',
+  '인천',
+  '대구',
+  '대전',
+  '광주',
+  '울산',
+  '세종',
+  '강원',
+  '충북',
+  '충남',
+  '전북',
+  '전남',
+  '경북',
+  '경남',
+  '제주',
+];
+
+const MEMORY_PROMPTS = [
+  '오늘 가장 기억에 남는 장면은 무엇인가요?',
+  '어릴 적 좋아했던 노래 한 곡을 떠올려보세요.',
+  '최근에 고마웠던 사람에게 한 줄 메시지를 써보세요.',
+  '오늘의 나에게 작은 칭찬을 해준다면?',
+  '추억의 장소를 하나 떠올리고 이유를 적어보세요.',
+];
+
+export default function LatteFriendClient() {
+  const [activeTab, setActiveTab] = useState<'plan' | 'recommend' | 'chat' | 'summary' | 'extra'>('plan');
+  const [error, setError] = useState('');
+
+  // 일정
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskNote, setTaskNote] = useState('');
+  const [taskDate, setTaskDate] = useState('');
+  const [taskSaving, setTaskSaving] = useState(false);
+
+  // 추천
+  const [recRegion, setRecRegion] = useState('전국');
+  const [recType, setRecType] = useState('all');
+  const [recKeyword, setRecKeyword] = useState('');
+  const [recommendations, setRecommendations] = useState<EventItem[]>([]);
+  const [recLoading, setRecLoading] = useState(false);
+
+  // 상담
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+
+  // 요약
+  const [summary, setSummary] = useState('');
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  const [prompt, setPrompt] = useState(MEMORY_PROMPTS[0]);
+
+  const sortedTasks = useMemo(() => {
+    return [...tasks].sort((a, b) => {
+      if (a.is_done !== b.is_done) return a.is_done ? 1 : -1;
+      const aDate = a.due_date ? new Date(a.due_date).getTime() : 0;
+      const bDate = b.due_date ? new Date(b.due_date).getTime() : 0;
+      return aDate - bDate;
+    });
+  }, [tasks]);
+
+  const loadTasks = async () => {
+    try {
+      const response = await fetch('/api/assistant/tasks');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || '일정을 불러오지 못했습니다.');
+      setTasks(data.tasks || []);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'plan') {
+      loadTasks();
+    }
+  }, [activeTab]);
+
+  const addTask = async () => {
+    if (!taskTitle.trim()) {
+      setError('할 일을 입력해주세요.');
+      return;
+    }
+    setTaskSaving(true);
+    setError('');
+    try {
+      const response = await fetch('/api/assistant/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: taskTitle,
+          note: taskNote,
+          due_date: taskDate || null,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || '저장 실패');
+      setTaskTitle('');
+      setTaskNote('');
+      setTaskDate('');
+      await loadTasks();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setTaskSaving(false);
+    }
+  };
+
+  const toggleTask = async (task: Task) => {
+    try {
+      const response = await fetch(`/api/assistant/tasks/${task.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_done: !task.is_done }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || '업데이트 실패');
+      await loadTasks();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    if (!confirm('일정을 삭제할까요?')) return;
+    try {
+      const response = await fetch(`/api/assistant/tasks/${taskId}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || '삭제 실패');
+      await loadTasks();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const fetchRecommendations = async () => {
+    setRecLoading(true);
+    setError('');
+    try {
+      const params = new URLSearchParams();
+      if (recRegion !== '전국') params.set('region', recRegion);
+      if (recType !== 'all') params.set('type', recType);
+      if (recKeyword.trim()) params.set('q', recKeyword.trim());
+
+      const response = await fetch(`/api/assistant/recommendations?${params.toString()}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || '추천을 불러오지 못했습니다.');
+      setRecommendations(data.events || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setRecLoading(false);
+    }
+  };
+
+  const sendChat = async () => {
+    if (!chatInput.trim()) return;
+    const message = chatInput.trim();
+    setChatInput('');
+    setChatMessages((prev) => [...prev, { role: 'user', content: message }]);
+    setChatLoading(true);
+    setError('');
+    try {
+      const response = await fetch('/api/assistant/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          history: chatMessages.slice(-6),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || '상담 실패');
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: data.reply || '' }]);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const generateSummary = async () => {
+    setSummaryLoading(true);
+    setError('');
+    try {
+      const response = await fetch('/api/assistant/summary', { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || '요약 실패');
+      setSummary(data.summary || '');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  const changePrompt = () => {
+    const next = MEMORY_PROMPTS[Math.floor(Math.random() * MEMORY_PROMPTS.length)];
+    setPrompt(next);
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">라떼 친구</h1>
+        <p className="text-gray-600">일정, 취미, 상담, 요약까지 한 번에 관리해요</p>
+      </div>
+
+      <div className="flex flex-wrap gap-3 mb-6">
+        <button
+          onClick={() => setActiveTab('plan')}
+          className={`px-4 py-2 rounded-lg font-medium ${
+            activeTab === 'plan' ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-700'
+          }`}
+        >
+          일정 관리
+        </button>
+        <button
+          onClick={() => setActiveTab('recommend')}
+          className={`px-4 py-2 rounded-lg font-medium ${
+            activeTab === 'recommend' ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-700'
+          }`}
+        >
+          취미 추천
+        </button>
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={`px-4 py-2 rounded-lg font-medium ${
+            activeTab === 'chat' ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-700'
+          }`}
+        >
+          라떼 상담
+        </button>
+        <button
+          onClick={() => setActiveTab('summary')}
+          className={`px-4 py-2 rounded-lg font-medium ${
+            activeTab === 'summary' ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-700'
+          }`}
+        >
+          기록 요약
+        </button>
+        <button
+          onClick={() => setActiveTab('extra')}
+          className={`px-4 py-2 rounded-lg font-medium ${
+            activeTab === 'extra' ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-700'
+          }`}
+        >
+          기타
+        </button>
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          {error}
+        </div>
+      )}
+
+      {activeTab === 'plan' && (
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-xl shadow p-5 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">오늘의 일정</h2>
+            <input
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+              placeholder="할 일"
+              className="w-full border rounded-lg px-3 py-2"
+            />
+            <textarea
+              value={taskNote}
+              onChange={(e) => setTaskNote(e.target.value)}
+              placeholder="메모"
+              rows={3}
+              className="w-full border rounded-lg px-3 py-2"
+            />
+            <input
+              type="date"
+              value={taskDate}
+              onChange={(e) => setTaskDate(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2"
+            />
+            <button
+              onClick={addTask}
+              disabled={taskSaving}
+              className="w-full bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {taskSaving ? '저장 중...' : '일정 추가'}
+            </button>
+          </div>
+          <div className="lg:col-span-2 space-y-3">
+            {sortedTasks.length === 0 ? (
+              <div className="bg-white rounded-xl shadow p-6 text-center text-gray-600">
+                아직 등록된 일정이 없습니다.
+              </div>
+            ) : (
+              sortedTasks.map((task) => (
+                <div key={task.id} className="bg-white rounded-xl shadow p-4 flex items-start justify-between gap-4">
+                  <div>
+                    <p className={`font-semibold ${task.is_done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                      {task.title}
+                    </p>
+                    {task.note && <p className="text-sm text-gray-600 mt-1">{task.note}</p>}
+                    {task.due_date && <p className="text-xs text-gray-500 mt-1">마감: {task.due_date}</p>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleTask(task)}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      {task.is_done ? '복원' : '완료'}
+                    </button>
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="text-sm text-red-600 hover:text-red-800"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'recommend' && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl shadow p-5 grid md:grid-cols-4 gap-3">
+            <select
+              value={recRegion}
+              onChange={(e) => setRecRegion(e.target.value)}
+              className="border rounded-lg px-3 py-2"
+            >
+              {REGIONS.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </select>
+            <select
+              value={recType}
+              onChange={(e) => setRecType(e.target.value)}
+              className="border rounded-lg px-3 py-2"
+            >
+              <option value="all">전체</option>
+              <option value="festival">축제</option>
+              <option value="local_feature">지역 특색</option>
+            </select>
+            <input
+              value={recKeyword}
+              onChange={(e) => setRecKeyword(e.target.value)}
+              placeholder="키워드"
+              className="border rounded-lg px-3 py-2"
+            />
+            <button
+              onClick={fetchRecommendations}
+              disabled={recLoading}
+              className="bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {recLoading ? '검색 중...' : '추천 받기'}
+            </button>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            {recommendations.length === 0 ? (
+              <div className="bg-white rounded-xl shadow p-6 text-center text-gray-600">
+                아직 추천 결과가 없습니다.
+              </div>
+            ) : (
+              recommendations.map((item) => (
+                <div key={item.id} className="bg-white rounded-xl shadow p-5 space-y-2">
+                  <h3 className="text-lg font-bold text-gray-900">{item.title}</h3>
+                  <p className="text-sm text-gray-600">
+                    {item.region} · {item.event_type}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {item.start_date} {item.end_date ? `~ ${item.end_date}` : ''}
+                  </p>
+                  {item.location && <p className="text-sm text-gray-600">{item.location}</p>}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'chat' && (
+        <div className="bg-white rounded-xl shadow p-6 space-y-4">
+          <div className="space-y-3 max-h-[420px] overflow-y-auto">
+            {chatMessages.length === 0 ? (
+              <div className="text-center text-gray-500">
+                고민이나 계획을 적어보세요. 라떼 친구가 도와줄게요.
+              </div>
+            ) : (
+              chatMessages.map((msg, idx) => (
+                <div
+                  key={`${msg.role}-${idx}`}
+                  className={`p-3 rounded-lg ${
+                    msg.role === 'user' ? 'bg-indigo-50 text-gray-900' : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  <p className="text-sm font-semibold mb-1">{msg.role === 'user' ? '나' : '라떼 친구'}</p>
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') sendChat();
+              }}
+              placeholder="오늘의 고민이나 계획을 적어보세요"
+              className="flex-1 border rounded-lg px-3 py-2"
+            />
+            <button
+              onClick={sendChat}
+              disabled={chatLoading}
+              className="bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {chatLoading ? '답변 중...' : '보내기'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'summary' && (
+        <div className="bg-white rounded-xl shadow p-6 space-y-4">
+          <p className="text-gray-600">
+            최근 작성한 일기를 요약해서 오늘의 핵심 감정을 알려줘요.
+          </p>
+          <button
+            onClick={generateSummary}
+            disabled={summaryLoading}
+            className="bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {summaryLoading ? '요약 중...' : '요약 생성'}
+          </button>
+          {summary && (
+            <div className="bg-gray-50 border rounded-lg p-4 text-gray-700 whitespace-pre-wrap">
+              {summary}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'extra' && (
+        <div className="bg-white rounded-xl shadow p-6 space-y-4">
+          <h3 className="text-lg font-bold text-gray-900">오늘의 추억 질문</h3>
+          <p className="text-gray-600">{prompt}</p>
+          <button
+            onClick={changePrompt}
+            className="bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700"
+          >
+            질문 바꾸기
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

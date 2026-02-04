@@ -23,6 +23,14 @@
 
 ## 🚀 지금 실행해야 할 SQL 파일 (순서대로)
 
+### 0-3단계: 라떼 친구 일정 테이블 생성
+**파일:** `db/CREATE_ASSISTANT_TASKS.sql`
+
+**효과:**
+- 라떼 친구 일정/할 일 저장용 `assistant_tasks` 테이블 생성
+
+---
+
 ### 0-2단계: OpenAI 개인키 컬럼 추가
 **파일:** `db/ADD_OPENAI_KEY_TO_PROFILES.sql`
 
@@ -100,6 +108,9 @@ INSERT INTO plans (tier, interval, name, price, features, is_active) VALUES
 ---
 
 ## 📝 실행 순서
+
+0-3. **`CREATE_ASSISTANT_TASKS.sql`** 실행
+   - 라떼 친구 일정 테이블 생성
 
 0-2. **`ADD_OPENAI_KEY_TO_PROFILES.sql`** 실행
    - profiles 테이블에 openai_api_key 컬럼 추가
