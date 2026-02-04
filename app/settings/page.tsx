@@ -12,6 +12,8 @@ export default function SettingsPage() {
     nickname: '',
     email: ''
   });
+  const [hasOpenAiKey, setHasOpenAiKey] = useState(false);
+  const [openAiKeyInput, setOpenAiKeyInput] = useState('');
   const [passwords, setPasswords] = useState({
     current: '',
     new: '',
@@ -74,12 +76,14 @@ export default function SettingsPage() {
           nickname: profileData.nickname || '',
           email: user.email || ''
         });
+        setHasOpenAiKey(Boolean(profileData.openai_api_key));
       } else {
         // Profile doesn't exist, set email from user
         setProfile({
           nickname: '',
           email: user.email || ''
         });
+        setHasOpenAiKey(false);
       }
 
       // Load subscription
@@ -180,6 +184,61 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Error changing password:', error);
       setError('비밀번호 변경 실패: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenAiKeySave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (!user) return;
+      const key = openAiKeyInput.trim();
+      if (!key) {
+        alert('API 키를 입력해주세요.');
+        setLoading(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          openai_api_key: key
+        });
+
+      if (error) throw error;
+      alert('AI 키가 저장되었습니다.');
+      setOpenAiKeyInput('');
+      setHasOpenAiKey(true);
+    } catch (error) {
+      console.error('Error saving OpenAI key:', error);
+      setError('AI 키 저장 실패: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenAiKeyDelete = async () => {
+    if (!confirm('AI 키를 삭제하시겠습니까?')) return;
+    setLoading(true);
+    setError(null);
+    try {
+      if (!user) return;
+      const { error } = await supabase
+        .from('profiles')
+        .update({ openai_api_key: null })
+        .eq('id', user.id);
+      if (error) throw error;
+      alert('AI 키가 삭제되었습니다.');
+      setHasOpenAiKey(false);
+      setOpenAiKeyInput('');
+    } catch (error) {
+      console.error('Error deleting OpenAI key:', error);
+      setError('AI 키 삭제 실패: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -455,6 +514,52 @@ export default function SettingsPage() {
             >
               {loading ? '변경 중...' : '비밀번호 변경'}
             </button>
+          </form>
+        </div>
+
+        {/* AI Key Section */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900">AI 키 설정</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              개인 OpenAI 키를 등록하면 AI 일기 작성에 사용됩니다.
+            </p>
+          </div>
+          <form onSubmit={handleOpenAiKeySave} className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                OpenAI API 키
+              </label>
+              <input
+                type="password"
+                value={openAiKeyInput}
+                onChange={(e) => setOpenAiKeyInput(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder={hasOpenAiKey ? '등록됨 (새 키로 변경하려면 입력)' : 'sk-...'}
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                키는 본인만 사용하며 서버에 안전하게 저장됩니다.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? '저장 중...' : hasOpenAiKey ? '키 변경 저장' : '키 저장'}
+              </button>
+              {hasOpenAiKey && (
+                <button
+                  type="button"
+                  onClick={handleOpenAiKeyDelete}
+                  disabled={loading}
+                  className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  키 삭제
+                </button>
+              )}
+            </div>
           </form>
         </div>
 

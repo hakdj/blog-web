@@ -23,6 +23,24 @@
 
 ## 🚀 지금 실행해야 할 SQL 파일 (순서대로)
 
+### 0-2단계: OpenAI 개인키 컬럼 추가
+**파일:** `db/ADD_OPENAI_KEY_TO_PROFILES.sql`
+
+**효과:**
+- 개인별 OpenAI 키 저장용 `openai_api_key` 컬럼 추가
+- AI 기능을 사용자 키로만 사용하도록 설정
+
+---
+
+### 0-1단계: 추억의 일기장 테이블 생성
+**파일:** `db/CREATE_DIARY_TABLE.sql`
+
+**효과:**
+- 일기장 데이터 저장용 `diary_entries` 테이블 생성
+- 공개/비공개 및 이미지/태그 필드 포함
+
+---
+
 ### 0단계: subscriptions 테이블 생성 (없을 때만)
 **파일:** `db/CREATE_SUBSCRIPTIONS_TABLE.sql`
 
@@ -82,6 +100,12 @@ INSERT INTO plans (tier, interval, name, price, features, is_active) VALUES
 ---
 
 ## 📝 실행 순서
+
+0-2. **`ADD_OPENAI_KEY_TO_PROFILES.sql`** 실행
+   - profiles 테이블에 openai_api_key 컬럼 추가
+
+0-1. **`CREATE_DIARY_TABLE.sql`** 실행
+   - 추억의 일기장 테이블 생성
 
 0. **`CREATE_SUBSCRIPTIONS_TABLE.sql`** 실행 (없을 때만)
    - `subscriptions` 테이블 생성
