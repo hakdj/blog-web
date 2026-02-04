@@ -83,6 +83,12 @@ export default function LatteFriendClient() {
   const [summaryLoading, setSummaryLoading] = useState(false);
 
   const [prompt, setPrompt] = useState(MEMORY_PROMPTS[0]);
+  const [goalDate, setGoalDate] = useState(new Date().toISOString().slice(0, 10));
+  const [goalText, setGoalText] = useState('');
+  const [memoDate, setMemoDate] = useState(new Date().toISOString().slice(0, 10));
+  const [memoText, setMemoText] = useState('');
+  const [dailyNotes, setDailyNotes] = useState<{ note_date: string; goal: string | null; memo: string | null }[]>([]);
+  const [dailyLoading, setDailyLoading] = useState(false);
 
   const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => {
@@ -107,6 +113,9 @@ export default function LatteFriendClient() {
   useEffect(() => {
     if (activeTab === 'plan') {
       loadTasks();
+    }
+    if (activeTab === 'extra') {
+      loadDailyNotes();
     }
   }, [activeTab]);
 
@@ -231,6 +240,69 @@ export default function LatteFriendClient() {
   const changePrompt = () => {
     const next = MEMORY_PROMPTS[Math.floor(Math.random() * MEMORY_PROMPTS.length)];
     setPrompt(next);
+  };
+
+  const loadDailyNotes = async () => {
+    setDailyLoading(true);
+    setError('');
+    try {
+      const response = await fetch('/api/assistant/daily?days=30');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || '데이터를 불러오지 못했습니다.');
+      setDailyNotes(data.notes || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setDailyLoading(false);
+    }
+  };
+
+  const saveGoal = async () => {
+    if (!goalText.trim()) {
+      setError('목표를 입력해주세요.');
+      return;
+    }
+    setError('');
+    try {
+      const response = await fetch('/api/assistant/daily', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          note_date: goalDate,
+          goal: goalText.trim(),
+          memo: null,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || '목표 저장 실패');
+      await loadDailyNotes();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const saveMemo = async () => {
+    if (!memoText.trim()) {
+      setError('메모를 입력해주세요.');
+      return;
+    }
+    setError('');
+    try {
+      const response = await fetch('/api/assistant/daily', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          note_date: memoDate,
+          goal: null,
+          memo: memoText.trim(),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || '메모 저장 실패');
+      await loadDailyNotes();
+    } catch (err) {
+      setError((err as Error).message);
+    }
   };
 
   return (
@@ -480,15 +552,78 @@ export default function LatteFriendClient() {
       )}
 
       {activeTab === 'extra' && (
-        <div className="bg-white rounded-xl shadow p-6 space-y-4">
-          <h3 className="text-lg font-bold text-gray-900">오늘의 추억 질문</h3>
-          <p className="text-gray-600">{prompt}</p>
-          <button
-            onClick={changePrompt}
-            className="bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700"
-          >
-            질문 바꾸기
-          </button>
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl shadow p-6 space-y-4">
+            <h3 className="text-lg font-bold text-gray-900">오늘의 목표</h3>
+            <input
+              type="date"
+              value={goalDate}
+              onChange={(e) => setGoalDate(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2"
+            />
+            <input
+              value={goalText}
+              onChange={(e) => setGoalText(e.target.value)}
+              placeholder="오늘 꼭 하고 싶은 목표 한 줄"
+              className="w-full border rounded-lg px-3 py-2"
+            />
+            <button
+              onClick={saveGoal}
+              className="bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700"
+            >
+              목표 저장
+            </button>
+            <div className="border-t pt-4 space-y-3">
+              <h4 className="text-sm font-semibold text-gray-700">오늘의 추억 질문</h4>
+              <p className="text-gray-600">{prompt}</p>
+              <button
+                onClick={changePrompt}
+                className="bg-gray-100 text-gray-700 rounded-lg px-3 py-2 text-sm hover:bg-gray-200"
+              >
+                질문 바꾸기
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow p-6 space-y-4">
+            <h3 className="text-lg font-bold text-gray-900">추억 캘린더 메모</h3>
+            <input
+              type="date"
+              value={memoDate}
+              onChange={(e) => setMemoDate(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2"
+            />
+            <textarea
+              value={memoText}
+              onChange={(e) => setMemoText(e.target.value)}
+              placeholder="그날의 추억 한 줄"
+              rows={4}
+              className="w-full border rounded-lg px-3 py-2"
+            />
+            <button
+              onClick={saveMemo}
+              className="bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700"
+            >
+              메모 저장
+            </button>
+
+            <div className="border-t pt-4 space-y-3">
+              <h4 className="text-sm font-semibold text-gray-700">최근 메모</h4>
+              {dailyLoading ? (
+                <div className="text-sm text-gray-500">불러오는 중...</div>
+              ) : dailyNotes.length === 0 ? (
+                <div className="text-sm text-gray-500">아직 메모가 없습니다.</div>
+              ) : (
+                dailyNotes.map((note) => (
+                  <div key={note.note_date} className="border rounded-lg p-3">
+                    <p className="text-xs text-gray-500">{note.note_date}</p>
+                    {note.goal && <p className="text-sm text-gray-800">목표: {note.goal}</p>}
+                    {note.memo && <p className="text-sm text-gray-700">{note.memo}</p>}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
