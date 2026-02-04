@@ -365,6 +365,9 @@ export default function DiaryClient() {
               rows={3}
               className="w-full border rounded-lg px-3 py-2"
             />
+            <p className="text-xs text-gray-500">
+              실제 AI 사용을 원하면 마이페이지에서 OpenAI 키를 등록하세요.
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={aiTone}
