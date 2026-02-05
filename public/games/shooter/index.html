@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>1945 Mini</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        background: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      }
+      #wrap {
+        text-align: center;
+      }
+      canvas {
+        background: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+      }
+      .info {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #64748b;
+      }
+      .score {
+        color: #f8fafc;
+        font-size: 14px;
+        margin-bottom: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="wrap">
+      <div class="score">점수: <span id="score">0</span></div>
+      <canvas id="board" width="360" height="420"></canvas>
+      <div class="info">← → 이동 · 스페이스 공격</div>
+    </div>
+    <script>
+      const canvas = document.getElementById("board");
+      const ctx = canvas.getContext("2d");
+      const scoreEl = document.getElementById("score");
+      let score = 0;
+      const ship = { x: 160, y: 380, w: 30, h: 20 };
+      let bullets = [];
+      let enemies = [];
+      let running = true;
+
+      function spawnEnemy() {
+        enemies.push({
+          x: Math.random() * (canvas.width - 20),
+          y: -20,
+          w: 20,
+          h: 20,
+          speed: 1.5 + Math.random() * 1.5,
+        });
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#38bdf8";
+        ctx.fillRect(ship.x, ship.y, ship.w, ship.h);
+        ctx.fillStyle = "#fbbf24";
+        bullets.forEach((b) => ctx.fillRect(b.x, b.y, 4, 8));
+        ctx.fillStyle = "#ef4444";
+        enemies.forEach((e) => ctx.fillRect(e.x, e.y, e.w, e.h));
+      }
+
+      function update() {
+        if (!running) return;
+        bullets = bullets.map((b) => ({ ...b, y: b.y - 6 })).filter((b) => b.y > -10);
+        enemies = enemies.map((e) => ({ ...e, y: e.y + e.speed }));
+
+        enemies.forEach((e, ei) => {
+          if (e.y + e.h >= ship.y && e.x < ship.x + ship.w && e.x + e.w > ship.x) {
+            running = false;
+          }
+          bullets.forEach((b, bi) => {
+            if (b.x < e.x + e.w && b.x + 4 > e.x && b.y < e.y + e.h && b.y + 8 > e.y) {
+              enemies.splice(ei, 1);
+              bullets.splice(bi, 1);
+              score += 1;
+              scoreEl.textContent = String(score);
+            }
+          });
+        });
+
+        enemies = enemies.filter((e) => e.y < canvas.height + 30);
+        draw();
+      }
+
+      window.addEventListener("keydown", (e) => {
+        if (["ArrowLeft", "ArrowRight", " "].includes(e.key)) {
+          e.preventDefault();
+        }
+        if (e.key === "ArrowLeft") {
+          ship.x = Math.max(0, ship.x - 10);
+        }
+        if (e.key === "ArrowRight") {
+          ship.x = Math.min(canvas.width - ship.w, ship.x + 10);
+        }
+        if (e.key === " ") {
+          bullets.push({ x: ship.x + ship.w / 2 - 2, y: ship.y - 6 });
+        }
+      });
+
+      setInterval(() => {
+        if (Math.random() < 0.4) spawnEnemy();
+      }, 500);
+
+      setInterval(update, 30);
+    </script>
+  </body>
+</html>

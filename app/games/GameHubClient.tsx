@@ -4,8 +4,10 @@ import { useMemo, useState } from 'react';
 
 const GAME_LIST = [
   { id: 'snake', name: '지렁이 게임', status: 'ready' },
-  { id: 'brick', name: '벽돌깨기', status: 'soon' },
-  { id: 'memory', name: '기억 카드', status: 'soon' },
+  { id: 'brick', name: '벽돌깨기', status: 'ready' },
+  { id: 'memory', name: '기억 카드', status: 'ready' },
+  { id: 'shooter', name: '1945 미니', status: 'ready' },
+  { id: 'tetris', name: '테트리스', status: 'ready' },
 ];
 
 export default function GameHubClient() {
@@ -92,9 +94,43 @@ export default function GameHubClient() {
         </div>
       )}
 
-      {activeGame !== 'snake' && (
-        <div className="bg-white rounded-xl shadow p-6 text-center text-gray-600">
-          다음 게임을 준비 중입니다. 조금만 기다려주세요!
+      {activeGame === 'brick' && (
+        <div className="bg-white rounded-xl shadow p-6 flex justify-center">
+          <iframe
+            title="brick-breaker"
+            src="/games/brick/index.html"
+            className="w-[420px] h-[320px] border-0"
+          />
+        </div>
+      )}
+
+      {activeGame === 'memory' && (
+        <div className="bg-white rounded-xl shadow p-6 flex justify-center">
+          <iframe
+            title="memory-card"
+            src="/games/memory/index.html"
+            className="w-[320px] h-[360px] border-0"
+          />
+        </div>
+      )}
+
+      {activeGame === 'shooter' && (
+        <div className="bg-white rounded-xl shadow p-6 flex justify-center">
+          <iframe
+            title="1945-mini"
+            src="/games/shooter/index.html"
+            className="w-[360px] h-[440px] border-0"
+          />
+        </div>
+      )}
+
+      {activeGame === 'tetris' && (
+        <div className="bg-white rounded-xl shadow p-6 flex justify-center">
+          <iframe
+            title="tetris-mini"
+            src="/games/tetris/index.html"
+            className="w-[220px] h-[440px] border-0"
+          />
         </div>
       )}
     </div>
