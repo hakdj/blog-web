@@ -116,6 +116,7 @@
           ArrowRight: { x: 1, y: 0 },
         };
         if (!map[e.key]) return;
+        e.preventDefault();
         const next = map[e.key];
         if (dir.x + next.x === 0 && dir.y + next.y === 0) return;
         dir = next;
