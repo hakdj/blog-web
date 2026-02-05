@@ -1,19 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-
-type Cell = { x: number; y: number };
-
-const GRID_SIZE = 20;
-const CANVAS_SIZE = 420;
-const CELL_SIZE = CANVAS_SIZE / GRID_SIZE;
-
-const DIRECTIONS: Record<string, Cell> = {
-  ArrowUp: { x: 0, y: -1 },
-  ArrowDown: { x: 0, y: 1 },
-  ArrowLeft: { x: -1, y: 0 },
-  ArrowRight: { x: 1, y: 0 },
-};
+import { useMemo, useState } from 'react';
+import Snake from 'react-snake-lib';
 
 const GAME_LIST = [
   { id: 'snake', name: '지렁이 게임', status: 'ready' },
@@ -35,125 +23,16 @@ function randomFood(snake: Cell[]) {
 
 export default function GameHubClient() {
   const [activeGame, setActiveGame] = useState('snake');
-  const [snake, setSnake] = useState<Cell[]>([{ x: 10, y: 10 }]);
-  const [direction, setDirection] = useState<Cell>({ x: 1, y: 0 });
-  const [food, setFood] = useState<Cell>({ x: 5, y: 5 });
   const [isRunning, setIsRunning] = useState(false);
   const [score, setScore] = useState(0);
   const [bestScore, setBestScore] = useState(0);
   const [speed, setSpeed] = useState(140);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const directionRef = useRef<Cell>(direction);
-  const snakeRef = useRef<Cell[]>(snake);
-  const loopRef = useRef<NodeJS.Timeout | null>(null);
 
   const gameStatus = useMemo(() => {
     return isRunning ? '진행 중' : '대기';
   }, [isRunning]);
 
-  useEffect(() => {
-    directionRef.current = direction;
-  }, [direction]);
-
-  useEffect(() => {
-    snakeRef.current = snake;
-  }, [snake]);
-
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      const next = DIRECTIONS[event.key];
-      if (!next) return;
-      const current = directionRef.current;
-      if (current.x + next.x === 0 && current.y + next.y === 0) return;
-      setDirection(next);
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, []);
-
-  useEffect(() => {
-    if (!isRunning) {
-      if (loopRef.current) clearInterval(loopRef.current);
-      return;
-    }
-    loopRef.current = setInterval(() => {
-      setSnake((prev) => {
-        const head = prev[0];
-        const next = {
-          x: (head.x + directionRef.current.x + GRID_SIZE) % GRID_SIZE,
-          y: (head.y + directionRef.current.y + GRID_SIZE) % GRID_SIZE,
-        };
-        const hitSelf = prev.some((cell) => cell.x === next.x && cell.y === next.y);
-        if (hitSelf) {
-          setIsRunning(false);
-          return prev;
-        }
-        const newSnake = [next, ...prev];
-        if (next.x === food.x && next.y === food.y) {
-          setScore((s) => s + 1);
-          setFood(randomFood(newSnake));
-          return newSnake;
-        }
-        newSnake.pop();
-        return newSnake;
-      });
-    }, speed);
-
-    return () => {
-      if (loopRef.current) clearInterval(loopRef.current);
-    };
-  }, [isRunning, speed, food]);
-
-  useEffect(() => {
-    if (score > bestScore) {
-      setBestScore(score);
-    }
-  }, [score, bestScore]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-    ctx.strokeStyle = '#e2e8f0';
-    for (let i = 0; i <= GRID_SIZE; i += 1) {
-      const pos = i * CELL_SIZE;
-      ctx.beginPath();
-      ctx.moveTo(pos, 0);
-      ctx.lineTo(pos, CANVAS_SIZE);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(0, pos);
-      ctx.lineTo(CANVAS_SIZE, pos);
-      ctx.stroke();
-    }
-
-    ctx.fillStyle = '#f97316';
-    ctx.beginPath();
-    ctx.arc(
-      food.x * CELL_SIZE + CELL_SIZE / 2,
-      food.y * CELL_SIZE + CELL_SIZE / 2,
-      CELL_SIZE / 2.5,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-
-    snake.forEach((cell, index) => {
-      ctx.fillStyle = index === 0 ? '#3b82f6' : '#60a5fa';
-      ctx.fillRect(cell.x * CELL_SIZE + 2, cell.y * CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4);
-    });
-  }, [snake, food]);
-
   const resetGame = () => {
-    setSnake([{ x: 10, y: 10 }]);
-    setDirection({ x: 1, y: 0 });
-    setFood({ x: 5, y: 5 });
     setScore(0);
     setIsRunning(false);
   };
@@ -222,12 +101,43 @@ export default function GameHubClient() {
               />
             </div>
             <div className="text-xs text-gray-500">
-              방향키로 이동합니다. 벽은 이어지고 자기 몸에 닿으면 종료됩니다.
+              모듈 기반 게임입니다. 방향키로 이동합니다.
             </div>
           </div>
 
           <div className="lg:col-span-2 bg-white rounded-xl shadow p-6 flex justify-center">
-            <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} />
+            <Snake
+              onGameStart={() => setIsRunning(true)}
+              onGameOver={() => setIsRunning(false)}
+              onScoreChange={(nextScore: number) => {
+                setScore(nextScore);
+                setBestScore((prev) => (nextScore > prev ? nextScore : prev));
+              }}
+              width="420px"
+              height="420px"
+              snakeSpeed={speed}
+              bgColor="#f8fafc"
+              innerBorderColor="#e2e8f0"
+              borderColor="#cbd5f5"
+              snakeColor="#60a5fa"
+              snakeHeadColor="#3b82f6"
+              appleColor="#f97316"
+              size={20}
+              startGameText="게임 시작"
+              startButtonStyle={{
+                color: 'white',
+                padding: '8px 20px',
+                backgroundColor: '#7c3aed',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+              startButtonHoverStyle={{
+                backgroundColor: '#6d28d9',
+              }}
+              noWall={false}
+            />
           </div>
         </div>
       )}
