@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Snake</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        background: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      }
+      #game {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      canvas {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+      }
+      .info {
+        font-size: 12px;
+        color: #64748b;
+      }
+      .score {
+        font-weight: 600;
+        color: #1f2937;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game">
+      <div class="score">점수: <span id="score">0</span></div>
+      <canvas id="board" width="360" height="360"></canvas>
+      <div class="info">방향키로 이동 · 벽은 이어집니다</div>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("board");
+      const ctx = canvas.getContext("2d");
+      const scoreEl = document.getElementById("score");
+      const size = 18;
+      const cell = canvas.width / size;
+      let snake = [{ x: 9, y: 9 }];
+      let dir = { x: 1, y: 0 };
+      let food = { x: 5, y: 5 };
+      let score = 0;
+      let running = true;
+
+      function randomFood() {
+        let next;
+        do {
+          next = {
+            x: Math.floor(Math.random() * size),
+            y: Math.floor(Math.random() * size),
+          };
+        } while (snake.some((s) => s.x === next.x && s.y === next.y));
+        return next;
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#f97316";
+        ctx.beginPath();
+        ctx.arc(
+          food.x * cell + cell / 2,
+          food.y * cell + cell / 2,
+          cell / 2.5,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+
+        snake.forEach((s, idx) => {
+          ctx.fillStyle = idx === 0 ? "#3b82f6" : "#60a5fa";
+          ctx.fillRect(s.x * cell + 2, s.y * cell + 2, cell - 4, cell - 4);
+        });
+      }
+
+      function step() {
+        if (!running) return;
+        const head = snake[0];
+        const next = {
+          x: (head.x + dir.x + size) % size,
+          y: (head.y + dir.y + size) % size,
+        };
+
+        if (snake.some((s) => s.x === next.x && s.y === next.y)) {
+          running = false;
+          return;
+        }
+
+        snake.unshift(next);
+        if (next.x === food.x && next.y === food.y) {
+          score += 1;
+          scoreEl.textContent = String(score);
+          food = randomFood();
+        } else {
+          snake.pop();
+        }
+        draw();
+      }
+
+      window.addEventListener("keydown", (e) => {
+        const map = {
+          ArrowUp: { x: 0, y: -1 },
+          ArrowDown: { x: 0, y: 1 },
+          ArrowLeft: { x: -1, y: 0 },
+          ArrowRight: { x: 1, y: 0 },
+        };
+        if (!map[e.key]) return;
+        const next = map[e.key];
+        if (dir.x + next.x === 0 && dir.y + next.y === 0) return;
+        dir = next;
+      });
+
+      food = randomFood();
+      draw();
+      setInterval(step, 130);
+    </script>
+  </body>
+</html>

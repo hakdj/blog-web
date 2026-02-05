@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Snake from 'react-snake-game';
 
 const GAME_LIST = [
   { id: 'snake', name: '지렁이 게임', status: 'ready' },
@@ -91,9 +90,11 @@ export default function GameHubClient() {
 
           <div className="lg:col-span-2 bg-white rounded-xl shadow p-6 flex justify-center">
             {isRunning ? (
-              <div className="w-[420px] h-[420px]">
-                <Snake />
-              </div>
+              <iframe
+                title="snake-game"
+                src="/games/snake/index.html"
+                className="w-[420px] h-[420px] border-0"
+              />
             ) : (
               <div className="w-[420px] h-[420px] flex items-center justify-center text-gray-500">
                 시작 버튼을 눌러 게임을 시작하세요.

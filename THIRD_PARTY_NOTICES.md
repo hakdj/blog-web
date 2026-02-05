@@ -1,10 +1,8 @@
 # Third-Party Notices
 
-## react-snake-game
+## Snake (custom embed)
 
-Source: https://github.com/djorg83/react-snake-game  
-License: MIT  
-Copyright (c) djorg83
+This project embeds a lightweight snake game implemented in `public/games/snake/index.html`.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
