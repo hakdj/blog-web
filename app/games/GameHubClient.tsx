@@ -8,18 +8,6 @@ const GAME_LIST = [
   { id: 'memory', name: '기억 카드', status: 'soon' },
 ];
 
-function randomFood(snake: Cell[]) {
-  const occupied = new Set(snake.map((c) => `${c.x}-${c.y}`));
-  let cell: Cell = { x: 0, y: 0 };
-  do {
-    cell = {
-      x: Math.floor(Math.random() * GRID_SIZE),
-      y: Math.floor(Math.random() * GRID_SIZE),
-    };
-  } while (occupied.has(`${cell.x}-${cell.y}`));
-  return cell;
-}
-
 export default function GameHubClient() {
   const [activeGame, setActiveGame] = useState('snake');
   const [isRunning, setIsRunning] = useState(false);
