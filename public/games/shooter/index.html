@@ -17,102 +17,109 @@
       #wrap {
         text-align: center;
       }
-      canvas {
-        background: #0f172a;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
-      }
-      .info {
-        margin-top: 8px;
-        font-size: 12px;
-        color: #64748b;
-      }
-      .score {
+      #info {
+        font-size: 13px;
         color: #f8fafc;
-        font-size: 14px;
         margin-bottom: 6px;
+      }
+      #hint {
+        font-size: 12px;
+        color: #94a3b8;
+        margin-top: 6px;
       }
     </style>
   </head>
   <body>
     <div id="wrap">
-      <div class="score">점수: <span id="score">0</span></div>
-      <canvas id="board" width="360" height="420"></canvas>
-      <div class="info">← → 이동 · 스페이스 공격</div>
+      <div id="info">점수: 0 · 라이프: 3</div>
+      <div id="hint">← → 이동 · 스페이스 공격</div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.0/dist/phaser.min.js"></script>
     <script>
-      const canvas = document.getElementById("board");
-      const ctx = canvas.getContext("2d");
-      const scoreEl = document.getElementById("score");
+      const infoEl = document.getElementById("info");
       let score = 0;
-      const ship = { x: 160, y: 380, w: 30, h: 20 };
-      let bullets = [];
-      let enemies = [];
-      let running = true;
+      let lives = 3;
 
-      function spawnEnemy() {
-        enemies.push({
-          x: Math.random() * (canvas.width - 20),
-          y: -20,
-          w: 20,
-          h: 20,
-          speed: 1.5 + Math.random() * 1.5,
+      const config = {
+        type: Phaser.AUTO,
+        width: 360,
+        height: 420,
+        parent: "wrap",
+        backgroundColor: "#0f172a",
+        physics: { default: "arcade", arcade: { gravity: { y: 0 }, debug: false } },
+        scene: { create, update },
+      };
+
+      new Phaser.Game(config);
+      let player, bullets, enemies, cursors, fireKey;
+
+      function create() {
+        cursors = this.input.keyboard.createCursorKeys();
+        fireKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        player = this.add.rectangle(180, 380, 26, 18, 0x38bdf8);
+        this.physics.add.existing(player);
+        player.body.setCollideWorldBounds(true);
+
+        bullets = this.physics.add.group();
+        enemies = this.physics.add.group();
+
+        this.time.addEvent({
+          delay: 600,
+          loop: true,
+          callback: () => spawnEnemy(this),
         });
-      }
 
-      function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#38bdf8";
-        ctx.fillRect(ship.x, ship.y, ship.w, ship.h);
-        ctx.fillStyle = "#fbbf24";
-        bullets.forEach((b) => ctx.fillRect(b.x, b.y, 4, 8));
-        ctx.fillStyle = "#ef4444";
-        enemies.forEach((e) => ctx.fillRect(e.x, e.y, e.w, e.h));
+        this.physics.add.overlap(bullets, enemies, (_, enemy) => {
+          enemy.destroy();
+          score += 1;
+          updateInfo();
+        });
       }
 
       function update() {
-        if (!running) return;
-        bullets = bullets.map((b) => ({ ...b, y: b.y - 6 })).filter((b) => b.y > -10);
-        enemies = enemies.map((e) => ({ ...e, y: e.y + e.speed }));
+        if (cursors.left.isDown) {
+          player.x = Math.max(20, player.x - 5);
+        } else if (cursors.right.isDown) {
+          player.x = Math.min(340, player.x + 5);
+        }
+        player.body.updateFromGameObject();
 
-        enemies.forEach((e, ei) => {
-          if (e.y + e.h >= ship.y && e.x < ship.x + ship.w && e.x + e.w > ship.x) {
-            running = false;
-          }
-          bullets.forEach((b, bi) => {
-            if (b.x < e.x + e.w && b.x + 4 > e.x && b.y < e.y + e.h && b.y + 8 > e.y) {
-              enemies.splice(ei, 1);
-              bullets.splice(bi, 1);
-              score += 1;
-              scoreEl.textContent = String(score);
+        if (Phaser.Input.Keyboard.JustDown(fireKey)) {
+          const bullet = this.add.rectangle(player.x, player.y - 12, 4, 10, 0xfbbf24);
+          this.physics.add.existing(bullet);
+          bullet.body.setVelocityY(-300);
+          bullets.add(bullet);
+        }
+
+        enemies.getChildren().forEach((enemy) => {
+          if (enemy.y > 420) {
+            enemy.destroy();
+            lives -= 1;
+            updateInfo();
+            if (lives <= 0) {
+              lives = 3;
+              score = 0;
+              updateInfo();
             }
-          });
+          }
+          if (Phaser.Geom.Intersects.RectangleToRectangle(player.getBounds(), enemy.getBounds())) {
+            enemy.destroy();
+            lives -= 1;
+            updateInfo();
+          }
         });
-
-        enemies = enemies.filter((e) => e.y < canvas.height + 30);
-        draw();
       }
 
-      window.addEventListener("keydown", (e) => {
-        if (["ArrowLeft", "ArrowRight", " "].includes(e.key)) {
-          e.preventDefault();
-        }
-        if (e.key === "ArrowLeft") {
-          ship.x = Math.max(0, ship.x - 10);
-        }
-        if (e.key === "ArrowRight") {
-          ship.x = Math.min(canvas.width - ship.w, ship.x + 10);
-        }
-        if (e.key === " ") {
-          bullets.push({ x: ship.x + ship.w / 2 - 2, y: ship.y - 6 });
-        }
-      });
+      function spawnEnemy(scene) {
+        const enemy = scene.add.rectangle(Math.random() * 320 + 20, -20, 20, 20, 0xef4444);
+        scene.physics.add.existing(enemy);
+        enemy.body.setVelocityY(100 + Math.random() * 80);
+        enemies.add(enemy);
+      }
 
-      setInterval(() => {
-        if (Math.random() < 0.4) spawnEnemy();
-      }, 500);
-
-      setInterval(update, 30);
+      function updateInfo() {
+        infoEl.textContent = `점수: ${score} · 라이프: ${lives}`;
+      }
     </script>
   </body>
 </html>

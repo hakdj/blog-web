@@ -14,146 +14,119 @@
         justify-content: center;
         height: 100vh;
       }
-      #wrap {
+      #game {
         text-align: center;
       }
-      canvas {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-      }
-      .info {
-        margin-top: 8px;
-        font-size: 12px;
-        color: #64748b;
-      }
-      .score {
+      #score {
+        font-size: 14px;
         font-weight: 600;
         color: #1f2937;
         margin-bottom: 6px;
       }
+      #hint {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 8px;
+      }
     </style>
   </head>
   <body>
-    <div id="wrap">
-      <div class="score">점수: <span id="score">0</span></div>
-      <canvas id="board" width="420" height="320"></canvas>
-      <div class="info">← → 이동 · 스페이스 시작/일시정지</div>
+    <div id="game">
+      <div id="score">점수: 0 · 라이프: 3</div>
+      <div id="hint">← → 이동 · 스페이스 시작/일시정지</div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.0/dist/phaser.min.js"></script>
     <script>
-      const canvas = document.getElementById("board");
-      const ctx = canvas.getContext("2d");
       const scoreEl = document.getElementById("score");
-      const paddle = { w: 70, h: 10, x: 175, y: 300, speed: 6 };
-      let ball = { x: 210, y: 180, r: 6, dx: 3, dy: -3 };
-      let bricks = [];
-      let running = false;
       let score = 0;
+      let lives = 3;
+      let running = false;
 
-      function initBricks() {
-        bricks = [];
-        const rows = 4;
-        const cols = 8;
-        const bw = 46;
-        const bh = 14;
-        const gap = 6;
-        const offsetX = 12;
-        const offsetY = 24;
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            bricks.push({
-              x: offsetX + c * (bw + gap),
-              y: offsetY + r * (bh + gap),
-              w: bw,
-              h: bh,
-              alive: true,
-            });
-          }
-        }
-      }
+      const config = {
+        type: Phaser.AUTO,
+        width: 420,
+        height: 320,
+        parent: "game",
+        backgroundColor: "#f8fafc",
+        physics: { default: "arcade", arcade: { gravity: { y: 0 }, debug: false } },
+        scene: {
+          preload,
+          create,
+          update,
+        },
+      };
 
-      function reset() {
-        paddle.x = 175;
-        ball = { x: 210, y: 180, r: 6, dx: 3, dy: -3 };
-        score = 0;
-        scoreEl.textContent = "0";
-        initBricks();
-      }
+      const game = new Phaser.Game(config);
+      let paddle, ball, bricks, cursors;
 
-      function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#7c3aed";
-        ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
-        ctx.fillStyle = "#f97316";
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-        ctx.fill();
-        bricks.forEach((b, idx) => {
-          if (!b.alive) return;
-          ctx.fillStyle = idx % 2 ? "#60a5fa" : "#a78bfa";
-          ctx.fillRect(b.x, b.y, b.w, b.h);
-        });
-      }
+      function preload() {}
 
-      function step() {
-        if (!running) return;
-        ball.x += ball.dx;
-        ball.y += ball.dy;
-
-        if (ball.x < ball.r || ball.x > canvas.width - ball.r) {
-          ball.dx *= -1;
-        }
-        if (ball.y < ball.r) {
-          ball.dy *= -1;
-        }
-        if (ball.y > canvas.height) {
-          running = false;
-        }
-
-        if (
-          ball.y + ball.r >= paddle.y &&
-          ball.x >= paddle.x &&
-          ball.x <= paddle.x + paddle.w
-        ) {
-          ball.dy = -Math.abs(ball.dy);
-        }
-
-        bricks.forEach((b) => {
-          if (!b.alive) return;
-          if (
-            ball.x > b.x &&
-            ball.x < b.x + b.w &&
-            ball.y - ball.r < b.y + b.h &&
-            ball.y + ball.r > b.y
-          ) {
-            b.alive = false;
-            ball.dy *= -1;
-            score += 1;
-            scoreEl.textContent = String(score);
-          }
-        });
-
-        draw();
-      }
-
-      window.addEventListener("keydown", (e) => {
-        if (["ArrowLeft", "ArrowRight", " "].includes(e.key)) {
-          e.preventDefault();
-        }
-        if (e.key === "ArrowLeft") {
-          paddle.x = Math.max(0, paddle.x - paddle.speed);
-        }
-        if (e.key === "ArrowRight") {
-          paddle.x = Math.min(canvas.width - paddle.w, paddle.x + paddle.speed);
-        }
-        if (e.key === " ") {
+      function create() {
+        cursors = this.input.keyboard.createCursorKeys();
+        this.input.keyboard.on("keydown-SPACE", () => {
           running = !running;
-        }
-      });
+          if (running && ball.body.velocity.y === 0) {
+            ball.setVelocity(150, -150);
+          }
+        });
 
-      reset();
-      draw();
-      setInterval(step, 16);
+        paddle = this.add.rectangle(210, 300, 70, 12, 0x7c3aed);
+        this.physics.add.existing(paddle, true);
+
+        ball = this.add.circle(210, 220, 6, 0xf97316);
+        this.physics.add.existing(ball);
+        ball.body.setCollideWorldBounds(true);
+        ball.body.setBounce(1, 1);
+        ball.body.setVelocity(0, 0);
+
+        bricks = this.physics.add.staticGroup();
+        const colors = [0x60a5fa, 0xa78bfa];
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 8; c++) {
+            const brick = this.add.rectangle(40 + c * 46, 40 + r * 18, 40, 12, colors[(r + c) % 2]);
+            bricks.add(brick);
+          }
+        }
+
+        this.physics.add.collider(ball, paddle, () => {});
+        this.physics.add.collider(ball, bricks, (_ball, brick) => {
+          brick.destroy();
+          score += 1;
+          updateScore();
+          if (bricks.countActive() === 0) {
+            running = false;
+          }
+        });
+      }
+
+      function update() {
+        if (!running) {
+          ball.body.setVelocity(0, 0);
+        }
+
+        if (cursors.left.isDown) {
+          paddle.x = Math.max(40, paddle.x - 6);
+        } else if (cursors.right.isDown) {
+          paddle.x = Math.min(380, paddle.x + 6);
+        }
+        paddle.body.updateFromGameObject();
+
+        if (ball.y > 320) {
+          lives -= 1;
+          running = false;
+          ball.x = 210;
+          ball.y = 220;
+          if (lives <= 0) {
+            lives = 3;
+            score = 0;
+          }
+          updateScore();
+        }
+      }
+
+      function updateScore() {
+        scoreEl.textContent = `점수: ${score} · 라이프: ${lives}`;
+      }
     </script>
   </body>
 </html>

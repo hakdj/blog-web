@@ -17,31 +17,35 @@
       #wrap {
         text-align: center;
       }
-      canvas {
-        background: #0f172a;
-        border: 1px solid #1e293b;
-        border-radius: 8px;
+      #info {
+        font-size: 13px;
+        color: #1f2937;
+        margin-bottom: 6px;
       }
-      .info {
-        margin-top: 8px;
+      #hint {
         font-size: 12px;
         color: #64748b;
+        margin-top: 6px;
       }
     </style>
   </head>
   <body>
     <div id="wrap">
-      <canvas id="board" width="200" height="400"></canvas>
-      <div class="info">← → 이동 · ↑ 회전 · ↓ 빠르게 · 스페이스 즉시 하강</div>
+      <div id="info">점수: 0 · 라인: 0</div>
+      <div id="hint">← → 이동 · ↑ 회전 · ↓ 빠르게 · 스페이스 즉시 하강</div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.0/dist/phaser.min.js"></script>
     <script>
-      const canvas = document.getElementById("board");
-      const ctx = canvas.getContext("2d");
+      const infoEl = document.getElementById("info");
       const cols = 10;
       const rows = 20;
       const block = 20;
       const colors = ["#60a5fa", "#f97316", "#a78bfa", "#34d399", "#facc15"];
-      let grid = Array.from({ length: rows }, () => Array(cols).fill(0));
+      let grid = Array.from({ length: rows }, () => Array(cols).fill(null));
+      let score = 0;
+      let lines = 0;
+      let current = null;
+      let dropTimer;
 
       const shapes = [
         [[1, 1, 1, 1]],
@@ -63,21 +67,46 @@
         ],
       ];
 
-      let current = {
-        shape: shapes[0],
-        color: colors[0],
-        x: 3,
-        y: 0,
+      const config = {
+        type: Phaser.AUTO,
+        width: cols * block,
+        height: rows * block,
+        parent: "wrap",
+        backgroundColor: "#0f172a",
+        scene: { create, update },
       };
+
+      new Phaser.Game(config);
+
+      let cursors;
+      let graphics;
+
+      function create() {
+        graphics = this.add.graphics();
+        cursors = this.input.keyboard.createCursorKeys();
+        this.input.keyboard.on("keydown-SPACE", () => hardDrop());
+        newPiece();
+        dropTimer = this.time.addEvent({ delay: 500, loop: true, callback: drop });
+      }
+
+      function update() {
+        if (cursors.left.isDown && !collide(current.x - 1, current.y, current.shape)) {
+          current.x -= 1;
+        } else if (cursors.right.isDown && !collide(current.x + 1, current.y, current.shape)) {
+          current.x += 1;
+        } else if (cursors.down.isDown) {
+          drop();
+        }
+        if (Phaser.Input.Keyboard.JustDown(cursors.up)) {
+          const rotated = rotate(current.shape);
+          if (!collide(current.x, current.y, rotated)) current.shape = rotated;
+        }
+        draw();
+      }
 
       function newPiece() {
         const idx = Math.floor(Math.random() * shapes.length);
-        current = {
-          shape: shapes[idx],
-          color: colors[idx],
-          x: 3,
-          y: 0,
-        };
+        current = { shape: shapes[idx], color: colors[idx], x: 3, y: 0 };
       }
 
       function rotate(shape) {
@@ -98,39 +127,24 @@
       }
 
       function merge() {
-        const { shape, x, y, color } = current;
-        for (let r = 0; r < shape.length; r++) {
-          for (let c = 0; c < shape[r].length; c++) {
-            if (!shape[r][c]) continue;
-            const ny = y + r;
-            if (ny >= 0) grid[ny][x + c] = color;
-          }
-        }
+        current.shape.forEach((row, r) => {
+          row.forEach((val, c) => {
+            if (!val) return;
+            const ny = current.y + r;
+            if (ny >= 0) grid[ny][current.x + c] = current.color;
+          });
+        });
       }
 
       function clearLines() {
         grid = grid.filter((row) => row.some((cell) => !cell));
-        while (grid.length < rows) {
-          grid.unshift(Array(cols).fill(0));
+        const cleared = rows - grid.length;
+        while (grid.length < rows) grid.unshift(Array(cols).fill(null));
+        if (cleared > 0) {
+          lines += cleared;
+          score += cleared * 100;
+          updateInfo();
         }
-      }
-
-      function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        grid.forEach((row, r) => {
-          row.forEach((cell, c) => {
-            if (!cell) return;
-            ctx.fillStyle = cell;
-            ctx.fillRect(c * block, r * block, block - 1, block - 1);
-          });
-        });
-        current.shape.forEach((row, r) => {
-          row.forEach((val, c) => {
-            if (!val) return;
-            ctx.fillStyle = current.color;
-            ctx.fillRect((current.x + c) * block, (current.y + r) * block, block - 1, block - 1);
-          });
-        });
       }
 
       function drop() {
@@ -141,38 +155,36 @@
           clearLines();
           newPiece();
         }
-        draw();
       }
 
-      window.addEventListener("keydown", (e) => {
-        if (["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp", " "].includes(e.key)) {
-          e.preventDefault();
+      function hardDrop() {
+        while (!collide(current.x, current.y + 1, current.shape)) {
+          current.y += 1;
         }
-        if (e.key === "ArrowLeft" && !collide(current.x - 1, current.y, current.shape)) {
-          current.x -= 1;
-        }
-        if (e.key === "ArrowRight" && !collide(current.x + 1, current.y, current.shape)) {
-          current.x += 1;
-        }
-        if (e.key === "ArrowDown") {
-          drop();
-        }
-        if (e.key === "ArrowUp") {
-          const rotated = rotate(current.shape);
-          if (!collide(current.x, current.y, rotated)) current.shape = rotated;
-        }
-        if (e.key === " ") {
-          while (!collide(current.x, current.y + 1, current.shape)) {
-            current.y += 1;
-          }
-          drop();
-        }
-        draw();
-      });
+        drop();
+      }
 
-      newPiece();
-      draw();
-      setInterval(drop, 500);
+      function draw() {
+        graphics.clear();
+        grid.forEach((row, r) => {
+          row.forEach((cell, c) => {
+            if (!cell) return;
+            graphics.fillStyle(Phaser.Display.Color.HexStringToColor(cell).color, 1);
+            graphics.fillRect(c * block, r * block, block - 1, block - 1);
+          });
+        });
+        current.shape.forEach((row, r) => {
+          row.forEach((val, c) => {
+            if (!val) return;
+            graphics.fillStyle(Phaser.Display.Color.HexStringToColor(current.color).color, 1);
+            graphics.fillRect((current.x + c) * block, (current.y + r) * block, block - 1, block - 1);
+          });
+        });
+      }
+
+      function updateInfo() {
+        infoEl.textContent = `점수: ${score} · 라인: ${lines}`;
+      }
     </script>
   </body>
 </html>
