@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Snake from 'react-snake-lib';
+import Snake from 'react-snake-game';
 
 const GAME_LIST = [
   { id: 'snake', name: '지렁이 게임', status: 'ready' },
@@ -24,17 +24,14 @@ function randomFood(snake: Cell[]) {
 export default function GameHubClient() {
   const [activeGame, setActiveGame] = useState('snake');
   const [isRunning, setIsRunning] = useState(false);
-  const [score, setScore] = useState(0);
-  const [bestScore, setBestScore] = useState(0);
-  const [speed, setSpeed] = useState(140);
 
   const gameStatus = useMemo(() => {
     return isRunning ? '진행 중' : '대기';
   }, [isRunning]);
 
   const resetGame = () => {
-    setScore(0);
     setIsRunning(false);
+    setTimeout(() => setIsRunning(true), 50);
   };
 
   return (
@@ -65,8 +62,7 @@ export default function GameHubClient() {
             <h2 className="text-lg font-bold text-gray-900">지렁이 게임</h2>
             <div className="space-y-2 text-sm text-gray-600">
               <p>상태: {gameStatus}</p>
-              <p>점수: {score}</p>
-              <p>최고점수: {bestScore}</p>
+              <p>모듈 게임으로 빠르게 즐길 수 있어요.</p>
             </div>
             <div className="space-y-2">
               <button
@@ -88,56 +84,21 @@ export default function GameHubClient() {
                 다시 시작
               </button>
             </div>
-            <div>
-              <label className="text-xs text-gray-500">속도</label>
-              <input
-                type="range"
-                min="80"
-                max="200"
-                step="10"
-                value={speed}
-                onChange={(e) => setSpeed(Number(e.target.value))}
-                className="w-full"
-              />
-            </div>
             <div className="text-xs text-gray-500">
               모듈 기반 게임입니다. 방향키로 이동합니다.
             </div>
           </div>
 
           <div className="lg:col-span-2 bg-white rounded-xl shadow p-6 flex justify-center">
-            <Snake
-              onGameStart={() => setIsRunning(true)}
-              onGameOver={() => setIsRunning(false)}
-              onScoreChange={(nextScore: number) => {
-                setScore(nextScore);
-                setBestScore((prev) => (nextScore > prev ? nextScore : prev));
-              }}
-              width="420px"
-              height="420px"
-              snakeSpeed={speed}
-              bgColor="#f8fafc"
-              innerBorderColor="#e2e8f0"
-              borderColor="#cbd5f5"
-              snakeColor="#60a5fa"
-              snakeHeadColor="#3b82f6"
-              appleColor="#f97316"
-              size={20}
-              startGameText="게임 시작"
-              startButtonStyle={{
-                color: 'white',
-                padding: '8px 20px',
-                backgroundColor: '#7c3aed',
-                borderRadius: '10px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-              }}
-              startButtonHoverStyle={{
-                backgroundColor: '#6d28d9',
-              }}
-              noWall={false}
-            />
+            {isRunning ? (
+              <div className="w-[420px] h-[420px]">
+                <Snake />
+              </div>
+            ) : (
+              <div className="w-[420px] h-[420px] flex items-center justify-center text-gray-500">
+                시작 버튼을 눌러 게임을 시작하세요.
+              </div>
+            )}
           </div>
         </div>
       )}

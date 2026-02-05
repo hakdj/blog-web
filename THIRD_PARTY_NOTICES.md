@@ -1,10 +1,10 @@
 # Third-Party Notices
 
-## react-snake-lib
+## react-snake-game
 
-Source: https://github.com/EmptyBox12/react-snake-lib  
+Source: https://github.com/djorg83/react-snake-game  
 License: MIT  
-Copyright (c) Ataberk Tumay
+Copyright (c) djorg83
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
