@@ -3,12 +3,40 @@ import { createClient } from '@/lib/supabase/server';
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
+const FALLBACK_INTROS = [
+  '라떼 친구가 잠깐만 조언할게요.',
+  '잠깐 숨 돌리고 같이 정리해볼까요?',
+  '오늘 이야기 들어줄게요.',
+  '지금 마음을 차분히 정리해보자.',
+];
+
+const FALLBACK_SUGGESTIONS = [
+  '오늘 할 수 있는 작은 행동 한 가지를 정해보는 건 어때요?',
+  '가장 쉬운 첫 خطوة(한 걸음)부터 해보자.',
+  '지금 당장 가능한 선택지를 2개만 적어보자.',
+  '잠깐 산책하거나 정리부터 해보면 도움이 될 수 있어요.',
+];
+
+const FALLBACK_CLOSINGS = [
+  '필요하면 구체적인 상황을 더 알려주세요!',
+  '더 자세히 알려주면 같이 계획을 세워볼게요.',
+  '다음 단계가 필요하면 언제든 말해줘요.',
+  '조금만 더 이야기해주면 더 도움을 줄 수 있어요.',
+];
+
+function pick<T>(list: T[]) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 function fallbackReply(message: string) {
+  const intro = pick(FALLBACK_INTROS);
+  const suggest = pick(FALLBACK_SUGGESTIONS);
+  const close = pick(FALLBACK_CLOSINGS);
   return [
-    '라떼 친구가 잠깐만 조언할게요.',
+    intro,
     `지금 고민은 "${message.slice(0, 40)}" 정도로 정리되는 것 같아요.`,
-    '오늘 할 수 있는 작은 행동 한 가지를 정해보는 건 어때요?',
-    '필요하면 구체적인 상황을 더 알려주세요!',
+    suggest,
+    close,
   ].join('\n');
 }
 

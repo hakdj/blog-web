@@ -3,6 +3,34 @@ import { createClient } from '@/lib/supabase/server';
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
+const FALLBACK_OPENINGS = [
+  '오늘은 마음이 차분해지는 날이었다.',
+  '오랜만에 여유를 느낀 하루였다.',
+  '작은 순간이 크게 남는 하루였다.',
+  '기록하고 싶은 장면이 떠오른 하루였다.',
+  '평범하지만 따뜻한 하루였다.',
+];
+
+const FALLBACK_MIDDLES = [
+  '그때의 공기와 분위기가 아직도 기억난다.',
+  '짧은 순간이지만 오래 남을 것 같은 느낌이었다.',
+  '말로 다 적기 어렵지만 분명히 좋은 기억이다.',
+  '오늘을 지나고 나면 더 소중하게 떠오를 것 같다.',
+  '평범한 장면들이 모여 특별한 하루가 되었다.',
+];
+
+const FALLBACK_CLOSINGS = [
+  '다음에도 이런 순간을 잘 기록해두고 싶다.',
+  '이 기억을 오래 간직하고 싶다.',
+  '오늘을 잘 마무리하고 내일을 기대해본다.',
+  '조금 더 나를 돌보는 하루가 되길 바란다.',
+  '다음 기록도 차곡차곡 쌓아두고 싶다.',
+];
+
+function pick<T>(list: T[]) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 function buildFallbackDraft(input: {
   keywords: string;
   mood?: string;
@@ -15,13 +43,17 @@ function buildFallbackDraft(input: {
   const tone = input.tone || '따뜻하게';
   const length = input.length || '중간';
   const keywords = input.keywords || '소중한 추억';
+  const opening = pick(FALLBACK_OPENINGS);
+  const middle = pick(FALLBACK_MIDDLES);
+  const closing = pick(FALLBACK_CLOSINGS);
 
   return {
     title: `${dateText}추억의 기록`,
     content: [
       `${dateText}${keywords}에 대해 ${tone} 기록해본다.`,
-      moodText + `그때의 분위기와 감정이 아직도 생생하다.`,
-      `짧게라도 남겨두면 시간이 지나도 이 기억이 더 선명해질 것 같다.`,
+      moodText + opening,
+      middle,
+      closing,
       `(${length} 분량으로 정리됨)`,
     ].join('\n\n'),
     mood: input.mood || '',

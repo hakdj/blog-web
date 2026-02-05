@@ -3,6 +3,18 @@ import { createClient } from '@/lib/supabase/server';
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
+const FALLBACK_SUMMARY_LINES = [
+  '오늘의 감정 흐름은 차분함과 작은 기대가 섞여 있어요.',
+  '최근 기록을 보면 꾸준히 나를 돌보려는 마음이 느껴져요.',
+  '짧은 기록들이 모여서 하루의 결을 만들어주고 있어요.',
+  '최근에는 소소한 기쁨과 안정감을 찾는 모습이 보여요.',
+  '기록 속에서 스스로를 응원하려는 마음이 전해져요.',
+];
+
+function pick<T>(list: T[]) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 function fallbackSummary(entries: { title: string; content: string; entry_date: string }[]) {
   if (entries.length === 0) {
     return '아직 작성된 일기가 없습니다. 오늘의 추억을 기록해보세요.';
@@ -11,7 +23,7 @@ function fallbackSummary(entries: { title: string; content: string; entry_date: 
   return [
     `최근 일기 ${entries.length}개를 기반으로 요약했어요.`,
     `주요 키워드: ${titles}`,
-    '오늘의 감정 흐름을 한 줄로 정리해보면, 꾸준히 기록하고 싶은 마음이 느껴져요.',
+    pick(FALLBACK_SUMMARY_LINES),
   ].join('\n');
 }
 
