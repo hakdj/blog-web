@@ -19,6 +19,7 @@ type EventItem = {
   region: string;
   event_type: string;
   location: string | null;
+  link_url?: string | null;
 };
 
 type ChatMessage = {
@@ -473,7 +474,20 @@ export default function LatteFriendClient() {
               </div>
             ) : (
               recommendations.map((item) => (
-                <div key={item.id} className="bg-white rounded-xl shadow p-5 space-y-2">
+                <a
+                  key={item.id}
+                  href={item.link_url || '#'}
+                  target={item.link_url ? '_blank' : undefined}
+                  rel={item.link_url ? 'noreferrer' : undefined}
+                  className={`bg-white rounded-xl shadow p-5 space-y-2 block ${
+                    item.link_url ? 'hover:shadow-lg transition-shadow' : 'cursor-default'
+                  }`}
+                  onClick={(e) => {
+                    if (!item.link_url) {
+                      e.preventDefault();
+                    }
+                  }}
+                >
                   <h3 className="text-lg font-bold text-gray-900">{item.title}</h3>
                   <p className="text-sm text-gray-600">
                     {item.region} · {item.event_type}
@@ -482,7 +496,10 @@ export default function LatteFriendClient() {
                     {item.start_date} {item.end_date ? `~ ${item.end_date}` : ''}
                   </p>
                   {item.location && <p className="text-sm text-gray-600">{item.location}</p>}
-                </div>
+                  {!item.link_url && (
+                    <p className="text-xs text-gray-400">링크 정보 없음</p>
+                  )}
+                </a>
               ))
             )}
           </div>
@@ -535,6 +552,9 @@ export default function LatteFriendClient() {
         <div className="bg-white rounded-xl shadow p-6 space-y-4">
           <p className="text-gray-600">
             최근 작성한 일기를 요약해서 오늘의 핵심 감정을 알려줘요.
+          </p>
+          <p className="text-sm text-gray-500">
+            OpenAI 키가 등록되어 있으면 AI 요약, 없으면 템플릿 요약으로 보여집니다.
           </p>
           <button
             onClick={generateSummary}

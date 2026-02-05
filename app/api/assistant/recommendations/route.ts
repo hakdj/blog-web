@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('events')
-      .select('id, title, start_date, end_date, region, event_type, location')
+      .select('id, title, start_date, end_date, region, event_type, location, link_url')
       .eq('is_active', true)
       .order('start_date', { ascending: true })
       .limit(20);
