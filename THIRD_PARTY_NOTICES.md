@@ -14,6 +14,7 @@ Copyright (c) Photon Storm Ltd.
 
 The following game is embedded via iframe:
 
+- React Tetris: https://github.com/chvin/react-tetris
 - Pacman JS: https://github.com/masonicgit/pacman
 
 

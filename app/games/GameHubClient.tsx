@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from 'react';
 
 const GAME_LIST = [
+  { id: 'tetris', name: '테트리스', status: 'ready' },
   { id: 'pacman', name: '팩맨', status: 'ready' },
 ];
 
@@ -46,6 +47,22 @@ export default function GameHubClient() {
           </button>
         ))}
       </div>
+
+      {activeGame === 'tetris' && (
+        <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center gap-2">
+          <div className="w-[720px] h-[540px]" onClick={() => focusFrame('tetris')}>
+            <iframe
+              title="react-tetris"
+              src="https://chvin.github.io/react-tetris/"
+              className="w-[720px] h-[540px] border-0"
+              ref={(el) => {
+                iframeRefs.current.tetris = el;
+              }}
+            />
+          </div>
+          <p className="text-xs text-gray-500">게임 화면을 클릭해야 조작이 됩니다.</p>
+        </div>
+      )}
 
       {activeGame === 'pacman' && (
         <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center gap-2">
