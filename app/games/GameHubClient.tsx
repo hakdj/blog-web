@@ -3,12 +3,7 @@
 import { useMemo, useRef, useState } from 'react';
 
 const GAME_LIST = [
-  { id: 'snake', name: '스네이크', status: 'ready' },
-  { id: 'tetris', name: '테트리스', status: 'ready' },
-  { id: '2048', name: '2048', status: 'ready' },
-  { id: 'brick', name: '벽돌깨기', status: 'ready' },
-  { id: 'memory', name: '기억 카드', status: 'ready' },
-  { id: 'shooter', name: '1945 미니', status: 'ready' },
+  { id: 'pacman', name: '팩맨', status: 'ready' },
 ];
 
 export default function GameHubClient() {
@@ -52,95 +47,15 @@ export default function GameHubClient() {
         ))}
       </div>
 
-      {activeGame === 'snake' && (
+      {activeGame === 'pacman' && (
         <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center gap-2">
-          <div className="w-[420px] h-[420px]" onClick={() => focusFrame('snake')}>
+          <div className="w-[720px] h-[540px]" onClick={() => focusFrame('pacman')}>
             <iframe
-              title="snake-game"
-              src="/games/snake/index.html"
-              className="w-[420px] h-[420px] border-0"
+              title="pacman"
+              src="https://masonicgit.github.io/pacman/"
+              className="w-[720px] h-[540px] border-0"
               ref={(el) => {
-                iframeRefs.current.snake = el;
-              }}
-            />
-          </div>
-          <p className="text-xs text-gray-500">게임 화면을 클릭해야 조작이 됩니다.</p>
-        </div>
-      )}
-
-      {activeGame === 'tetris' && (
-        <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center gap-2">
-          <div className="w-[220px] h-[440px]" onClick={() => focusFrame('tetris')}>
-            <iframe
-              title="react-tetris"
-              src="/games/tetris/index.html"
-              className="w-[220px] h-[440px] border-0"
-              ref={(el) => {
-                iframeRefs.current.tetris = el;
-              }}
-            />
-          </div>
-          <p className="text-xs text-gray-500">게임 화면을 클릭해야 조작이 됩니다.</p>
-        </div>
-      )}
-
-      {activeGame === '2048' && (
-        <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center gap-2">
-          <div className="w-[360px] h-[520px]" onClick={() => focusFrame('2048')}>
-            <iframe
-              title="2048"
-              src="/games/2048/index.html"
-              className="w-[360px] h-[520px] border-0"
-              ref={(el) => {
-                iframeRefs.current['2048'] = el;
-              }}
-            />
-          </div>
-          <p className="text-xs text-gray-500">게임 화면을 클릭해야 조작이 됩니다.</p>
-        </div>
-      )}
-
-      {activeGame === 'brick' && (
-        <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center gap-2">
-          <div className="w-[420px] h-[320px]" onClick={() => focusFrame('brick')}>
-            <iframe
-              title="brick-breaker"
-              src="/games/brick/index.html"
-              className="w-[420px] h-[320px] border-0"
-              ref={(el) => {
-                iframeRefs.current.brick = el;
-              }}
-            />
-          </div>
-          <p className="text-xs text-gray-500">게임 화면을 클릭해야 조작이 됩니다.</p>
-        </div>
-      )}
-
-      {activeGame === 'memory' && (
-        <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center gap-2">
-          <div className="w-[320px] h-[360px]" onClick={() => focusFrame('memory')}>
-            <iframe
-              title="memory-card"
-              src="/games/memory/index.html"
-              className="w-[320px] h-[360px] border-0"
-              ref={(el) => {
-                iframeRefs.current.memory = el;
-              }}
-            />
-          </div>
-          <p className="text-xs text-gray-500">게임 화면을 클릭해야 조작이 됩니다.</p>
-        </div>
-      )}
-
-      {activeGame === 'shooter' && (
-        <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center gap-2">
-          <div className="w-[360px] h-[440px]" onClick={() => focusFrame('shooter')}>
-            <iframe
-              title="1945-mini"
-              src="/games/shooter/index.html"
-              className="w-[360px] h-[440px] border-0"
-              ref={(el) => {
-                iframeRefs.current.shooter = el;
+                iframeRefs.current.pacman = el;
               }}
             />
           </div>

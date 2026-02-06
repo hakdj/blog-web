@@ -12,7 +12,9 @@ Copyright (c) Photon Storm Ltd.
 
 ## External Game Embeds
 
-This project no longer embeds external game sites in iframes.
+The following game is embedded via iframe:
+
+- Pacman JS: https://github.com/masonicgit/pacman
 
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
