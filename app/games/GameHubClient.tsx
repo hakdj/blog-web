@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 const GAME_LIST = [
   { id: 'tetris', name: '테트리스', status: 'ready' },
@@ -8,18 +8,8 @@ const GAME_LIST = [
 ];
 
 export default function GameHubClient() {
-  const [activeGame, setActiveGame] = useState('snake');
-  const [isRunning, setIsRunning] = useState(false);
+  const [activeGame, setActiveGame] = useState('tetris');
   const iframeRefs = useRef<Record<string, HTMLIFrameElement | null>>({});
-
-  const gameStatus = useMemo(() => {
-    return isRunning ? '진행 중' : '대기';
-  }, [isRunning]);
-
-  const resetGame = () => {
-    setIsRunning(false);
-    setTimeout(() => setIsRunning(true), 50);
-  };
 
   const focusFrame = (id: string) => {
     const frame = iframeRefs.current[id];
@@ -53,7 +43,7 @@ export default function GameHubClient() {
           <div className="w-[720px] h-[540px]" onClick={() => focusFrame('tetris')}>
             <iframe
               title="react-tetris"
-              src="https://chvin.github.io/react-tetris/"
+              src="/games/tetris/index.html"
               className="w-[720px] h-[540px] border-0"
               ref={(el) => {
                 iframeRefs.current.tetris = el;
