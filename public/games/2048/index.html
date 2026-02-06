@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>2048</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        background: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      }
+      #wrap {
+        width: 320px;
+        text-align: center;
+      }
+      #score {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 6px;
+      }
+      #board {
+        background: #bbada0;
+        border-radius: 8px;
+        padding: 10px;
+        display: grid;
+        grid-template-columns: repeat(4, 60px);
+        gap: 8px;
+      }
+      .cell {
+        width: 60px;
+        height: 60px;
+        border-radius: 6px;
+        background: #cdc1b4;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: #776e65;
+        font-size: 18px;
+      }
+      .v2 { background: #eee4da; }
+      .v4 { background: #ede0c8; }
+      .v8 { background: #f2b179; color: #f9f6f2; }
+      .v16 { background: #f59563; color: #f9f6f2; }
+      .v32 { background: #f67c5f; color: #f9f6f2; }
+      .v64 { background: #f65e3b; color: #f9f6f2; }
+      .v128 { background: #edcf72; color: #f9f6f2; }
+      .v256 { background: #edcc61; color: #f9f6f2; }
+      .v512 { background: #edc850; color: #f9f6f2; }
+      .v1024 { background: #edc53f; color: #f9f6f2; }
+      .v2048 { background: #edc22e; color: #f9f6f2; }
+      #hint {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #64748b;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="wrap">
+      <div id="score">점수: <span id="scoreNum">0</span></div>
+      <div id="board"></div>
+      <div id="hint">방향키로 이동합니다.</div>
+    </div>
+
+    <script>
+      const boardEl = document.getElementById("board");
+      const scoreEl = document.getElementById("scoreNum");
+      let board = Array.from({ length: 4 }, () => Array(4).fill(0));
+      let score = 0;
+
+      function randomEmpty() {
+        const empties = [];
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 4; c++) {
+            if (board[r][c] === 0) empties.push({ r, c });
+          }
+        }
+        if (empties.length === 0) return null;
+        return empties[Math.floor(Math.random() * empties.length)];
+      }
+
+      function addTile() {
+        const pos = randomEmpty();
+        if (!pos) return;
+        board[pos.r][pos.c] = Math.random() < 0.9 ? 2 : 4;
+      }
+
+      function render() {
+        boardEl.innerHTML = "";
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 4; c++) {
+            const val = board[r][c];
+            const cell = document.createElement("div");
+            cell.className = "cell" + (val ? " v" + val : "");
+            cell.textContent = val ? val : "";
+            boardEl.appendChild(cell);
+          }
+        }
+        scoreEl.textContent = String(score);
+      }
+
+      function slide(row) {
+        const arr = row.filter((v) => v !== 0);
+        for (let i = 0; i < arr.length - 1; i++) {
+          if (arr[i] === arr[i + 1]) {
+            arr[i] *= 2;
+            score += arr[i];
+            arr[i + 1] = 0;
+          }
+        }
+        return arr.filter((v) => v !== 0);
+      }
+
+      function move(dir) {
+        let moved = false;
+        for (let i = 0; i < 4; i++) {
+          let line = [];
+          for (let j = 0; j < 4; j++) {
+            const r = dir === "up" || dir === "down" ? j : i;
+            const c = dir === "up" || dir === "down" ? i : j;
+            line.push(board[r][c]);
+          }
+          if (dir === "down" || dir === "right") line.reverse();
+          const merged = slide(line);
+          while (merged.length < 4) merged.push(0);
+          if (dir === "down" || dir === "right") merged.reverse();
+          for (let j = 0; j < 4; j++) {
+            const r = dir === "up" || dir === "down" ? j : i;
+            const c = dir === "up" || dir === "down" ? i : j;
+            if (board[r][c] !== merged[j]) moved = true;
+            board[r][c] = merged[j];
+          }
+        }
+        if (moved) addTile();
+        render();
+      }
+
+      window.addEventListener("keydown", (e) => {
+        const map = {
+          ArrowUp: "up",
+          ArrowDown: "down",
+          ArrowLeft: "left",
+          ArrowRight: "right",
+        };
+        if (!map[e.key]) return;
+        e.preventDefault();
+        move(map[e.key]);
+      });
+
+      addTile();
+      addTile();
+      render();
+    </script>
+  </body>
+</html>

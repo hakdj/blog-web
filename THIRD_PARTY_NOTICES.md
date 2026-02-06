@@ -12,12 +12,7 @@ Copyright (c) Photon Storm Ltd.
 
 ## External Game Embeds
 
-The following games are embedded via iframe:
-
-- React Tetris: https://github.com/chvin/react-tetris
-- 2048: https://github.com/gabrielecirulli/2048
-- Pacman JS: https://github.com/masonicgit/pacman
-- JavaScript Snake: https://github.com/patorjk/JavaScript-Snake
+This project no longer embeds external game sites in iframes.
 
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
