@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NES Emulator</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        background: #0f172a;
+        color: #f8fafc;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+      #frame {
+        width: 720px;
+        height: 540px;
+        background: #111827;
+        border: 2px solid #f97316;
+        border-radius: 12px;
+        padding: 14px;
+        box-sizing: border-box;
+      }
+      #title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      #desc {
+        font-size: 12px;
+        color: #cbd5f5;
+        margin-bottom: 10px;
+      }
+      #controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      #rom {
+        color: #f8fafc;
+      }
+      #game {
+        width: 100%;
+        height: 420px;
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+      }
+      .note {
+        margin-top: 8px;
+        font-size: 11px;
+        color: #94a3b8;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="frame">
+      <div id="title">NES 에뮬레이터</div>
+      <div id="desc">본인이 소유한 NES ROM 파일만 업로드해서 실행하세요.</div>
+      <div id="controls">
+        <input id="rom" type="file" accept=".nes" />
+        <button id="start">ROM 실행</button>
+        <button id="reset">리셋</button>
+      </div>
+      <div id="game"></div>
+      <div class="note">EmulatorJS (GPL-3.0) 기반 · ROM 파일은 서버에 업로드되지 않습니다.</div>
+    </div>
+
+    <script>
+      let romUrl = "";
+      let loaderScript = null;
+
+      const romInput = document.getElementById("rom");
+      const startBtn = document.getElementById("start");
+      const resetBtn = document.getElementById("reset");
+      const gameEl = document.getElementById("game");
+
+      function cleanup() {
+        if (romUrl) {
+          URL.revokeObjectURL(romUrl);
+          romUrl = "";
+        }
+        if (loaderScript) {
+          loaderScript.remove();
+          loaderScript = null;
+        }
+        gameEl.innerHTML = "";
+      }
+
+      startBtn.addEventListener("click", () => {
+        const file = romInput.files && romInput.files[0];
+        if (!file) {
+          alert("ROM 파일(.nes)을 선택해주세요.");
+          return;
+        }
+        cleanup();
+        romUrl = URL.createObjectURL(file);
+
+        window.EJS_player = "#game";
+        window.EJS_core = "nes";
+        window.EJS_gameUrl = romUrl;
+        window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+
+        loaderScript = document.createElement("script");
+        loaderScript.src = "https://cdn.emulatorjs.org/loader.js";
+        document.body.appendChild(loaderScript);
+      });
+
+      resetBtn.addEventListener("click", () => {
+        cleanup();
+      });
+    </script>
+  </body>
+</html>

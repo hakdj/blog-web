@@ -8,6 +8,7 @@ const GAME_LIST = [
   { id: 'memory', name: '기억 카드', status: 'ready' },
   { id: 'shooter', name: '1945 미니', status: 'ready' },
   { id: 'tetris', name: '테트리스', status: 'ready' },
+  { id: 'emu', name: 'NES 에뮬레이터', status: 'ready' },
 ];
 
 export default function GameHubClient() {
@@ -181,6 +182,27 @@ export default function GameHubClient() {
             />
           </div>
           <p className="text-xs text-gray-500">게임 화면을 클릭해야 키보드 조작이 됩니다.</p>
+        </div>
+      )}
+
+      {activeGame === 'emu' && (
+        <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center gap-2">
+          <div
+            className="w-[720px] h-[540px]"
+            onClick={() => focusFrame('emu')}
+          >
+            <iframe
+              title="nes-emulator"
+              src="/games/emu/index.html"
+              className="w-[720px] h-[540px] border-0"
+              ref={(el) => {
+                iframeRefs.current.emu = el;
+              }}
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            ROM 파일은 본인이 소유한 것만 사용하세요.
+          </p>
         </div>
       )}
     </div>
