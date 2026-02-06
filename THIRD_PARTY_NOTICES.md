@@ -10,11 +10,6 @@ Source: https://github.com/photonstorm/phaser
 License: MIT  
 Copyright (c) Photon Storm Ltd.
 
-## EmulatorJS
-
-Source: https://github.com/EmulatorJS/EmulatorJS  
-License: GPL-3.0  
-Copyright (c) EmulatorJS contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
