@@ -10,6 +10,15 @@ Source: https://github.com/photonstorm/phaser
 License: MIT  
 Copyright (c) Photon Storm Ltd.
 
+## External Game Embeds
+
+The following games are embedded via iframe:
+
+- React Tetris: https://github.com/chvin/react-tetris
+- 2048: https://github.com/gabrielecirulli/2048
+- Pacman JS: https://github.com/masonicgit/pacman
+- JavaScript Snake: https://github.com/patorjk/JavaScript-Snake
+
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
