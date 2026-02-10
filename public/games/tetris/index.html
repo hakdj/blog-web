@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=640, user-scalable=no" />
-    <title>React Tetris</title>
+    <title>테트리스</title>
     <link rel="stylesheet" href="./loader.css" />
     <link rel="stylesheet" href="./css-1.0.1.css" />
     <style>
@@ -28,12 +28,65 @@
         window.focus();
       });
 
-      // 전역 키 입력 처리 (스크롤 방지 + 포커스 유지)
-      window.addEventListener("keydown", (e) => {
+      const isGameKey = (event) => {
         const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "p", "P"];
-        if (keys.includes(e.key)) {
-          e.preventDefault();
+        return keys.includes(event.key) || event.code === "Space";
+      };
+
+      // 전역 키 입력 처리 (스크롤 방지 + 포커스 유지)
+      window.addEventListener("keydown", (event) => {
+        if (isGameKey(event)) {
+          event.preventDefault();
+          document.body.focus();
         }
+      });
+
+      // UI 텍스트를 한국어/영어로 치환
+      const translations = [
+        ["俄罗斯方块", "테트리스"],
+        ["最高分", "최고점"],
+        ["消除行", "지운 줄"],
+        ["级别", "레벨"],
+        ["下一个", "다음 블록"],
+        ["暂停", "일시정지"],
+        ["音效", "음향"],
+        ["重玩", "리셋"],
+        ["旋转", "회전"],
+        ["左", "좌"],
+        ["右", "우"],
+        ["下", "하"],
+        ["TETRIS", "테트리스"],
+        ["HIGH SCORE", "최고점"],
+        ["LINES", "지운 줄"],
+        ["LEVEL", "레벨"],
+        ["NEXT", "다음 블록"],
+        ["PAUSE", "일시정지"],
+        ["SOUND", "음향"],
+        ["RESET", "리셋"],
+      ];
+
+      const applyTranslations = () => {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        let node = walker.nextNode();
+        while (node) {
+          let text = node.nodeValue;
+          let updated = text;
+          translations.forEach(([from, to]) => {
+            if (updated.includes(from)) {
+              updated = updated.split(from).join(to);
+            }
+          });
+          if (updated !== text) {
+            node.nodeValue = updated;
+          }
+          node = walker.nextNode();
+        }
+      };
+
+      const observer = new MutationObserver(() => applyTranslations());
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      window.addEventListener("load", () => {
+        applyTranslations();
       });
     </script>
   </body>
