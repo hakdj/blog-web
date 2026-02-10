@@ -20,5 +20,21 @@
       </div>
     </div>
     <script src="./app-1.0.1.js"></script>
+    <script>
+      // 페이지 로드 시 포커스 확보
+      window.addEventListener("load", () => {
+        document.body.setAttribute("tabindex", "0");
+        document.body.focus();
+        window.focus();
+      });
+
+      // 전역 키 입력 처리 (스크롤 방지 + 포커스 유지)
+      window.addEventListener("keydown", (e) => {
+        const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "p", "P"];
+        if (keys.includes(e.key)) {
+          e.preventDefault();
+        }
+      });
+    </script>
   </body>
 </html>
