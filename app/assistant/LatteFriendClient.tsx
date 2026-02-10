@@ -513,6 +513,10 @@ export default function LatteFriendClient() {
 
       {activeTab === 'chat' && (
         <div className="bg-white rounded-xl shadow p-6 space-y-4">
+          <p className="text-sm text-gray-500">
+            라떼 상담은 OpenAI 키를 등록한 경우에만 사용할 수 있습니다. 마이페이지에서 키를
+            입력해주세요.
+          </p>
           <div className="space-y-3 max-h-[420px] overflow-y-auto">
             {chatMessages.length === 0 ? (
               <div className="text-center text-gray-500">
@@ -539,7 +543,7 @@ export default function LatteFriendClient() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') sendChat();
               }}
-              placeholder="오늘의 고민이나 계획을 적어보세요"
+              placeholder="OpenAI 키를 등록한 후 상담을 이용할 수 있어요"
               className="flex-1 border rounded-lg px-3 py-2"
             />
             <button
