@@ -213,6 +213,7 @@ export default function SettingsPage() {
         .from('profiles')
         .upsert({
           id: user.id,
+          email: user.email,
           ai_provider: aiProviderInput,
           ai_api_key: key,
           openai_api_key: aiProviderInput === 'openai' ? key : null
