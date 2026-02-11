@@ -83,6 +83,8 @@ export default function LatteFriendClient() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [chatLocked, setChatLocked] = useState(false);
+  const [chatNotice, setChatNotice] = useState('');
 
   // 요약
   const [summary, setSummary] = useState('');
@@ -209,6 +211,7 @@ export default function LatteFriendClient() {
     setChatMessages((prev) => [...prev, { role: 'user', content: message }]);
     setChatLoading(true);
     setError('');
+    setChatNotice('');
     try {
       const response = await fetch('/api/assistant/chat', {
         method: 'POST',
@@ -219,7 +222,15 @@ export default function LatteFriendClient() {
         }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || '상담 실패');
+      if (!response.ok) {
+        if (response.status === 403) {
+          setChatLocked(true);
+          setChatNotice('OpenAI 키를 등록하면 라떼 상담을 이용할 수 있어요.');
+          return;
+        }
+        throw new Error(data?.error || '상담 실패');
+      }
+      setChatLocked(false);
       setChatMessages((prev) => [...prev, { role: 'assistant', content: data.reply || '' }]);
     } catch (err) {
       setError((err as Error).message);
@@ -513,10 +524,17 @@ export default function LatteFriendClient() {
 
       {activeTab === 'chat' && (
         <div className="bg-white rounded-xl shadow p-6 space-y-4">
-          <p className="text-sm text-gray-500">
-            라떼 상담은 OpenAI 키를 등록한 경우에만 사용할 수 있습니다. 마이페이지에서 키를
-            입력해주세요.
-          </p>
+          <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
+            라떼 상담은 OpenAI 키를 등록한 경우에만 사용할 수 있습니다.
+            <span className="ml-2 text-indigo-600">
+              마이페이지에서 키를 등록해 주세요.
+            </span>
+          </div>
+          {chatNotice && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              {chatNotice}
+            </div>
+          )}
           <div className="space-y-3 max-h-[420px] overflow-y-auto">
             {chatMessages.length === 0 ? (
               <div className="text-center text-gray-500">
@@ -543,17 +561,30 @@ export default function LatteFriendClient() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') sendChat();
               }}
-              placeholder="OpenAI 키를 등록한 후 상담을 이용할 수 있어요"
+              placeholder={
+                chatLocked
+                  ? 'OpenAI 키를 등록하면 상담을 시작할 수 있어요'
+                  : '오늘의 고민이나 계획을 적어보세요'
+              }
               className="flex-1 border rounded-lg px-3 py-2"
+              disabled={chatLocked}
             />
             <button
               onClick={sendChat}
-              disabled={chatLoading}
+              disabled={chatLoading || chatLocked}
               className="bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700 disabled:opacity-50"
             >
               {chatLoading ? '답변 중...' : '보내기'}
             </button>
           </div>
+          {chatLocked && (
+            <a
+              href="/settings"
+              className="inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+            >
+              마이페이지에서 OpenAI 키 등록하기
+            </a>
+          )}
         </div>
       )}
 
