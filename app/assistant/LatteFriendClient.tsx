@@ -225,7 +225,7 @@ export default function LatteFriendClient() {
       if (!response.ok) {
         if (response.status === 403) {
           setChatLocked(true);
-          setChatNotice('OpenAI 키를 등록하면 라떼 상담을 이용할 수 있어요.');
+          setChatNotice('AI 키를 등록하면 라떼 상담을 이용할 수 있어요.');
           return;
         }
         throw new Error(data?.error || '상담 실패');
@@ -525,7 +525,7 @@ export default function LatteFriendClient() {
       {activeTab === 'chat' && (
         <div className="bg-white rounded-xl shadow p-6 space-y-4">
           <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
-            라떼 상담은 OpenAI 키를 등록한 경우에만 사용할 수 있습니다.
+            라떼 상담은 AI 키를 등록한 경우에만 사용할 수 있습니다.
             <span className="ml-2 text-indigo-600">
               마이페이지에서 키를 등록해 주세요.
             </span>
@@ -563,7 +563,7 @@ export default function LatteFriendClient() {
               }}
               placeholder={
                 chatLocked
-                  ? 'OpenAI 키를 등록하면 상담을 시작할 수 있어요'
+                  ? 'AI 키를 등록하면 상담을 시작할 수 있어요'
                   : '오늘의 고민이나 계획을 적어보세요'
               }
               className="flex-1 border rounded-lg px-3 py-2"
@@ -582,7 +582,7 @@ export default function LatteFriendClient() {
               href="/settings"
               className="inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
             >
-              마이페이지에서 OpenAI 키 등록하기
+              마이페이지에서 AI 키 등록하기
             </a>
           )}
         </div>
@@ -594,7 +594,7 @@ export default function LatteFriendClient() {
             최근 작성한 일기를 요약해서 오늘의 핵심 감정을 알려줘요.
           </p>
           <p className="text-sm text-gray-500">
-            OpenAI 키가 등록되어 있으면 AI 요약, 없으면 템플릿 요약으로 보여집니다.
+            AI 키가 등록되어 있으면 AI 요약, 없으면 템플릿 요약으로 보여집니다.
           </p>
           <button
             onClick={generateSummary}

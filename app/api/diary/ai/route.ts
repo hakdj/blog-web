@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
+const GOOGLE_MODEL = process.env.GOOGLE_MODEL || 'gemini-1.5-flash';
+
+type AiProvider = 'openai' | 'anthropic' | 'google';
+
+function resolveProvider(raw?: string | null): AiProvider {
+  const value = String(raw || '').toLowerCase();
+  if (value === 'anthropic' || value === 'claude') return 'anthropic';
+  if (value === 'google' || value === 'gemini') return 'google';
+  return 'openai';
+}
 
 const FALLBACK_OPENINGS = [
   '오늘은 마음이 차분해지는 날이었다.',
@@ -82,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('openai_api_key')
+      .select('ai_provider, ai_api_key, openai_api_key')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -90,14 +101,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'AI 키 조회에 실패했습니다.' }, { status: 500 });
     }
 
-    const userApiKey = profileData?.openai_api_key ? String(profileData.openai_api_key).trim() : '';
+    const provider = resolveProvider(
+      profileData?.ai_provider || (profileData?.openai_api_key ? 'openai' : 'openai')
+    );
+    const userApiKey = (profileData?.ai_api_key || profileData?.openai_api_key || '')
+      .toString()
+      .trim();
 
     if (!userApiKey) {
       const fallback = buildFallbackDraft({ keywords, mood, date, tone, length });
       return NextResponse.json({
         draft: fallback,
         fallback: true,
-        message: '개인 OpenAI 키가 등록되지 않아 템플릿으로 작성되었습니다.',
+        message: '개인 AI 키가 등록되지 않아 템플릿으로 작성되었습니다.',
       });
     }
 
@@ -115,32 +131,88 @@ export async function POST(request: NextRequest) {
       '- JSON 형식: {"title":"", "content":"", "mood":"", "tags":["",""]}',
     ].filter(Boolean).join('\n');
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${userApiKey}`,
-      },
-      body: JSON.stringify({
-        model: OPENAI_MODEL,
-        messages: [
-          { role: 'system', content: '한국어로만 답변한다.' },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.8,
-      }),
-    });
+    const systemPrompt = '한국어로만 답변한다.';
+    let message = '';
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return NextResponse.json(
-        { error: `AI 요청 실패: ${response.status} - ${errorText.substring(0, 200)}` },
-        { status: 500 }
+    if (provider === 'openai') {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${userApiKey}`,
+        },
+        body: JSON.stringify({
+          model: OPENAI_MODEL,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.8,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return NextResponse.json(
+          { error: `AI 요청 실패: ${response.status} - ${errorText.substring(0, 200)}` },
+          { status: 500 }
+        );
+      }
+
+      const data = await response.json();
+      message = data?.choices?.[0]?.message?.content || '';
+    } else if (provider === 'anthropic') {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': userApiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: ANTHROPIC_MODEL,
+          max_tokens: 800,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return NextResponse.json(
+          { error: `AI 요청 실패: ${response.status} - ${errorText.substring(0, 200)}` },
+          { status: 500 }
+        );
+      }
+
+      const data = await response.json();
+      message = data?.content?.map((part: any) => part?.text || '').join('') || '';
+    } else {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GOOGLE_MODEL}:generateContent?key=${userApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          }),
+        }
       );
-    }
 
-    const data = await response.json();
-    const message = data?.choices?.[0]?.message?.content || '';
+      if (!response.ok) {
+        const errorText = await response.text();
+        return NextResponse.json(
+          { error: `AI 요청 실패: ${response.status} - ${errorText.substring(0, 200)}` },
+          { status: 500 }
+        );
+      }
+
+      const data = await response.json();
+      message =
+        data?.candidates?.[0]?.content?.parts?.map((part: any) => part?.text || '').join('') ||
+        '';
+    }
 
     let draft = null;
     try {

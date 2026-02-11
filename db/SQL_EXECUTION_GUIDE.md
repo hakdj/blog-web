@@ -32,12 +32,12 @@
 
 ---
 
-### 0-2단계: OpenAI 개인키 컬럼 추가
+### 0-2단계: AI 개인키 컬럼 추가
 **파일:** `db/ADD_OPENAI_KEY_TO_PROFILES.sql`
 
 **효과:**
-- 개인별 OpenAI 키 저장용 `openai_api_key` 컬럼 추가
-- AI 기능을 사용자 키로만 사용하도록 설정
+- 개인별 AI 키 저장용 `ai_api_key`, `ai_provider` 컬럼 추가
+- OpenAI/Claude/Gemini 키를 사용자 키로만 사용하도록 설정
 
 ---
 
@@ -114,7 +114,7 @@ INSERT INTO plans (tier, interval, name, price, features, is_active) VALUES
    - 라떼 친구 일정 테이블 생성
 
 0-2. **`ADD_OPENAI_KEY_TO_PROFILES.sql`** 실행
-   - profiles 테이블에 openai_api_key 컬럼 추가
+   - profiles 테이블에 ai_api_key, ai_provider 컬럼 추가
 
 0-1. **`CREATE_DIARY_TABLE.sql`** 실행
    - 추억의 일기장 테이블 생성
