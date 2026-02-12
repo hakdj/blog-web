@@ -63,6 +63,16 @@
 
       // UI 텍스트를 한국어/영어로 치환
       const translations = [
+        ["左移", "좌측 이동"],
+        ["右移", "우측 이동"],
+        ["下移", "아래 이동"],
+        ["下落", "하드 드롭"],
+        ["掉落", "하드 드롭"],
+        ["旋转(↑)", "회전(상)"],
+        ["暂停(P)", "일시정지(P)"],
+        ["掉落(SPACE)", "하드 드롭(SPACE)"],
+        ["掉落 (SPACE)", "하드 드롭 (SPACE)"],
+        ["按键", "조작"],
         ["俄罗斯方块", "테트리스"],
         ["最高分", "최고점"],
         ["消除行", "지운 줄"],
@@ -105,9 +115,43 @@
 
       const observer = new MutationObserver(() => applyTranslations());
       observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+      const hideOutsideControlHints = () => {
+        const panel =
+          document.querySelector("#root ._3Lk6") ||
+          document.querySelector("#root > div");
+        if (!panel) return;
+
+        const panelRect = panel.getBoundingClientRect();
+        const hintPattern = /(SPACE|←|→|↑|↓|左移|右移|下移|下落|掉落|按键|旋转|暂停)/i;
+        const nodes = document.querySelectorAll("div,span,p,button");
+
+        nodes.forEach((node) => {
+          const el = node;
+          const text = (el.textContent || "").trim();
+          if (!text || !hintPattern.test(text)) return;
+
+          const rect = el.getBoundingClientRect();
+          const insidePanel =
+            rect.left >= panelRect.left &&
+            rect.right <= panelRect.right &&
+            rect.top >= panelRect.top &&
+            rect.bottom <= panelRect.bottom;
+
+          if (!insidePanel) {
+            el.style.display = "none";
+          }
+        });
+      };
+
       window.addEventListener("load", () => {
         applyTranslations();
+        hideOutsideControlHints();
       });
+      const cleanupObserver = new MutationObserver(() => {
+        hideOutsideControlHints();
+      });
+      cleanupObserver.observe(document.body, { childList: true, subtree: true });
     </script>
   </body>
 </html>
