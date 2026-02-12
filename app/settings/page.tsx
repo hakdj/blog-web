@@ -5,6 +5,15 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
+  type AiKeyItem = {
+    id: string;
+    provider: 'openai' | 'anthropic' | 'google';
+    providerLabel: string;
+    maskedKey: string;
+    isActive: boolean;
+    createdAt: string;
+  };
+
   const [user, setUser] = useState<any>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -16,6 +25,8 @@ export default function SettingsPage() {
   const [aiKeyInput, setAiKeyInput] = useState('');
   const [aiProviderInput, setAiProviderInput] = useState<'openai' | 'anthropic' | 'google'>('openai');
   const [aiMaskedKey, setAiMaskedKey] = useState('');
+  const [aiKeys, setAiKeys] = useState<AiKeyItem[]>([]);
+  const [activeAiKeyId, setActiveAiKeyId] = useState<string | null>(null);
   const [passwords, setPasswords] = useState({
     current: '',
     new: '',
@@ -99,6 +110,8 @@ export default function SettingsPage() {
             setAiProviderInput(aiData.provider);
           }
           setAiMaskedKey(String(aiData.maskedKey || ''));
+          setAiKeys(Array.isArray(aiData.keys) ? aiData.keys : []);
+          setActiveAiKeyId(aiData.activeKeyId || null);
         }
       } catch {
         // 키 상태 조회 실패 시 기본 profile 기반 상태 유지
@@ -232,6 +245,7 @@ export default function SettingsPage() {
       setAiKeyInput('');
       setHasAiKey(true);
       setAiMaskedKey(String(data?.maskedKey || ''));
+      await loadUserData();
     } catch (error) {
       console.error('Error saving AI key:', error);
       setError('AI 키 저장 실패: ' + (error as Error).message);
@@ -253,8 +267,49 @@ export default function SettingsPage() {
       setHasAiKey(false);
       setAiKeyInput('');
       setAiMaskedKey('');
+      setAiKeys([]);
+      setActiveAiKeyId(null);
     } catch (error) {
       console.error('Error deleting AI key:', error);
+      setError('AI 키 삭제 실패: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAiKeyActivate = async (keyId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/settings/ai-key', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || '키 선택 실패');
+      alert(data?.message || '활성 키가 변경되었습니다.');
+      await loadUserData();
+    } catch (error) {
+      setError('AI 키 선택 실패: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAiKeyDeleteById = async (keyId: string) => {
+    if (!confirm('선택한 AI 키를 삭제하시겠습니까?')) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/settings/ai-key?id=${encodeURIComponent(keyId)}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'AI 키 삭제 실패');
+      alert(data?.message || '선택한 키를 삭제했습니다.');
+      await loadUserData();
+    } catch (error) {
       setError('AI 키 삭제 실패: ' + (error as Error).message);
     } finally {
       setLoading(false);
@@ -583,19 +638,56 @@ export default function SettingsPage() {
               </p>
               {hasAiKey && aiMaskedKey && (
                 <p className="mt-1 text-xs text-emerald-700">
-                  등록된 키: {aiMaskedKey}
+                  현재 활성 키: {aiMaskedKey}
                 </p>
               )}
             </div>
+            {aiKeys.length > 0 && (
+              <div className="rounded-lg border border-gray-200 p-3 space-y-2">
+                <p className="text-sm font-semibold text-gray-700">등록된 키 목록</p>
+                {aiKeys.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between gap-2 rounded border p-2">
+                    <div>
+                      <p className="text-sm text-gray-900">
+                        {item.providerLabel} · {item.maskedKey}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        등록일: {new Date(item.createdAt).toLocaleDateString('ko-KR')} {item.isActive ? '· 사용중' : ''}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {!item.isActive && (
+                        <button
+                          type="button"
+                          onClick={() => handleAiKeyActivate(item.id)}
+                          disabled={loading}
+                          className="px-3 py-1 text-xs rounded bg-blue-50 text-blue-700 hover:bg-blue-100"
+                        >
+                          선택
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleAiKeyDeleteById(item.id)}
+                        disabled={loading}
+                        className="px-3 py-1 text-xs rounded bg-red-50 text-red-700 hover:bg-red-100"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex gap-2">
               <button
                 type="submit"
                 disabled={loading}
                 className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? '저장 중...' : hasAiKey ? '키 변경 저장' : '키 저장'}
+                {loading ? '저장 중...' : '키 추가 저장'}
               </button>
-              {hasAiKey && (
+              {(hasAiKey || activeAiKeyId) && (
                 <button
                   type="button"
                   onClick={handleAiKeyDelete}

@@ -51,3 +51,31 @@ ALTER TABLE ai_request_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own ai request logs" ON ai_request_logs;
 CREATE POLICY "Users can view own ai request logs" ON ai_request_logs
   FOR SELECT USING (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS ai_user_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL,
+  key_encrypted TEXT NOT NULL,
+  key_masked TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_user_keys_user_created_at ON ai_user_keys(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_user_keys_user_active ON ai_user_keys(user_id, is_active);
+
+ALTER TABLE ai_user_keys ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own ai keys" ON ai_user_keys;
+CREATE POLICY "Users can view own ai keys" ON ai_user_keys
+  FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert own ai keys" ON ai_user_keys;
+CREATE POLICY "Users can insert own ai keys" ON ai_user_keys
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update own ai keys" ON ai_user_keys;
+CREATE POLICY "Users can update own ai keys" ON ai_user_keys
+  FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete own ai keys" ON ai_user_keys;
+CREATE POLICY "Users can delete own ai keys" ON ai_user_keys
+  FOR DELETE USING (auth.uid() = user_id);

@@ -40,6 +40,7 @@
 - OpenAI/Claude/Gemini 키를 사용자 키로만 사용하도록 설정
 - `ai_api_key_encrypted`, `ai_key_masked`, `ai_key_rotated_at` 보안 컬럼 추가
 - `ai_key_rotation_logs`, `ai_request_logs` 운영 테이블 생성
+- `ai_user_keys` 키링 테이블 생성 (여러 키 등록/선택/삭제 지원)
 
 ---
 

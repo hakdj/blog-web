@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getAiCredentials } from '@/lib/ai-credentials';
+import { getUserAiCredentials } from '@/lib/ai-credentials';
 import { logAiUsage } from '@/lib/ai-usage-log';
 import { providerLabel } from '@/lib/ai-provider';
 function buildUpstreamError(provider: 'openai' | 'anthropic' | 'google', status: number, errorText: string) {
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'AI 키 조회에 실패했습니다.' }, { status: 500 });
     }
 
-    const { provider, apiKey: userApiKey } = getAiCredentials(profileData);
+    const { provider, apiKey: userApiKey } = await getUserAiCredentials(supabase, user.id, profileData);
 
     if (!userApiKey) {
       const fallback = buildFallbackDraft({ keywords, mood, date, tone, length });
