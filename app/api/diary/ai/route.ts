@@ -3,7 +3,17 @@ import { createClient } from '@/lib/supabase/server';
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
-const GOOGLE_MODEL = process.env.GOOGLE_MODEL || 'gemini-1.5-flash';
+const GOOGLE_MODEL = process.env.GOOGLE_MODEL || 'gemini-3.0-flash';
+const GOOGLE_CANDIDATE_MODELS = Array.from(
+  new Set([
+    GOOGLE_MODEL,
+    'gemini-3.0-flash',
+    'gemini-3.0-flash-latest',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash-latest',
+  ])
+);
 
 type AiProvider = 'openai' | 'anthropic' | 'google';
 
@@ -188,30 +198,52 @@ export async function POST(request: NextRequest) {
       const data = await response.json();
       message = data?.content?.map((part: any) => part?.text || '').join('') || '';
     } else {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GOOGLE_MODEL}:generateContent?key=${userApiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          }),
-        }
-      );
+      let googleErrorText = '';
+      let googleStatus = 500;
+      let googleSucceeded = false;
 
-      if (!response.ok) {
+      for (const model of GOOGLE_CANDIDATE_MODELS) {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${userApiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          message =
+            data?.candidates?.[0]?.content?.parts
+              ?.map((part: any) => part?.text || '')
+              .join('') || '';
+          googleSucceeded = true;
+          break;
+        }
+
         const errorText = await response.text();
+        googleStatus = response.status;
+        googleErrorText = errorText;
+        const lower = errorText.toLowerCase();
+        const isModelNotFound =
+          response.status === 404 &&
+          (lower.includes('not found for api version') ||
+            lower.includes('not supported for generatecontent'));
+        if (!isModelNotFound) {
+          break;
+        }
+      }
+
+      if (!googleSucceeded) {
         return NextResponse.json(
-          { error: `AI 요청 실패: ${response.status} - ${errorText.substring(0, 200)}` },
+          { error: `AI 요청 실패: ${googleStatus} - ${googleErrorText.substring(0, 200)}` },
           { status: 500 }
         );
       }
-
-      const data = await response.json();
-      message =
-        data?.candidates?.[0]?.content?.parts?.map((part: any) => part?.text || '').join('') ||
-        '';
     }
 
     let draft = null;
