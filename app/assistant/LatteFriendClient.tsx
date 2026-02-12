@@ -27,6 +27,8 @@ type ChatMessage = {
   content: string;
 };
 
+type ChatProvider = 'openai' | 'anthropic' | 'google';
+
 const REGIONS = [
   '전국',
   '서울',
@@ -85,6 +87,8 @@ export default function LatteFriendClient() {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatLocked, setChatLocked] = useState(false);
   const [chatNotice, setChatNotice] = useState('');
+  const [chatProvider, setChatProvider] = useState<ChatProvider>('openai');
+  const [chatHasKey, setChatHasKey] = useState(false);
 
   // 요약
   const [summary, setSummary] = useState('');
@@ -125,7 +129,32 @@ export default function LatteFriendClient() {
     if (activeTab === 'extra') {
       loadDailyNotes();
     }
+    if (activeTab === 'chat') {
+      loadChatConfig();
+    }
   }, [activeTab]);
+
+  const providerLabel = (provider: ChatProvider) => {
+    if (provider === 'google') return 'Google Gemini';
+    if (provider === 'anthropic') return 'Claude';
+    return 'OpenAI';
+  };
+
+  const loadChatConfig = async () => {
+    try {
+      const response = await fetch('/api/assistant/chat');
+      const data = await response.json();
+      if (!response.ok) return;
+      const provider = (data.provider as ChatProvider) || 'openai';
+      const hasKey = Boolean(data.hasKey);
+      setChatProvider(provider);
+      setChatHasKey(hasKey);
+      setChatLocked(!hasKey);
+      setChatNotice(hasKey ? '' : 'AI 키를 등록하면 라떼 상담을 이용할 수 있어요.');
+    } catch {
+      // 안내 문구는 기존 상태 유지
+    }
+  };
 
   const addTask = async () => {
     if (!taskTitle.trim()) {
@@ -225,12 +254,15 @@ export default function LatteFriendClient() {
       if (!response.ok) {
         if (response.status === 403) {
           setChatLocked(true);
+          setChatHasKey(false);
           setChatNotice('AI 키를 등록하면 라떼 상담을 이용할 수 있어요.');
           return;
         }
-        throw new Error(data?.error || '상담 실패');
+        setChatNotice(data?.error || '상담에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        return;
       }
       setChatLocked(false);
+      setChatHasKey(true);
       setChatMessages((prev) => [...prev, { role: 'assistant', content: data.reply || '' }]);
     } catch (err) {
       setError((err as Error).message);
@@ -524,14 +556,30 @@ export default function LatteFriendClient() {
 
       {activeTab === 'chat' && (
         <div className="bg-white rounded-xl shadow p-6 space-y-4">
-          <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
-            라떼 상담은 AI 키를 등록한 경우에만 사용할 수 있습니다.
-            <span className="ml-2 text-indigo-600">
-              마이페이지에서 키를 등록해 주세요.
-            </span>
+          <div
+            className={`rounded-lg px-4 py-3 text-sm ${
+              chatHasKey
+                ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'border border-indigo-100 bg-indigo-50 text-indigo-700'
+            }`}
+          >
+            {chatHasKey ? (
+              <span>{providerLabel(chatProvider)} API 키가 등록되었습니다.</span>
+            ) : (
+              <>
+                라떼 상담은 AI 키를 등록한 경우에만 사용할 수 있습니다.
+                <span className="ml-2 text-indigo-600">마이페이지에서 키를 등록해 주세요.</span>
+              </>
+            )}
           </div>
           {chatNotice && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            <div
+              className={`rounded-lg px-4 py-3 text-sm ${
+                chatHasKey
+                  ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border border-amber-200 bg-amber-50 text-amber-700'
+              }`}
+            >
               {chatNotice}
             </div>
           )}

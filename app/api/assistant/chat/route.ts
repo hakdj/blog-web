@@ -14,6 +14,59 @@ function resolveProvider(raw?: string | null): AiProvider {
   return 'openai';
 }
 
+function formatProviderName(provider: AiProvider) {
+  if (provider === 'google') return 'Google Gemini';
+  if (provider === 'anthropic') return 'Claude';
+  return 'OpenAI';
+}
+
+function buildUpstreamError(provider: AiProvider, status: number, errorText: string) {
+  const lower = errorText.toLowerCase();
+  const providerName = formatProviderName(provider);
+  if (
+    lower.includes('api key not valid') ||
+    lower.includes('invalid_api_key') ||
+    lower.includes('invalid x-api-key') ||
+    lower.includes('incorrect api key')
+  ) {
+    return `${providerName} API 키가 올바르지 않습니다. 마이페이지에서 해당 서비스 키를 다시 확인해주세요.`;
+  }
+  if (lower.includes('permission') || lower.includes('forbidden')) {
+    return `${providerName} API 키 권한이 부족합니다. 키 제한/권한 설정을 확인해주세요.`;
+  }
+  return `AI 요청 실패: ${status} - ${errorText.substring(0, 200)}`;
+}
+
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('ai_provider, ai_api_key, openai_api_key')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const provider = resolveProvider(
+      profileData?.ai_provider || (profileData?.openai_api_key ? 'openai' : 'openai')
+    );
+    const hasKey = Boolean((profileData?.ai_api_key || profileData?.openai_api_key || '').toString().trim());
+    return NextResponse.json({ provider, hasKey });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Internal server error: ' + (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -80,8 +133,8 @@ export async function POST(request: NextRequest) {
       if (!response.ok) {
         const errorText = await response.text();
         return NextResponse.json(
-          { error: `AI 요청 실패: ${response.status} - ${errorText.substring(0, 200)}` },
-          { status: 500 }
+          { error: buildUpstreamError(provider, response.status, errorText) },
+          { status: 400 }
         );
       }
 
@@ -106,8 +159,8 @@ export async function POST(request: NextRequest) {
       if (!response.ok) {
         const errorText = await response.text();
         return NextResponse.json(
-          { error: `AI 요청 실패: ${response.status} - ${errorText.substring(0, 200)}` },
-          { status: 500 }
+          { error: buildUpstreamError(provider, response.status, errorText) },
+          { status: 400 }
         );
       }
 
@@ -132,8 +185,8 @@ export async function POST(request: NextRequest) {
       if (!response.ok) {
         const errorText = await response.text();
         return NextResponse.json(
-          { error: `AI 요청 실패: ${response.status} - ${errorText.substring(0, 200)}` },
-          { status: 500 }
+          { error: buildUpstreamError(provider, response.status, errorText) },
+          { status: 400 }
         );
       }
 
