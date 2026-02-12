@@ -1,5 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getAiCredentials } from '@/lib/ai-credentials';
+import { logAiUsage } from '@/lib/ai-usage-log';
+import { providerLabel } from '@/lib/ai-provider';
+function buildUpstreamError(provider: 'openai' | 'anthropic' | 'google', status: number, errorText: string) {
+  const lower = errorText.toLowerCase();
+  const label = providerLabel(provider);
+  if (lower.includes('api key not valid') || lower.includes('invalid_api_key') || lower.includes('invalid x-api-key')) {
+    return `${label} API 키가 올바르지 않습니다. 마이페이지에서 다시 저장해주세요.`;
+  }
+  if (lower.includes('not found for api version') || lower.includes('not supported for generatecontent')) {
+    return `${label} 모델이 현재 API 버전에서 지원되지 않습니다. 잠시 후 다시 시도해주세요.`;
+  }
+  return `AI 요청 실패: ${status} - ${errorText.substring(0, 180)}`;
+}
+
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
@@ -14,15 +29,6 @@ const GOOGLE_CANDIDATE_MODELS = Array.from(
     'gemini-1.5-flash-latest',
   ])
 );
-
-type AiProvider = 'openai' | 'anthropic' | 'google';
-
-function resolveProvider(raw?: string | null): AiProvider {
-  const value = String(raw || '').toLowerCase();
-  if (value === 'anthropic' || value === 'claude') return 'anthropic';
-  if (value === 'google' || value === 'gemini') return 'google';
-  return 'openai';
-}
 
 const FALLBACK_OPENINGS = [
   '오늘은 마음이 차분해지는 날이었다.',
@@ -84,6 +90,7 @@ function buildFallbackDraft(input: {
 
 export async function POST(request: NextRequest) {
   try {
+    const startedAt = Date.now();
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -103,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('ai_provider, ai_api_key, openai_api_key')
+      .select('ai_provider, ai_api_key_encrypted, ai_api_key, openai_api_key')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -111,12 +118,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'AI 키 조회에 실패했습니다.' }, { status: 500 });
     }
 
-    const provider = resolveProvider(
-      profileData?.ai_provider || (profileData?.openai_api_key ? 'openai' : 'openai')
-    );
-    const userApiKey = (profileData?.ai_api_key || profileData?.openai_api_key || '')
-      .toString()
-      .trim();
+    const { provider, apiKey: userApiKey } = getAiCredentials(profileData);
 
     if (!userApiKey) {
       const fallback = buildFallbackDraft({ keywords, mood, date, tone, length });
@@ -163,8 +165,18 @@ export async function POST(request: NextRequest) {
 
       if (!response.ok) {
         const errorText = await response.text();
+        await logAiUsage({
+          userId: user.id,
+          feature: 'diary_draft',
+          provider,
+          model: OPENAI_MODEL,
+          statusCode: response.status,
+          latencyMs: Date.now() - startedAt,
+          success: false,
+          errorMessage: errorText,
+        });
         return NextResponse.json(
-          { error: `AI 요청 실패: ${response.status} - ${errorText.substring(0, 200)}` },
+          { error: buildUpstreamError(provider, response.status, errorText) },
           { status: 500 }
         );
       }
@@ -189,8 +201,18 @@ export async function POST(request: NextRequest) {
 
       if (!response.ok) {
         const errorText = await response.text();
+        await logAiUsage({
+          userId: user.id,
+          feature: 'diary_draft',
+          provider,
+          model: ANTHROPIC_MODEL,
+          statusCode: response.status,
+          latencyMs: Date.now() - startedAt,
+          success: false,
+          errorMessage: errorText,
+        });
         return NextResponse.json(
-          { error: `AI 요청 실패: ${response.status} - ${errorText.substring(0, 200)}` },
+          { error: buildUpstreamError(provider, response.status, errorText) },
           { status: 500 }
         );
       }
@@ -239,8 +261,18 @@ export async function POST(request: NextRequest) {
       }
 
       if (!googleSucceeded) {
+        await logAiUsage({
+          userId: user.id,
+          feature: 'diary_draft',
+          provider,
+          model: GOOGLE_MODEL,
+          statusCode: googleStatus,
+          latencyMs: Date.now() - startedAt,
+          success: false,
+          errorMessage: googleErrorText,
+        });
         return NextResponse.json(
-          { error: `AI 요청 실패: ${googleStatus} - ${googleErrorText.substring(0, 200)}` },
+          { error: buildUpstreamError(provider, googleStatus, googleErrorText) },
           { status: 500 }
         );
       }
@@ -257,6 +289,16 @@ export async function POST(request: NextRequest) {
       const fallback = buildFallbackDraft({ keywords, mood, date, tone, length });
       return NextResponse.json({ draft: fallback, fallback: true });
     }
+
+    await logAiUsage({
+      userId: user.id,
+      feature: 'diary_draft',
+      provider,
+      model: provider === 'openai' ? OPENAI_MODEL : provider === 'anthropic' ? ANTHROPIC_MODEL : GOOGLE_MODEL,
+      statusCode: 200,
+      latencyMs: Date.now() - startedAt,
+      success: true,
+    });
 
     return NextResponse.json({ draft });
   } catch (error) {

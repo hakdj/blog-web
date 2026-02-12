@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   openai_api_key TEXT,
   ai_provider TEXT,
   ai_api_key TEXT,
+  ai_api_key_encrypted TEXT,
+  ai_key_masked TEXT,
+  ai_key_rotated_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

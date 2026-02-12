@@ -38,6 +38,17 @@
 **효과:**
 - 개인별 AI 키 저장용 `ai_api_key`, `ai_provider` 컬럼 추가
 - OpenAI/Claude/Gemini 키를 사용자 키로만 사용하도록 설정
+- `ai_api_key_encrypted`, `ai_key_masked`, `ai_key_rotated_at` 보안 컬럼 추가
+- `ai_key_rotation_logs`, `ai_request_logs` 운영 테이블 생성
+
+---
+
+### 0-2-1단계: 이벤트 동기화 상태 확장
+**파일:** `db/CREATE_EVENT_SYNC_STATE.sql`
+
+**효과:**
+- 소스별 마지막 시도/성공 시각, 상태, 오류, 수집량 저장
+- 관리자 화면의 동기화 상태 뱃지/마지막 성공 시각에 사용
 
 ---
 
@@ -115,6 +126,9 @@ INSERT INTO plans (tier, interval, name, price, features, is_active) VALUES
 
 0-2. **`ADD_OPENAI_KEY_TO_PROFILES.sql`** 실행
    - profiles 테이블에 ai_api_key, ai_provider 컬럼 추가
+
+0-2-1. **`CREATE_EVENT_SYNC_STATE.sql`** 재실행
+   - event_sync_state에 상태 컬럼(last_success_at 등) 추가
 
 0-1. **`CREATE_DIARY_TABLE.sql`** 실행
    - 추억의 일기장 테이블 생성

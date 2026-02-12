@@ -1,9 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { createClient as createUserClient } from '@/lib/supabase/server';
+import { isAdmin } from '@/lib/auth';
 
 export async function GET() {
   try {
     console.log('Admin API - Starting request...');
+
+    const requester = await createUserClient();
+    const { data: { user }, error: authError } = await requester.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!isAdmin(user)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Check for service role key
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

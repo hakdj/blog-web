@@ -49,6 +49,23 @@ interface AdminData {
   freeMembersList: Member[];
 }
 
+interface AiProviderMetric {
+  provider: 'openai' | 'anthropic' | 'google';
+  total: number;
+  successRate: number;
+  error4xx: number;
+  error5xx: number;
+}
+
+interface EventSourceStatus {
+  source: string;
+  last_attempt_at?: string | null;
+  last_success_at?: string | null;
+  last_status?: 'ok' | 'error' | null;
+  last_error?: string | null;
+  last_count?: number | null;
+}
+
 export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -70,6 +87,8 @@ export default function AdminPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showRevenue, setShowRevenue] = useState(false);
   const [showRevenueDetails, setShowRevenueDetails] = useState(false);
+  const [aiMetrics, setAiMetrics] = useState<AiProviderMetric[]>([]);
+  const [eventSourceStatus, setEventSourceStatus] = useState<EventSourceStatus[]>([]);
   const supabase = createClient();
   const router = useRouter();
 
@@ -121,7 +140,7 @@ export default function AdminPage() {
 
       // Admin confirmed, now load data
       setLoading(true);
-      await Promise.all([loadAdminData(), loadPlans()]);
+      await Promise.all([loadAdminData(), loadPlans(), loadAiMetrics(), loadSyncStatus()]);
       
     } catch (error) {
       console.error('Admin - Exception in checkAdminAndLoadData:', error);
@@ -200,6 +219,28 @@ export default function AdminPage() {
       console.error('Admin - Exception loading plans:', error);
       // Set empty array instead of showing error
       setPlans([]);
+    }
+  };
+
+  const loadAiMetrics = async () => {
+    try {
+      const response = await fetch('/api/admin/ai-metrics');
+      const data = await response.json();
+      if (!response.ok) return;
+      setAiMetrics(data.byProvider || []);
+    } catch {
+      setAiMetrics([]);
+    }
+  };
+
+  const loadSyncStatus = async () => {
+    try {
+      const response = await fetch('/api/events/sync/status');
+      const data = await response.json();
+      if (!response.ok) return;
+      setEventSourceStatus(data.sources || []);
+    } catch {
+      setEventSourceStatus([]);
     }
   };
 
@@ -403,29 +444,26 @@ export default function AdminPage() {
         const debugInfo = data.debug || {};
         const results = data.results || {};
         const apiErrors = debugInfo.apiErrors || {};
-        
         const details = `
-📊 API 응답 개수:
-- Tour API (전국 축제): ${debugInfo.tourApiCount || 0}개
-- Culture API (공연/전시): ${debugInfo.cultureApiCount || 0}개
-- Seoul API (서울): ${debugInfo.seoulApiCount || 0}개
-- Gyeonggi API (경기): ${debugInfo.gyeonggiApiCount || 0}개
+✅ 이벤트 동기화 완료 (총 ${data.synced}건)
 
-🧯 API 에러(있으면 표시):
-- Tour: ${apiErrors.tour || '없음'}
-- Culture: ${apiErrors.culture || '없음'}
-- Gyeonggi: ${apiErrors.gyeonggi || '없음'}
+📊 수집 현황
+- Tour: ${debugInfo.tourApiCount || 0}건
+- Culture: ${debugInfo.cultureApiCount || 0}건
+- Seoul: ${debugInfo.seoulApiCount || 0}건
+- Gyeonggi: ${debugInfo.gyeonggiApiCount || 0}건
 
-💾 DB 저장 결과:
-- Tour: ${results.tour?.synced || 0}개 성공, ${results.tour?.skipped || 0}개 실패
-- Culture: ${results.culture?.synced || 0}개 성공, ${results.culture?.skipped || 0}개 실패
-- Seoul: ${results.seoul?.synced || 0}개 성공, ${results.seoul?.skipped || 0}개 실패
-- Gyeonggi: ${results.gyeonggi?.synced || 0}개 성공, ${results.gyeonggi?.skipped || 0}개 실패
-
-✅ 총 ${data.synced}개의 이벤트가 동기화되었습니다.`;
+💾 저장 결과
+- Tour: 성공 ${results.tour?.synced || 0} / 실패 ${results.tour?.skipped || 0}
+- Culture: 성공 ${results.culture?.synced || 0} / 실패 ${results.culture?.skipped || 0}
+- Seoul: 성공 ${results.seoul?.synced || 0} / 실패 ${results.seoul?.skipped || 0}
+- Gyeonggi: 성공 ${results.gyeonggi?.synced || 0} / 실패 ${results.gyeonggi?.skipped || 0}
+`;
         
         console.log('✅ 동기화 성공:', details);
+        console.log('🛠 상세 API 오류(개발자용):', apiErrors);
         setSyncResult(details);
+        await loadSyncStatus();
       } else {
         const errorMsg = `❌ 실패: ${data?.error || '알 수 없는 오류'}\n상세: ${JSON.stringify(data, null, 2)}`;
         console.error('❌ 동기화 실패:', errorMsg);
@@ -434,6 +472,7 @@ export default function AdminPage() {
     } catch (error) {
       console.error('❌ Event sync error:', error);
       setSyncResult(`❌ 오류: ${(error as Error).message}`);
+      await loadSyncStatus();
     } finally {
       setSyncingEvents(false);
     }
@@ -697,6 +736,79 @@ export default function AdminPage() {
                   <p className="text-2xl font-bold text-purple-600 mt-2">₩0</p>
                   <p className="text-xs text-gray-500 mt-1">이벤트, 광고 등</p>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'overview' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900">AI 사용량/오류 대시보드 (7일)</h2>
+              </div>
+              <div className="p-6 space-y-3">
+                {aiMetrics.length === 0 ? (
+                  <p className="text-sm text-gray-500">아직 집계 데이터가 없습니다.</p>
+                ) : (
+                  aiMetrics.map((metric) => (
+                    <div key={metric.provider} className="rounded-lg border p-3">
+                      <div className="flex justify-between items-center">
+                        <p className="font-semibold text-gray-900">
+                          {metric.provider === 'google' ? 'Gemini' : metric.provider === 'anthropic' ? 'Claude' : 'OpenAI'}
+                        </p>
+                        <p className="text-sm text-gray-600">요청 {metric.total}회</p>
+                      </div>
+                      <p className="text-sm text-green-700">성공률 {metric.successRate}%</p>
+                      <p className="text-xs text-gray-500">4xx {metric.error4xx}건 · 5xx {metric.error5xx}건</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">이벤트 동기화 상태</h2>
+                <button
+                  onClick={loadSyncStatus}
+                  className="text-sm px-3 py-1 rounded border hover:bg-gray-50"
+                >
+                  상태 새로고침
+                </button>
+              </div>
+              <div className="p-6 space-y-3">
+                {eventSourceStatus.length === 0 ? (
+                  <p className="text-sm text-gray-500">동기화 상태 정보가 없습니다.</p>
+                ) : (
+                  eventSourceStatus.map((status) => (
+                    <div key={status.source} className="rounded-lg border p-3">
+                      <div className="flex justify-between items-center">
+                        <p className="font-semibold text-gray-900 uppercase">{status.source}</p>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            status.last_status === 'ok'
+                              ? 'bg-green-100 text-green-700'
+                              : status.last_status === 'error'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {status.last_status === 'ok' ? '정상' : status.last_status === 'error' ? '오류' : '미확인'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        마지막 성공: {status.last_success_at ? new Date(status.last_success_at).toLocaleString('ko-KR') : '-'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        최근 수집량: {status.last_count ?? 0}건
+                      </p>
+                      {status.last_error && (
+                        <p className="text-xs text-red-600 mt-1 truncate">오류: {status.last_error}</p>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

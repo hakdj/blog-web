@@ -112,8 +112,12 @@ export async function requireSubscription() {
   return { user, subscription };
 }
 
-// 관리자 이메일 목록
-const ADMIN_EMAILS = ['hakdjhakdj@naver.com'];
+// 관리자 이메일 목록 (.env ADMIN_EMAILS="a@a.com,b@b.com" 우선)
+const ADMIN_EMAILS = (
+  process.env.ADMIN_EMAILS
+    ? process.env.ADMIN_EMAILS.split(',').map((email) => email.trim().toLowerCase()).filter(Boolean)
+    : ['hakdjhakdj@naver.com', 'hakdjhakdj@gmail.com']
+);
 
 export function isAdmin(user: { email?: string | null } | null): boolean {
   if (!user || !user.email) return false;

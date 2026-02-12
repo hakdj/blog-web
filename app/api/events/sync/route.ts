@@ -33,6 +33,26 @@ async function syncEvents(request?: NextRequest) {
   const results: any = {};
   const apiErrors: any = {};
 
+  const updateSourceStatus = async (source: string, payload: {
+    status: 'ok' | 'error';
+    count: number;
+    error?: string | null;
+  }) => {
+    const now = new Date().toISOString();
+    const row: any = {
+      source,
+      updated_at: now,
+      last_attempt_at: now,
+      last_status: payload.status,
+      last_count: payload.count,
+      last_error: payload.error || null,
+    };
+    if (payload.status === 'ok') {
+      row.last_success_at = now;
+    }
+    await supabase.from('event_sync_state').upsert(row, { onConflict: 'source' });
+  };
+
   // 1. 한국관광공사 Tour API - 전국 축제
   console.log('📍 1/4: Tour API 축제 정보 수집 중...');
   let festivals: any[] = [];
@@ -200,6 +220,11 @@ async function syncEvents(request?: NextRequest) {
     totalSkipped += tourSkipped;
     totalSynced += odcloudFestivalSynced;
     totalSkipped += odcloudFestivalSkipped;
+    await updateSourceStatus('tour', {
+      status: festivals.length > 0 || tourSynced > 0 ? 'ok' : 'error',
+      count: festivals.length + odcloudFestivals.length,
+      error: apiErrors.tour || null,
+    });
 
     // 2. 문화체육관광부 공연전시정보 API
     console.log('📍 2/4: Culture API 공연/전시 정보 수집 중...');
@@ -430,6 +455,11 @@ async function syncEvents(request?: NextRequest) {
     totalSkipped += cultureSkipped;
     totalSynced += odcloudPerformanceSynced;
     totalSkipped += odcloudPerformanceSkipped;
+    await updateSourceStatus('kcisa', {
+      status: cultureEvents.length > 0 || cultureSynced > 0 ? 'ok' : 'error',
+      count: cultureEvents.length + odcloudPerformances.length,
+      error: apiErrors.culture || null,
+    });
 
     // 3. 서울열린데이터광장
     console.log('📍 3/4: Seoul API 문화행사 정보 수집 중...');
@@ -466,6 +496,10 @@ async function syncEvents(request?: NextRequest) {
     results.seoul = { synced: seoulSynced, skipped: seoulSkipped, total: seoulEvents.length };
     totalSynced += seoulSynced;
     totalSkipped += seoulSkipped;
+    await updateSourceStatus('seoul', {
+      status: seoulEvents.length > 0 || seoulSynced > 0 ? 'ok' : 'error',
+      count: seoulEvents.length,
+    });
 
     // 4. 경기데이터드림
     console.log('📍 4/4: Gyeonggi API 행사 정보 수집 중...');
@@ -516,6 +550,11 @@ async function syncEvents(request?: NextRequest) {
     results.gyeonggi = { synced: gyeonggiSynced, skipped: gyeonggiSkipped, total: gyeonggiEvents.length };
     totalSynced += gyeonggiSynced;
     totalSkipped += gyeonggiSkipped;
+    await updateSourceStatus('gyeonggi', {
+      status: gyeonggiEvents.length > 0 || gyeonggiSynced > 0 ? 'ok' : 'error',
+      count: gyeonggiEvents.length,
+      error: apiErrors.gyeonggi || null,
+    });
 
     console.log(`🎉 전체 동기화 완료: ${totalSynced}개 성공, ${totalSkipped}개 실패`);
     console.log('📊 상세 결과:', JSON.stringify(results, null, 2));

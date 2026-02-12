@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const [hasAiKey, setHasAiKey] = useState(false);
   const [aiKeyInput, setAiKeyInput] = useState('');
   const [aiProviderInput, setAiProviderInput] = useState<'openai' | 'anthropic' | 'google'>('openai');
+  const [aiMaskedKey, setAiMaskedKey] = useState('');
   const [passwords, setPasswords] = useState({
     current: '',
     new: '',
@@ -77,11 +78,8 @@ export default function SettingsPage() {
           nickname: profileData.nickname || '',
           email: user.email || ''
         });
-        setHasAiKey(Boolean(profileData.ai_api_key || profileData.openai_api_key));
-        setAiProviderInput(
-          (profileData.ai_provider as 'openai' | 'anthropic' | 'google') ||
-            (profileData.openai_api_key ? 'openai' : 'openai')
-        );
+        setHasAiKey(Boolean(profileData.ai_api_key_encrypted || profileData.ai_api_key || profileData.openai_api_key));
+        setAiProviderInput((profileData.ai_provider as 'openai' | 'anthropic' | 'google') || 'openai');
       } else {
         // Profile doesn't exist, set email from user
         setProfile({
@@ -90,6 +88,20 @@ export default function SettingsPage() {
         });
         setHasAiKey(false);
         setAiProviderInput('openai');
+      }
+
+      try {
+        const aiResponse = await fetch('/api/settings/ai-key');
+        const aiData = await aiResponse.json();
+        if (aiResponse.ok) {
+          setHasAiKey(Boolean(aiData.hasKey));
+          if (aiData.provider) {
+            setAiProviderInput(aiData.provider);
+          }
+          setAiMaskedKey(String(aiData.maskedKey || ''));
+        }
+      } catch {
+        // 키 상태 조회 실패 시 기본 profile 기반 상태 유지
       }
 
       // Load subscription
@@ -209,20 +221,17 @@ export default function SettingsPage() {
         return;
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          email: user.email,
-          ai_provider: aiProviderInput,
-          ai_api_key: key,
-          openai_api_key: aiProviderInput === 'openai' ? key : null
-        });
-
-      if (error) throw error;
-      alert('AI 키가 저장되었습니다.');
+      const response = await fetch('/api/settings/ai-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: aiProviderInput, key }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'AI 키 저장 실패');
+      alert(data?.message || 'AI 키가 저장되었습니다.');
       setAiKeyInput('');
       setHasAiKey(true);
+      setAiMaskedKey(String(data?.maskedKey || ''));
     } catch (error) {
       console.error('Error saving AI key:', error);
       setError('AI 키 저장 실패: ' + (error as Error).message);
@@ -237,14 +246,13 @@ export default function SettingsPage() {
     setError(null);
     try {
       if (!user) return;
-      const { error } = await supabase
-        .from('profiles')
-        .update({ ai_api_key: null, ai_provider: null, openai_api_key: null })
-        .eq('id', user.id);
-      if (error) throw error;
+      const response = await fetch('/api/settings/ai-key', { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'AI 키 삭제 실패');
       alert('AI 키가 삭제되었습니다.');
       setHasAiKey(false);
       setAiKeyInput('');
+      setAiMaskedKey('');
     } catch (error) {
       console.error('Error deleting AI key:', error);
       setError('AI 키 삭제 실패: ' + (error as Error).message);
@@ -573,6 +581,11 @@ export default function SettingsPage() {
               <p className="mt-1 text-sm text-gray-500">
                 키는 본인만 사용하며 서버에 안전하게 저장됩니다.
               </p>
+              {hasAiKey && aiMaskedKey && (
+                <p className="mt-1 text-xs text-emerald-700">
+                  등록된 키: {aiMaskedKey}
+                </p>
+              )}
             </div>
             <div className="flex gap-2">
               <button

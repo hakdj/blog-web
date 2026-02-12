@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getAiCredentials } from '@/lib/ai-credentials';
+import { providerLabel } from '@/lib/ai-provider';
+import { logAiUsage } from '@/lib/ai-usage-log';
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
@@ -15,24 +18,9 @@ const GOOGLE_CANDIDATE_MODELS = Array.from(
   ])
 );
 
-type AiProvider = 'openai' | 'anthropic' | 'google';
-
-function resolveProvider(raw?: string | null): AiProvider {
-  const value = String(raw || '').toLowerCase();
-  if (value === 'anthropic' || value === 'claude') return 'anthropic';
-  if (value === 'google' || value === 'gemini') return 'google';
-  return 'openai';
-}
-
-function formatProviderName(provider: AiProvider) {
-  if (provider === 'google') return 'Google Gemini';
-  if (provider === 'anthropic') return 'Claude';
-  return 'OpenAI';
-}
-
-function buildUpstreamError(provider: AiProvider, status: number, errorText: string) {
+function buildUpstreamError(provider: 'openai' | 'anthropic' | 'google', status: number, errorText: string) {
   const lower = errorText.toLowerCase();
-  const providerName = formatProviderName(provider);
+  const providerName = providerLabel(provider);
   if (
     lower.includes('api key not valid') ||
     lower.includes('invalid_api_key') ||
@@ -63,14 +51,12 @@ export async function GET() {
 
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('ai_provider, ai_api_key, openai_api_key')
+      .select('ai_provider, ai_api_key_encrypted, ai_api_key, openai_api_key')
       .eq('id', user.id)
       .maybeSingle();
 
-    const provider = resolveProvider(
-      profileData?.ai_provider || (profileData?.openai_api_key ? 'openai' : 'openai')
-    );
-    const hasKey = Boolean((profileData?.ai_api_key || profileData?.openai_api_key || '').toString().trim());
+    const { provider, apiKey } = getAiCredentials(profileData);
+    const hasKey = Boolean(apiKey);
     return NextResponse.json({ provider, hasKey });
   } catch (error) {
     return NextResponse.json(
@@ -82,6 +68,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const startedAt = Date.now();
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -97,16 +84,11 @@ export async function POST(request: NextRequest) {
 
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('ai_provider, ai_api_key, openai_api_key')
+      .select('ai_provider, ai_api_key_encrypted, ai_api_key, openai_api_key')
       .eq('id', user.id)
       .maybeSingle();
 
-    const provider = resolveProvider(
-      profileData?.ai_provider || (profileData?.openai_api_key ? 'openai' : 'openai')
-    );
-    const userApiKey = (profileData?.ai_api_key || profileData?.openai_api_key || '')
-      .toString()
-      .trim();
+    const { provider, apiKey: userApiKey } = getAiCredentials(profileData);
     if (!userApiKey) {
       return NextResponse.json(
         { error: 'AI 키를 마이페이지에 등록해야 라떼 상담을 사용할 수 있습니다.' },
@@ -145,6 +127,16 @@ export async function POST(request: NextRequest) {
 
       if (!response.ok) {
         const errorText = await response.text();
+        await logAiUsage({
+          userId: user.id,
+          feature: 'assistant_chat',
+          provider,
+          model: OPENAI_MODEL,
+          statusCode: response.status,
+          latencyMs: Date.now() - startedAt,
+          success: false,
+          errorMessage: errorText,
+        });
         return NextResponse.json(
           { error: buildUpstreamError(provider, response.status, errorText) },
           { status: 400 }
@@ -171,6 +163,16 @@ export async function POST(request: NextRequest) {
 
       if (!response.ok) {
         const errorText = await response.text();
+        await logAiUsage({
+          userId: user.id,
+          feature: 'assistant_chat',
+          provider,
+          model: ANTHROPIC_MODEL,
+          statusCode: response.status,
+          latencyMs: Date.now() - startedAt,
+          success: false,
+          errorMessage: errorText,
+        });
         return NextResponse.json(
           { error: buildUpstreamError(provider, response.status, errorText) },
           { status: 400 }
@@ -224,12 +226,32 @@ export async function POST(request: NextRequest) {
       }
 
       if (!googleSucceeded) {
+        await logAiUsage({
+          userId: user.id,
+          feature: 'assistant_chat',
+          provider,
+          model: GOOGLE_MODEL,
+          statusCode: googleStatus,
+          latencyMs: Date.now() - startedAt,
+          success: false,
+          errorMessage: googleErrorText,
+        });
         return NextResponse.json(
           { error: buildUpstreamError(provider, googleStatus, googleErrorText) },
           { status: 400 }
         );
       }
     }
+
+    await logAiUsage({
+      userId: user.id,
+      feature: 'assistant_chat',
+      provider,
+      model: provider === 'openai' ? OPENAI_MODEL : provider === 'anthropic' ? ANTHROPIC_MODEL : GOOGLE_MODEL,
+      statusCode: 200,
+      latencyMs: Date.now() - startedAt,
+      success: true,
+    });
 
     return NextResponse.json({ reply });
   } catch (error) {
