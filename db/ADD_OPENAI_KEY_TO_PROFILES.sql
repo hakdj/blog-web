@@ -7,7 +7,6 @@ ADD COLUMN IF NOT EXISTS ai_api_key TEXT,
 ADD COLUMN IF NOT EXISTS ai_api_key_encrypted TEXT,
 ADD COLUMN IF NOT EXISTS ai_key_masked TEXT,
 ADD COLUMN IF NOT EXISTS ai_key_rotated_at TIMESTAMPTZ;
-r
 -- 인덱스는 필요하지 않음 (개인 설정값)
 
 -- 기존 OpenAI 키를 새 컬럼으로 마이그레이션

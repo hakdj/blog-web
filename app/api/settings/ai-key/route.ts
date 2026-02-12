@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { encryptApiKey, maskApiKey } from '@/lib/ai-key-security';
 import { providerLabel, resolveProvider } from '@/lib/ai-provider';
+import { getAiCredentials } from '@/lib/ai-credentials';
 
 export async function GET() {
   try {
@@ -21,10 +22,9 @@ export async function GET() {
       .maybeSingle();
 
     const provider = resolveProvider(profileData?.ai_provider || (profileData?.openai_api_key ? 'openai' : 'openai'));
-    const hasKey = Boolean(
-      profileData?.ai_api_key_encrypted || profileData?.ai_api_key || profileData?.openai_api_key
-    );
-    const masked = String(profileData?.ai_key_masked || '').trim();
+    const { apiKey } = getAiCredentials(profileData);
+    const hasKey = Boolean(apiKey);
+    const masked = String(profileData?.ai_key_masked || '').trim() || (apiKey ? maskApiKey(apiKey) : '');
     return NextResponse.json({
       hasKey,
       provider,

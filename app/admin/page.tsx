@@ -89,6 +89,9 @@ export default function AdminPage() {
   const [showRevenueDetails, setShowRevenueDetails] = useState(false);
   const [aiMetrics, setAiMetrics] = useState<AiProviderMetric[]>([]);
   const [eventSourceStatus, setEventSourceStatus] = useState<EventSourceStatus[]>([]);
+  const [syncStatusLoading, setSyncStatusLoading] = useState(false);
+  const [syncStatusError, setSyncStatusError] = useState<string | null>(null);
+  const [expandedSyncSource, setExpandedSyncSource] = useState<string | null>(null);
   const supabase = createClient();
   const router = useRouter();
 
@@ -234,13 +237,23 @@ export default function AdminPage() {
   };
 
   const loadSyncStatus = async () => {
+    setSyncStatusLoading(true);
+    setSyncStatusError(null);
     try {
-      const response = await fetch('/api/events/sync/status');
+      const response = await fetch(`/api/events/sync/status?t=${Date.now()}`, {
+        cache: 'no-store',
+      });
       const data = await response.json();
-      if (!response.ok) return;
+      if (!response.ok) {
+        setSyncStatusError(data?.error || '상태 정보를 불러오지 못했습니다.');
+        return;
+      }
       setEventSourceStatus(data.sources || []);
-    } catch {
+    } catch (error) {
       setEventSourceStatus([]);
+      setSyncStatusError((error as Error).message || '상태 조회 오류');
+    } finally {
+      setSyncStatusLoading(false);
     }
   };
 
@@ -772,12 +785,18 @@ export default function AdminPage() {
                 <h2 className="text-xl font-bold text-gray-900">이벤트 동기화 상태</h2>
                 <button
                   onClick={loadSyncStatus}
+                  disabled={syncStatusLoading}
                   className="text-sm px-3 py-1 rounded border hover:bg-gray-50"
                 >
-                  상태 새로고침
+                  {syncStatusLoading ? '새로고침 중...' : '상태 새로고침'}
                 </button>
               </div>
               <div className="p-6 space-y-3">
+                {syncStatusError && (
+                  <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    상태 조회 오류: {syncStatusError}
+                  </div>
+                )}
                 {eventSourceStatus.length === 0 ? (
                   <p className="text-sm text-gray-500">동기화 상태 정보가 없습니다.</p>
                 ) : (
@@ -804,7 +823,21 @@ export default function AdminPage() {
                         최근 수집량: {status.last_count ?? 0}건
                       </p>
                       {status.last_error && (
-                        <p className="text-xs text-red-600 mt-1 truncate">오류: {status.last_error}</p>
+                        <div className="mt-1">
+                          <button
+                            onClick={() =>
+                              setExpandedSyncSource((prev) => (prev === status.source ? null : status.source))
+                            }
+                            className="text-xs text-red-600 underline hover:text-red-700"
+                          >
+                            {expandedSyncSource === status.source ? '오류 접기' : '오류 자세히 보기'}
+                          </button>
+                          {expandedSyncSource === status.source && (
+                            <pre className="text-xs text-red-700 mt-2 whitespace-pre-wrap break-all bg-red-50 border border-red-100 rounded p-2">
+                              {status.last_error}
+                            </pre>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))

@@ -9,7 +9,27 @@
     <style>
       body {
         margin: 0;
-        background: #000;
+        background: radial-gradient(circle at top, #2a2f2a 0%, #121512 62%, #0a0c0a 100%);
+        color: #d3dbc8;
+        font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+      }
+
+      #root {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+      }
+
+      /* 기존 테트리스 노란 톤을 낮춰 Gameboy 느낌으로 보정 */
+      #root > div {
+        filter: saturate(0.62) brightness(0.9) contrast(1.05);
+      }
+
+      .load {
+        border-radius: 14px;
+        box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
       }
     </style>
   </head>
