@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=720, initial-scale=1.0" />
     <title>지뢰찾기</title>
     <style>
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
         height: 100vh;
@@ -43,38 +45,24 @@
         padding: 5px 12px;
         cursor: pointer;
       }
-      .panel button:active { border-style: inset; }
-      .board {
-        display: grid;
-        grid-template-columns: repeat(9, 1fr);
-        gap: 2px;
-        background: #7c7c7c;
-        border: 2px inset #b9bfcc;
-        padding: 8px;
-        width: 100%;
-        max-width: 520px;
-        margin: 0 auto;
+      .panel button:active {
+        border-style: inset;
       }
-      .cell {
-        width: 52px;
-        height: 52px;
-        border: 2px outset #d9d9d9;
-        background: #c9c9c9;
+      .board-wrap {
         display: grid;
         place-items: center;
-        font-weight: 800;
-        font-size: 22px;
-        cursor: pointer;
-        user-select: none;
+        height: calc(100% - 90px);
+        background: #8c929f;
+        border: 2px inset #b9bfcc;
+        padding: 10px;
       }
-      .cell.open {
-        border: 1px solid #8a8a8a;
-        background: #b8bcc5;
+      mine-sweeper {
+        --ms-bg-color: #c9c9c9;
+        --ms-open-bg-color: #b8bcc5;
+        --ms-border-color: #8a8a8a;
+        transform: scale(1.05);
+        transform-origin: center center;
       }
-      .cell.mine { background: #d15a5a; color: #fff; }
-      .num-1 { color: #1b4df3; } .num-2 { color: #0b7f2c; } .num-3 { color: #bf1717; }
-      .num-4 { color: #1c2a78; } .num-5 { color: #7b1d1d; } .num-6 { color: #0f7f89; }
-      .num-7 { color: #232323; } .num-8 { color: #6b6b6b; }
       .status {
         text-align: center;
         margin-top: 10px;
@@ -110,211 +98,72 @@
         padding: 8px 20px;
         cursor: pointer;
       }
-      .start-btn:active { border-style: inset; }
+      .start-btn:active {
+        border-style: inset;
+      }
     </style>
   </head>
   <body>
     <div class="frame">
       <div class="panel">
-        <span id="mineCount">지뢰: 10</span>
+        <span>지뢰찾기 (모듈 버전)</span>
         <button id="resetBtn">새 게임</button>
-        <span id="time">시간: 0초</span>
+        <span>9x9 · 지뢰 10</span>
       </div>
-      <div id="board" class="board"></div>
+      <div class="board-wrap">
+        <mine-sweeper id="mineGame" cols="9" bomb="10"></mine-sweeper>
+      </div>
       <div id="status" class="status">좌클릭으로 열기, 우클릭으로 깃발</div>
       <div id="startOverlay" class="start-overlay">
         <h2>지뢰찾기</h2>
-        <p>숫자 힌트를 보고 지뢰를 모두 피하세요.</p>
+        <p>외부 모듈 기반 지뢰찾기입니다.</p>
         <p>좌클릭 열기 · 우클릭 깃발</p>
         <button id="startBtn" class="start-btn">게임 시작</button>
       </div>
     </div>
 
-    <script>
-      const SIZE = 9;
-      const MINES = 10;
-      const boardEl = document.getElementById("board");
+    <script type="module">
+      import { mine_sweeper } from "https://unpkg.com/mine-sweeper-tag@1.0.6/dist/mine-sweeper.es.js";
+
+      if (!customElements.get("mine-sweeper")) {
+        customElements.define("mine-sweeper", mine_sweeper);
+      }
+
       const statusEl = document.getElementById("status");
-      const mineCountEl = document.getElementById("mineCount");
-      const timeEl = document.getElementById("time");
       const resetBtn = document.getElementById("resetBtn");
       const startOverlay = document.getElementById("startOverlay");
       const startBtn = document.getElementById("startBtn");
-
-      let board = [];
-      let gameOver = false;
       let started = false;
-      let openedCount = 0;
-      let flags = 0;
-      let timer = 0;
-      let timerHandle = null;
-
-      function makeBoard() {
-        board = Array.from({ length: SIZE }, () =>
-          Array.from({ length: SIZE }, () => ({ mine: false, open: false, flag: false, count: 0 }))
-        );
-      }
-
-      function placeMines() {
-        let left = MINES;
-        while (left > 0) {
-          const r = Math.floor(Math.random() * SIZE);
-          const c = Math.floor(Math.random() * SIZE);
-          if (board[r][c].mine) continue;
-          board[r][c].mine = true;
-          left -= 1;
-        }
-      }
-
-      function calcCounts() {
-        for (let r = 0; r < SIZE; r++) {
-          for (let c = 0; c < SIZE; c++) {
-            if (board[r][c].mine) continue;
-            let n = 0;
-            for (let dr = -1; dr <= 1; dr++) {
-              for (let dc = -1; dc <= 1; dc++) {
-                if (!dr && !dc) continue;
-                const nr = r + dr;
-                const nc = c + dc;
-                if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) continue;
-                if (board[nr][nc].mine) n += 1;
-              }
-            }
-            board[r][c].count = n;
-          }
-        }
-      }
-
-      function openCell(r, c) {
-        if (!started) return;
-        const cell = board[r][c];
-        if (gameOver || cell.open || cell.flag) return;
-        cell.open = true;
-        openedCount += 1;
-
-        if (cell.mine) {
-          gameOver = true;
-          revealAllMines();
-          statusEl.textContent = "게임 오버! 지뢰를 밟았습니다.";
-          stopTimer();
-          render();
-          return;
-        }
-
-        if (cell.count === 0) {
-          for (let dr = -1; dr <= 1; dr++) {
-            for (let dc = -1; dc <= 1; dc++) {
-              if (!dr && !dc) continue;
-              const nr = r + dr;
-              const nc = c + dc;
-              if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) continue;
-              openCell(nr, nc);
-            }
-          }
-        }
-
-        if (openedCount === SIZE * SIZE - MINES) {
-          gameOver = true;
-          statusEl.textContent = "성공! 지뢰를 모두 피했습니다.";
-          stopTimer();
-        }
-      }
-
-      function toggleFlag(r, c) {
-        if (!started) return;
-        const cell = board[r][c];
-        if (gameOver || cell.open) return;
-        cell.flag = !cell.flag;
-        flags += cell.flag ? 1 : -1;
-        mineCountEl.textContent = `지뢰: ${Math.max(0, MINES - flags)}`;
-        render();
-      }
-
-      function revealAllMines() {
-        for (let r = 0; r < SIZE; r++) {
-          for (let c = 0; c < SIZE; c++) {
-            if (board[r][c].mine) board[r][c].open = true;
-          }
-        }
-      }
-
-      function render() {
-        boardEl.innerHTML = "";
-        for (let r = 0; r < SIZE; r++) {
-          for (let c = 0; c < SIZE; c++) {
-            const data = board[r][c];
-            const cell = document.createElement("div");
-            cell.className = "cell";
-            if (data.open) cell.classList.add("open");
-            if (data.open && data.mine) cell.classList.add("mine");
-
-            if (data.flag && !data.open) {
-              cell.textContent = "🚩";
-            } else if (data.open && data.mine) {
-              cell.textContent = "💣";
-            } else if (data.open && data.count > 0) {
-              cell.textContent = String(data.count);
-              cell.classList.add(`num-${data.count}`);
-            } else {
-              cell.textContent = "";
-            }
-
-            cell.addEventListener("click", () => openCell(r, c));
-            cell.addEventListener("contextmenu", (e) => {
-              e.preventDefault();
-              toggleFlag(r, c);
-            });
-            boardEl.appendChild(cell);
-          }
-        }
-      }
-
-      function stopTimer() {
-        if (timerHandle) {
-          clearInterval(timerHandle);
-          timerHandle = null;
-        }
-      }
-
-      function startTimer() {
-        stopTimer();
-        timerHandle = setInterval(() => {
-          timer += 1;
-          timeEl.textContent = `시간: ${timer}초`;
-        }, 1000);
-      }
-
-      function init() {
-        gameOver = false;
-        openedCount = 0;
-        flags = 0;
-        timer = 0;
-        mineCountEl.textContent = `지뢰: ${MINES}`;
-        timeEl.textContent = "시간: 0초";
-        statusEl.textContent = "좌클릭으로 열기, 우클릭으로 깃발";
-        makeBoard();
-        placeMines();
-        calcCounts();
-        render();
-        if (started) {
-          startTimer();
-        } else {
-          stopTimer();
-        }
+      function resetModuleGame() {
+        const game = document.getElementById("mineGame");
+        if (!game) return;
+        const clone = game.cloneNode(false);
+        clone.setAttribute("cols", "9");
+        clone.setAttribute("bomb", "10");
+        game.replaceWith(clone);
+        clone.style.visibility = "visible";
+        statusEl.textContent = "새 게임이 시작되었습니다.";
       }
 
       resetBtn.addEventListener("click", () => {
-        started = true;
-        startOverlay.style.display = "none";
-        init();
+        if (!started) return;
+        resetModuleGame();
       });
       startBtn.addEventListener("click", () => {
         started = true;
         startOverlay.style.display = "none";
-        init();
+        statusEl.textContent = "좌클릭으로 열기, 우클릭으로 깃발";
       });
-      boardEl.addEventListener("contextmenu", (e) => e.preventDefault());
-      init();
+
+      const initialGame = document.getElementById("mineGame");
+      if (initialGame) {
+        // 시작 전에는 모듈 게임 숨김
+        initialGame.style.visibility = "hidden";
+      }
+      startBtn.addEventListener("click", () => {
+        const currentGame = document.getElementById("mineGame");
+        if (currentGame) currentGame.style.visibility = "visible";
+      });
     </script>
   </body>
 </html>
