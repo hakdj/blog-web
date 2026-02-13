@@ -12,6 +12,11 @@
         margin: 0;
         overflow: hidden;
       }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
       body {
         display: grid;
         place-items: center;
@@ -20,8 +25,8 @@
       }
       .frame {
         position: relative;
-        width: 720px;
-        height: 540px;
+        width: min(720px, 100vw);
+        height: min(540px, 100vh);
         background: #c0c0c0;
         border: 2px solid #8b8b8b;
         border-top-color: #f5f5f5;
@@ -121,7 +126,7 @@
         </div>
       </div>
       <div class="game-wrap">
-        <canvas id="gameCanvas" width="680" height="430"></canvas>
+        <canvas id="gameCanvas"></canvas>
       </div>
       <div id="status" class="status">조작: Space/위 방향키 점프, 아래 방향키 숙이기</div>
       <div id="startOverlay" class="start-overlay">
@@ -134,6 +139,7 @@
 
     <script>
       const canvas = document.getElementById("gameCanvas");
+      const gameWrapEl = document.querySelector(".game-wrap");
       const ctx = canvas.getContext("2d");
       const scoreEl = document.getElementById("score");
       const bestEl = document.getElementById("best");
@@ -149,13 +155,15 @@
       let best = Number(localStorage.getItem("retroDinoBest") || "0");
       let speed = 5.5;
       let spawnTick = 0;
+      let worldWidth = 680;
+      let worldHeight = 430;
 
       const gravity = 0.65;
-      const groundY = 350;
+      const groundOffset = 78;
 
       const dino = {
         x: 80,
-        y: groundY - 58,
+        y: 0,
         width: 44,
         height: 58,
         vy: 0,
@@ -169,13 +177,103 @@
         { x: 390, y: 95, w: 48, h: 16, speed: 0.65 },
       ];
 
+      const DINO_STAND_SPRITE = [
+        ".......111........",
+        "......11111.......",
+        ".....111111.......",
+        ".....1111111111...",
+        "....111111111111..",
+        "....111111111111..",
+        "...1111111.11111..",
+        "..11111111..1111..",
+        "..1111111111111...",
+        "..111111111111....",
+        "..11111111111.....",
+        "...111111111......",
+        "...111111111......",
+        "...111111111......",
+        "...111...111......",
+        "...111...111......",
+        "..1111...1111.....",
+        ".11111...11111....",
+      ];
+      const DINO_DUCK_SPRITE = [
+        "..................",
+        "......111111......",
+        "...11111111111....",
+        "..11111111111111..",
+        ".111111111111111..",
+        ".1111111.1111111..",
+        "11111111..111111..",
+        "111111111111111...",
+        "11111111111111....",
+        ".111111111111.....",
+        "..11111.111111....",
+        "...111...111111...",
+      ];
+      const CACTUS_SPRITE = [
+        "...22...",
+        "...22...",
+        "..2222..",
+        "..2222..",
+        "22222222",
+        "..2222..",
+        "..2222..",
+        "..2222..",
+        "..2222..",
+        "..2222..",
+        "..2222..",
+        ".222222.",
+      ];
+      const ROCK_SPRITE = [
+        "........",
+        "..3333..",
+        ".333333.",
+        "33333333",
+        "33333333",
+        ".333333.",
+      ];
+
+      function getGroundY() {
+        return worldHeight - groundOffset;
+      }
+
+      function drawSprite(sprite, x, y, pixelSize, palette) {
+        for (let r = 0; r < sprite.length; r++) {
+          const row = sprite[r];
+          for (let c = 0; c < row.length; c++) {
+            const key = row[c];
+            if (key === ".") continue;
+            const color = palette[key];
+            if (!color) continue;
+            ctx.fillStyle = color;
+            ctx.fillRect(x + c * pixelSize, y + r * pixelSize, pixelSize, pixelSize);
+          }
+        }
+      }
+
+      function resizeCanvas() {
+        if (!gameWrapEl) return;
+        const style = window.getComputedStyle(gameWrapEl);
+        const paddingX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+        const paddingY = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+        const w = Math.max(500, Math.floor(gameWrapEl.clientWidth - paddingX - 4));
+        const h = Math.max(300, Math.floor(gameWrapEl.clientHeight - paddingY - 4));
+        canvas.width = w;
+        canvas.height = h;
+        worldWidth = w;
+        worldHeight = h;
+        ctx.imageSmoothingEnabled = false;
+        dino.y = getGroundY() - dino.height;
+      }
+
       function resetGame() {
         score = 0;
         speed = 5.5;
         spawnTick = 0;
         gameOver = false;
         obstacles.length = 0;
-        dino.y = groundY - 58;
+        dino.y = getGroundY() - 58;
         dino.width = 44;
         dino.height = 58;
         dino.vy = 0;
@@ -202,25 +300,26 @@
           dino.ducking = true;
           dino.height = 38;
           dino.width = 56;
-          dino.y = groundY - dino.height;
+          dino.y = getGroundY() - dino.height;
         } else {
           dino.ducking = false;
           dino.height = 58;
           dino.width = 44;
-          dino.y = groundY - dino.height;
+          dino.y = getGroundY() - dino.height;
         }
       }
 
       function spawnObstacle() {
-        const tall = Math.random() < 0.65;
-        const width = tall ? 26 : 44;
-        const height = tall ? 56 : 34;
-        const y = groundY - height;
+        const type = Math.random() < 0.7 ? "cactus" : "rock";
+        const width = type === "cactus" ? 34 : 56;
+        const height = type === "cactus" ? 58 : 28;
+        const y = getGroundY() - height;
         obstacles.push({
-          x: canvas.width + 20,
+          x: worldWidth + 20,
           y,
           w: width,
           h: height,
+          type,
         });
       }
 
@@ -240,25 +339,40 @@
       }
 
       function drawDino() {
-        ctx.fillStyle = "#2d3543";
-        ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
-        ctx.fillStyle = "#7f8ca3";
-        ctx.fillRect(dino.x + 8, dino.y + 10, dino.width - 16, 6);
+        const standPixel = Math.max(2, Math.floor(dino.width / 18));
+        const duckPixel = Math.max(2, Math.floor(dino.height / 12));
+        const pixel = dino.ducking ? duckPixel : standPixel;
+        const sprite = dino.ducking ? DINO_DUCK_SPRITE : DINO_STAND_SPRITE;
+        const palette = {
+          "1": "#1f2937",
+        };
+        drawSprite(sprite, dino.x, dino.y, pixel, palette);
+        ctx.fillStyle = "#9ca3af";
+        ctx.fillRect(dino.x + pixel * 11, dino.y + pixel * 2, pixel * 2, pixel);
       }
 
       function drawObstacle(ob) {
-        ctx.fillStyle = "#7a4350";
-        ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
-        ctx.fillStyle = "#ab5f6b";
-        ctx.fillRect(ob.x + 4, ob.y + 6, ob.w - 8, 6);
+        if (ob.type === "cactus") {
+          const palette = {
+            "2": "#2f6d46",
+          };
+          drawSprite(CACTUS_SPRITE, ob.x, ob.y, 4, palette);
+          ctx.fillStyle = "#5f9c76";
+          ctx.fillRect(ob.x + 10, ob.y + 8, 4, 8);
+        } else {
+          const palette = {
+            "3": "#6b7280",
+          };
+          drawSprite(ROCK_SPRITE, ob.x, ob.y, 7, palette);
+        }
       }
 
       function update() {
         dino.vy += gravity;
         dino.y += dino.vy;
 
-        if (dino.y >= groundY - dino.height) {
-          dino.y = groundY - dino.height;
+        if (dino.y >= getGroundY() - dino.height) {
+          dino.y = getGroundY() - dino.height;
           dino.vy = 0;
           dino.jumping = false;
         }
@@ -278,7 +392,7 @@
 
         for (const cloud of clouds) {
           cloud.x -= cloud.speed;
-          if (cloud.x + cloud.w < -40) cloud.x = canvas.width + 20 + Math.random() * 160;
+          if (cloud.x + cloud.w < -40) cloud.x = worldWidth + 20 + Math.random() * 160;
         }
 
         const hitbox = {
@@ -306,13 +420,15 @@
       }
 
       function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, worldWidth, worldHeight);
+        ctx.fillStyle = "#b9bfcb";
+        ctx.fillRect(0, 0, worldWidth, worldHeight);
 
         ctx.strokeStyle = "#667186";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(0, groundY + 1);
-        ctx.lineTo(canvas.width, groundY + 1);
+        ctx.moveTo(0, getGroundY() + 1);
+        ctx.lineTo(worldWidth, getGroundY() + 1);
         ctx.stroke();
 
         for (const cloud of clouds) drawCloud(cloud);
@@ -355,6 +471,12 @@
         resetGame();
       });
 
+      window.addEventListener("resize", () => {
+        resizeCanvas();
+        draw();
+      });
+
+      resizeCanvas();
       updateHud();
       draw();
     </script>
