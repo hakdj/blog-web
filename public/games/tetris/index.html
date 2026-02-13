@@ -116,9 +116,40 @@
       const observer = new MutationObserver(() => applyTranslations());
       observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
+      // 원본 번들에 포함된 좌측 QR/프로모션 아트 제거 (게임 본체는 유지)
+      const hidePromoArtifacts = () => {
+        const consolePanel = document.querySelector("#root ._3Lk6");
+        if (!consolePanel) return;
+        const panelRect = consolePanel.getBoundingClientRect();
+
+        document.querySelectorAll("div,span,a,p").forEach((node) => {
+          const el = node;
+          const style = window.getComputedStyle(el);
+          const bgImage = style.backgroundImage || "";
+          if (!bgImage.includes("alicdn")) return;
+
+          const rect = el.getBoundingClientRect();
+          const width = rect.width;
+          const height = rect.height;
+          const isSmallPromo = width > 0 && height > 0 && width <= 80 && height <= 80;
+          const isOutsideConsole = rect.right < panelRect.left || rect.left > panelRect.right;
+          const isVerticalRangeNearConsole =
+            rect.top >= panelRect.top - 120 && rect.bottom <= panelRect.bottom + 120;
+
+          if (isSmallPromo && isOutsideConsole && isVerticalRangeNearConsole) {
+            el.style.display = "none";
+          }
+        });
+      };
+
       window.addEventListener("load", () => {
         applyTranslations();
+        hidePromoArtifacts();
       });
+      const promoObserver = new MutationObserver(() => {
+        hidePromoArtifacts();
+      });
+      promoObserver.observe(document.body, { childList: true, subtree: true });
     </script>
   </body>
 </html>
