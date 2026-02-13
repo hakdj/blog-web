@@ -8,6 +8,7 @@ const GAME_LIST = [
   { id: 'space-invaders', name: '스페이스 인베이더', status: 'ready' },
   { id: 'minesweeper', name: '지뢰찾기', status: 'ready' },
   { id: '2048', name: '2048', status: 'ready' },
+  { id: 'dino', name: '디노 런', status: 'ready' },
 ];
 
 const GAME_DESCRIPTIONS: Record<string, { title: string; desc: string; controls: string }> = {
@@ -35,6 +36,11 @@ const GAME_DESCRIPTIONS: Record<string, { title: string; desc: string; controls:
     title: '2048',
     desc: '같은 숫자를 합쳐 2048을 만드는 레트로 퍼즐 게임입니다.',
     controls: '조작: 방향키 이동, 새 게임 버튼으로 리셋',
+  },
+  dino: {
+    title: '디노 런',
+    desc: '장애물을 점프하고 숙이면서 피하는 러닝 액션 게임입니다.',
+    controls: '조작: Space/↑ 점프, ↓ 숙이기, 새 게임 버튼으로 리셋',
   },
 };
 
@@ -154,6 +160,22 @@ export default function GameHubClient() {
             />
           </div>
           <p className="text-xs text-gray-400">조작: 방향키 이동, 새 게임으로 다시 시작</p>
+        </div>
+      )}
+
+      {activeGame === 'dino' && (
+        <div className="rounded-xl border border-gray-700 bg-gray-900/90 shadow-2xl p-6 flex flex-col items-center gap-2">
+          <div className="w-[720px] h-[540px]" onClick={() => focusFrame('dino')}>
+            <iframe
+              title="dino-run"
+              src="/games/dino/index.html"
+              className="w-[720px] h-[540px] border-0 rounded-lg"
+              ref={(el) => {
+                iframeRefs.current.dino = el;
+              }}
+            />
+          </div>
+          <p className="text-xs text-gray-400">조작: Space/↑ 점프, ↓ 숙이기, 새 게임으로 다시 시작</p>
         </div>
       )}
 
