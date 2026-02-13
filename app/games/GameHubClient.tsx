@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 const GAME_LIST = [
   { id: 'tetris', name: '테트리스', status: 'ready' },
   { id: 'pacman', name: '팩맨', status: 'ready' },
+  { id: 'space-invaders', name: '스페이스 인베이더', status: 'ready' },
 ];
 
 export default function GameHubClient() {
@@ -69,6 +70,22 @@ export default function GameHubClient() {
             />
           </div>
           <p className="text-xs text-gray-400">게임 화면을 클릭해야 조작이 됩니다.</p>
+        </div>
+      )}
+
+      {activeGame === 'space-invaders' && (
+        <div className="rounded-xl border border-gray-700 bg-gray-900/90 shadow-2xl p-6 flex flex-col items-center gap-2">
+          <div className="w-[720px] h-[540px]" onClick={() => focusFrame('space-invaders')}>
+            <iframe
+              title="space-invaders"
+              src="/games/space-invaders/index.html"
+              className="w-[720px] h-[540px] border-0 rounded-lg"
+              ref={(el) => {
+                iframeRefs.current['space-invaders'] = el;
+              }}
+            />
+          </div>
+          <p className="text-xs text-gray-400">조작: ← → 이동, Space 발사, R 재시작</p>
         </div>
       )}
 

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=720, initial-scale=1.0" />
+    <title>스페이스 인베이더</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(circle at top, #1a2030, #090d15 70%);
+        color: #d7def2;
+        font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+        display: grid;
+        place-items: center;
+        height: 100vh;
+      }
+      .game-shell {
+        width: 720px;
+        height: 540px;
+        border: 2px solid #33415f;
+        border-radius: 10px;
+        background: #0b111c;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+        padding: 12px;
+      }
+      .hud {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        margin-bottom: 8px;
+        color: #b6c0de;
+      }
+      canvas {
+        width: 100%;
+        height: calc(100% - 34px);
+        background: linear-gradient(180deg, #05080f 0%, #0c1321 70%, #0f1726 100%);
+        border: 1px solid #2d3958;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-shell">
+      <div class="hud">
+        <span id="score">점수: 0</span>
+        <span id="lives">목숨: 3</span>
+        <span id="state">진행 중</span>
+      </div>
+      <canvas id="game" width="696" height="494"></canvas>
+    </div>
+    <script>
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const scoreEl = document.getElementById("score");
+      const livesEl = document.getElementById("lives");
+      const stateEl = document.getElementById("state");
+
+      const keys = { left: false, right: false };
+      const player = { x: 330, y: 454, w: 36, h: 16, speed: 4.8, cooldown: 0 };
+      const bullets = [];
+      const enemyBullets = [];
+      let enemies = [];
+      let enemyDir = 1;
+      let enemySpeed = 1.1;
+      let score = 0;
+      let lives = 3;
+      let running = true;
+      let wave = 1;
+
+      function resetWave() {
+        enemies = [];
+        for (let row = 0; row < 4; row++) {
+          for (let col = 0; col < 9; col++) {
+            enemies.push({
+              x: 70 + col * 62,
+              y: 56 + row * 42,
+              w: 30,
+              h: 20,
+              alive: true,
+            });
+          }
+        }
+        enemyDir = 1;
+      }
+
+      function resetGame() {
+        score = 0;
+        lives = 3;
+        wave = 1;
+        enemySpeed = 1.1;
+        running = true;
+        bullets.length = 0;
+        enemyBullets.length = 0;
+        player.x = 330;
+        resetWave();
+        stateEl.textContent = "진행 중";
+      }
+
+      function drawPlayer() {
+        ctx.fillStyle = "#6ce5ff";
+        ctx.fillRect(player.x, player.y, player.w, player.h);
+        ctx.fillStyle = "#8ff0ff";
+        ctx.fillRect(player.x + 12, player.y - 6, 12, 6);
+      }
+
+      function drawEnemies() {
+        enemies.forEach((e) => {
+          if (!e.alive) return;
+          ctx.fillStyle = "#9df871";
+          ctx.fillRect(e.x, e.y, e.w, e.h);
+          ctx.clearRect(e.x + 6, e.y + 8, 5, 5);
+          ctx.clearRect(e.x + e.w - 11, e.y + 8, 5, 5);
+        });
+      }
+
+      function drawBullets() {
+        ctx.fillStyle = "#ffe26f";
+        bullets.forEach((b) => ctx.fillRect(b.x, b.y, b.w, b.h));
+        ctx.fillStyle = "#ff7f7f";
+        enemyBullets.forEach((b) => ctx.fillRect(b.x, b.y, b.w, b.h));
+      }
+
+      function fire() {
+        if (player.cooldown > 0 || !running) return;
+        bullets.push({ x: player.x + player.w / 2 - 2, y: player.y - 10, w: 4, h: 10, dy: -7 });
+        player.cooldown = 12;
+      }
+
+      function intersects(a, b) {
+        return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+      }
+
+      function update() {
+        if (!running) return;
+
+        if (keys.left) player.x = Math.max(0, player.x - player.speed);
+        if (keys.right) player.x = Math.min(canvas.width - player.w, player.x + player.speed);
+        if (player.cooldown > 0) player.cooldown -= 1;
+
+        bullets.forEach((b) => (b.y += b.dy));
+        enemyBullets.forEach((b) => (b.y += b.dy));
+
+        for (let i = bullets.length - 1; i >= 0; i--) {
+          if (bullets[i].y < -20) bullets.splice(i, 1);
+        }
+        for (let i = enemyBullets.length - 1; i >= 0; i--) {
+          const b = enemyBullets[i];
+          if (b.y > canvas.height + 20) {
+            enemyBullets.splice(i, 1);
+            continue;
+          }
+          if (intersects(b, player)) {
+            enemyBullets.splice(i, 1);
+            lives -= 1;
+            if (lives <= 0) {
+              running = false;
+              stateEl.textContent = "게임 오버 (R 재시작)";
+            }
+          }
+        }
+
+        let hitEdge = false;
+        enemies.forEach((e) => {
+          if (!e.alive) return;
+          e.x += enemyDir * enemySpeed;
+          if (e.x <= 8 || e.x + e.w >= canvas.width - 8) hitEdge = true;
+          if (e.y + e.h >= player.y) {
+            running = false;
+            stateEl.textContent = "침공 실패 (R 재시작)";
+          }
+        });
+
+        if (hitEdge) {
+          enemyDir *= -1;
+          enemies.forEach((e) => {
+            if (e.alive) e.y += 18;
+          });
+        }
+
+        const livingEnemies = enemies.filter((e) => e.alive);
+        if (livingEnemies.length > 0 && Math.random() < 0.035) {
+          const shooter = livingEnemies[Math.floor(Math.random() * livingEnemies.length)];
+          enemyBullets.push({ x: shooter.x + shooter.w / 2 - 2, y: shooter.y + shooter.h, w: 4, h: 10, dy: 4.2 });
+        }
+
+        bullets.forEach((b, bi) => {
+          enemies.forEach((e) => {
+            if (!e.alive) return;
+            if (intersects(b, e)) {
+              e.alive = false;
+              bullets.splice(bi, 1);
+              score += 10;
+            }
+          });
+        });
+
+        if (enemies.every((e) => !e.alive)) {
+          wave += 1;
+          enemySpeed = Math.min(3.2, enemySpeed + 0.3);
+          bullets.length = 0;
+          enemyBullets.length = 0;
+          resetWave();
+          stateEl.textContent = `웨이브 ${wave}`;
+          setTimeout(() => {
+            if (running) stateEl.textContent = "진행 중";
+          }, 1000);
+        }
+
+        scoreEl.textContent = `점수: ${score}`;
+        livesEl.textContent = `목숨: ${lives}`;
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawPlayer();
+        drawEnemies();
+        drawBullets();
+      }
+
+      function loop() {
+        update();
+        render();
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          keys.left = true;
+        }
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
+          keys.right = true;
+        }
+        if (e.code === "Space") {
+          e.preventDefault();
+          fire();
+        }
+        if (e.key.toLowerCase() === "r") {
+          resetGame();
+        }
+      });
+      window.addEventListener("keyup", (e) => {
+        if (e.key === "ArrowLeft") keys.left = false;
+        if (e.key === "ArrowRight") keys.right = false;
+      });
+
+      resetGame();
+      loop();
+    </script>
+  </body>
+</html>
