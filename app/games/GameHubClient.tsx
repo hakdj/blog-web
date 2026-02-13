@@ -8,6 +8,24 @@ const GAME_LIST = [
   { id: 'space-invaders', name: '스페이스 인베이더', status: 'ready' },
 ];
 
+const GAME_DESCRIPTIONS: Record<string, { title: string; desc: string; controls: string }> = {
+  tetris: {
+    title: '테트리스',
+    desc: '떨어지는 블록을 맞춰 가로줄을 지우는 퍼즐 게임입니다.',
+    controls: '조작: ← → 이동, ↑ 회전, ↓ 소프트 드롭, Space 하드 드롭, P 일시정지',
+  },
+  pacman: {
+    title: '팩맨',
+    desc: '미로에서 점을 먹으며 유령을 피하는 고전 아케이드 게임입니다.',
+    controls: '조작: 방향키 이동',
+  },
+  'space-invaders': {
+    title: '스페이스 인베이더',
+    desc: '외계 함대를 격추하며 최대한 오래 버티는 레트로 슈팅 게임입니다.',
+    controls: '조작: ← → 이동, Space 발사, R 재시작',
+  },
+};
+
 export default function GameHubClient() {
   const [activeGame, setActiveGame] = useState('tetris');
   const iframeRefs = useRef<Record<string, HTMLIFrameElement | null>>({});
@@ -39,6 +57,12 @@ export default function GameHubClient() {
             {game.status === 'soon' && <span className="ml-2 text-xs text-gray-400">(준비중)</span>}
           </button>
         ))}
+      </div>
+
+      <div className="mb-4 rounded-lg border border-gray-700 bg-gray-900/70 p-4">
+        <p className="text-sm font-semibold text-lime-200">{GAME_DESCRIPTIONS[activeGame]?.title}</p>
+        <p className="text-sm text-gray-300 mt-1">{GAME_DESCRIPTIONS[activeGame]?.desc}</p>
+        <p className="text-xs text-gray-400 mt-2">{GAME_DESCRIPTIONS[activeGame]?.controls}</p>
       </div>
 
       {activeGame === 'tetris' && (
