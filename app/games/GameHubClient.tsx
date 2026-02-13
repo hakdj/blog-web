@@ -6,6 +6,7 @@ const GAME_LIST = [
   { id: 'tetris', name: '테트리스', status: 'ready' },
   { id: 'pacman', name: '팩맨', status: 'ready' },
   { id: 'space-invaders', name: '스페이스 인베이더', status: 'ready' },
+  { id: 'minesweeper', name: '지뢰찾기', status: 'ready' },
 ];
 
 const GAME_DESCRIPTIONS: Record<string, { title: string; desc: string; controls: string }> = {
@@ -23,6 +24,11 @@ const GAME_DESCRIPTIONS: Record<string, { title: string; desc: string; controls:
     title: '스페이스 인베이더',
     desc: '외계 함대를 격추하며 최대한 오래 버티는 레트로 슈팅 게임입니다.',
     controls: '조작: ← → 이동, Space 발사, R 재시작',
+  },
+  minesweeper: {
+    title: '지뢰찾기',
+    desc: '숫자 힌트를 보고 지뢰를 피해 모든 칸을 여는 고전 퍼즐 게임입니다.',
+    controls: '조작: 좌클릭 열기, 우클릭 깃발, 새 게임 버튼으로 리셋',
   },
 };
 
@@ -110,6 +116,22 @@ export default function GameHubClient() {
             />
           </div>
           <p className="text-xs text-gray-400">조작: ← → 이동, Space 발사, R 재시작</p>
+        </div>
+      )}
+
+      {activeGame === 'minesweeper' && (
+        <div className="rounded-xl border border-gray-700 bg-gray-900/90 shadow-2xl p-6 flex flex-col items-center gap-2">
+          <div className="w-[720px] h-[540px]" onClick={() => focusFrame('minesweeper')}>
+            <iframe
+              title="minesweeper"
+              src="/games/minesweeper/index.html"
+              className="w-[720px] h-[540px] border-0 rounded-lg"
+              ref={(el) => {
+                iframeRefs.current.minesweeper = el;
+              }}
+            />
+          </div>
+          <p className="text-xs text-gray-400">조작: 좌클릭 열기, 우클릭 깃발, 새 게임으로 다시 시작</p>
         </div>
       )}
 
