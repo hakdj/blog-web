@@ -14,7 +14,7 @@
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        padding: 8px;
+        padding: 0;
         display: grid;
         place-items: center;
         background: linear-gradient(180deg, #cfd2d9 0%, #aeb4c1 100%);
@@ -22,8 +22,8 @@
       }
       .frame {
         position: relative;
-        width: min(720px, calc(100vw - 16px));
-        height: min(540px, calc(100vh - 16px));
+        width: min(720px, 100vw);
+        height: min(540px, 100vh);
         background: #c0c0c0;
         border: 2px solid #8b8b8b;
         border-top-color: #f5f5f5;
