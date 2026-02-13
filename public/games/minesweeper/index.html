@@ -15,6 +15,7 @@
         font-family: "Segoe UI", "Malgun Gothic", sans-serif;
       }
       .frame {
+        position: relative;
         width: 720px;
         height: 540px;
         background: #c0c0c0;
@@ -80,6 +81,36 @@
         font-size: 14px;
         color: #2b2b2b;
       }
+      .start-overlay {
+        position: absolute;
+        inset: 14px;
+        background: rgba(119, 124, 136, 0.88);
+        border: 2px inset #d4d9e1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        z-index: 5;
+      }
+      .start-overlay h2 {
+        margin: 0;
+        color: #ffffff;
+      }
+      .start-overlay p {
+        margin: 0;
+        color: #eef2fb;
+        font-size: 14px;
+      }
+      .start-btn {
+        border: 2px outset #d9d9d9;
+        background: #c9c9c9;
+        color: #202020;
+        font-weight: 700;
+        padding: 8px 20px;
+        cursor: pointer;
+      }
+      .start-btn:active { border-style: inset; }
     </style>
   </head>
   <body>
@@ -91,6 +122,12 @@
       </div>
       <div id="board" class="board"></div>
       <div id="status" class="status">좌클릭으로 열기, 우클릭으로 깃발</div>
+      <div id="startOverlay" class="start-overlay">
+        <h2>지뢰찾기</h2>
+        <p>숫자 힌트를 보고 지뢰를 모두 피하세요.</p>
+        <p>좌클릭 열기 · 우클릭 깃발</p>
+        <button id="startBtn" class="start-btn">게임 시작</button>
+      </div>
     </div>
 
     <script>
@@ -101,9 +138,12 @@
       const mineCountEl = document.getElementById("mineCount");
       const timeEl = document.getElementById("time");
       const resetBtn = document.getElementById("resetBtn");
+      const startOverlay = document.getElementById("startOverlay");
+      const startBtn = document.getElementById("startBtn");
 
       let board = [];
       let gameOver = false;
+      let started = false;
       let openedCount = 0;
       let flags = 0;
       let timer = 0;
@@ -146,6 +186,7 @@
       }
 
       function openCell(r, c) {
+        if (!started) return;
         const cell = board[r][c];
         if (gameOver || cell.open || cell.flag) return;
         cell.open = true;
@@ -180,6 +221,7 @@
       }
 
       function toggleFlag(r, c) {
+        if (!started) return;
         const cell = board[r][c];
         if (gameOver || cell.open) return;
         cell.flag = !cell.flag;
@@ -254,10 +296,23 @@
         placeMines();
         calcCounts();
         render();
-        startTimer();
+        if (started) {
+          startTimer();
+        } else {
+          stopTimer();
+        }
       }
 
-      resetBtn.addEventListener("click", init);
+      resetBtn.addEventListener("click", () => {
+        started = true;
+        startOverlay.style.display = "none";
+        init();
+      });
+      startBtn.addEventListener("click", () => {
+        started = true;
+        startOverlay.style.display = "none";
+        init();
+      });
       boardEl.addEventListener("contextmenu", (e) => e.preventDefault());
       init();
     </script>
