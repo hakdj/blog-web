@@ -18,6 +18,7 @@
         height: 100vh;
       }
       .game-shell {
+        position: relative;
         width: 720px;
         height: 540px;
         border: 2px solid #33415f;
@@ -40,6 +41,41 @@
         border: 1px solid #2d3958;
         border-radius: 8px;
       }
+      .start-overlay {
+        position: absolute;
+        inset: 42px 12px 12px 12px;
+        background: rgba(3, 7, 14, 0.82);
+        border: 1px solid #33415f;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        z-index: 5;
+      }
+      .start-overlay h2 {
+        margin: 0;
+        color: #d9e5ff;
+        font-size: 24px;
+      }
+      .start-overlay p {
+        margin: 0;
+        color: #b8c8e8;
+        font-size: 13px;
+      }
+      .start-button {
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 24px;
+        font-weight: 700;
+        color: #091018;
+        background: linear-gradient(180deg, #90f5b6, #59d893);
+        cursor: pointer;
+      }
+      .start-button:hover {
+        filter: brightness(1.04);
+      }
     </style>
   </head>
   <body>
@@ -47,9 +83,15 @@
       <div class="hud">
         <span id="score">점수: 0</span>
         <span id="lives">목숨: 3</span>
-        <span id="state">진행 중</span>
+        <span id="state">시작 대기</span>
       </div>
       <canvas id="game" width="696" height="494"></canvas>
+      <div id="startOverlay" class="start-overlay">
+        <h2>스페이스 인베이더</h2>
+        <p>외계 함대를 막아내세요.</p>
+        <p>← → 이동 · Space 발사 · R 재시작</p>
+        <button id="startButton" class="start-button">게임 시작</button>
+      </div>
     </div>
     <script>
       const canvas = document.getElementById("game");
@@ -57,6 +99,8 @@
       const scoreEl = document.getElementById("score");
       const livesEl = document.getElementById("lives");
       const stateEl = document.getElementById("state");
+      const startOverlay = document.getElementById("startOverlay");
+      const startButton = document.getElementById("startButton");
 
       const keys = { left: false, right: false };
       const player = { x: 330, y: 454, w: 36, h: 16, speed: 4.8, cooldown: 0 };
@@ -68,6 +112,7 @@
       let score = 0;
       let lives = 3;
       let running = true;
+      let gameStarted = false;
       let wave = 1;
 
       function resetWave() {
@@ -96,7 +141,7 @@
         enemyBullets.length = 0;
         player.x = 330;
         resetWave();
-        stateEl.textContent = "진행 중";
+        stateEl.textContent = gameStarted ? "진행 중" : "시작 대기";
       }
 
       function drawPlayer() {
@@ -124,7 +169,7 @@
       }
 
       function fire() {
-        if (player.cooldown > 0 || !running) return;
+        if (player.cooldown > 0 || !running || !gameStarted) return;
         bullets.push({ x: player.x + player.w / 2 - 2, y: player.y - 10, w: 4, h: 10, dy: -7 });
         player.cooldown = 12;
       }
@@ -134,7 +179,7 @@
       }
 
       function update() {
-        if (!running) return;
+        if (!running || !gameStarted) return;
 
         if (keys.left) player.x = Math.max(0, player.x - player.speed);
         if (keys.right) player.x = Math.min(canvas.width - player.w, player.x + player.speed);
@@ -246,6 +291,14 @@
       window.addEventListener("keyup", (e) => {
         if (e.key === "ArrowLeft") keys.left = false;
         if (e.key === "ArrowRight") keys.right = false;
+      });
+
+      startButton.addEventListener("click", () => {
+        gameStarted = true;
+        running = true;
+        stateEl.textContent = "진행 중";
+        startOverlay.style.display = "none";
+        window.focus();
       });
 
       resetGame();
