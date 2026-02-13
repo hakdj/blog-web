@@ -7,6 +7,7 @@ const GAME_LIST = [
   { id: 'pacman', name: '팩맨', status: 'ready' },
   { id: 'space-invaders', name: '스페이스 인베이더', status: 'ready' },
   { id: 'minesweeper', name: '지뢰찾기', status: 'ready' },
+  { id: '2048', name: '2048', status: 'ready' },
 ];
 
 const GAME_DESCRIPTIONS: Record<string, { title: string; desc: string; controls: string }> = {
@@ -29,6 +30,11 @@ const GAME_DESCRIPTIONS: Record<string, { title: string; desc: string; controls:
     title: '지뢰찾기',
     desc: '숫자 힌트를 보고 지뢰를 피해 모든 칸을 여는 고전 퍼즐 게임입니다.',
     controls: '조작: 좌클릭 열기, 우클릭 깃발, 새 게임 버튼으로 리셋',
+  },
+  '2048': {
+    title: '2048',
+    desc: '같은 숫자를 합쳐 2048을 만드는 레트로 퍼즐 게임입니다.',
+    controls: '조작: 방향키 이동, 새 게임 버튼으로 리셋',
   },
 };
 
@@ -132,6 +138,22 @@ export default function GameHubClient() {
             />
           </div>
           <p className="text-xs text-gray-400">조작: 좌클릭 열기, 우클릭 깃발, 새 게임으로 다시 시작</p>
+        </div>
+      )}
+
+      {activeGame === '2048' && (
+        <div className="rounded-xl border border-gray-700 bg-gray-900/90 shadow-2xl p-6 flex flex-col items-center gap-2">
+          <div className="w-[720px] h-[540px]" onClick={() => focusFrame('2048')}>
+            <iframe
+              title="2048"
+              src="/games/2048/index.html"
+              className="w-[720px] h-[540px] border-0 rounded-lg"
+              ref={(el) => {
+                iframeRefs.current['2048'] = el;
+              }}
+            />
+          </div>
+          <p className="text-xs text-gray-400">조작: 방향키 이동, 새 게임으로 다시 시작</p>
         </div>
       )}
 
