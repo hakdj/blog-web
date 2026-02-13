@@ -315,7 +315,16 @@
       function resizeBoard() {
         const wrap = boardEl.parentElement;
         if (!wrap) return;
-        const side = Math.floor(Math.min(wrap.clientWidth, wrap.clientHeight, 520));
+        const style = window.getComputedStyle(wrap);
+        const paddingX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+        const paddingY = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+        const contentWidth = wrap.clientWidth - paddingX;
+        const contentHeight = wrap.clientHeight - paddingY;
+        // 실제 콘텐츠 박스 기준으로 계산해 마지막 줄 잘림 방지
+        const maxSide = 520;
+        const safety = 4;
+        const available = Math.min(contentWidth, contentHeight) - safety;
+        const side = Math.max(260, Math.floor(Math.min(available, maxSide)));
         boardEl.style.width = `${side}px`;
         boardEl.style.height = `${side}px`;
       }
