@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=720, initial-scale=1.0" />
     <title>지뢰찾기</title>
     <style>
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
       body {
         margin: 0;
         height: 100vh;
@@ -45,23 +43,41 @@
         padding: 5px 12px;
         cursor: pointer;
       }
-      .panel button:active {
-        border-style: inset;
-      }
+      .panel button:active { border-style: inset; }
       .board-wrap {
-        display: grid;
-        place-items: center;
         height: calc(100% - 90px);
         background: #8c929f;
         border: 2px inset #b9bfcc;
-        padding: 10px;
+        padding: 8px;
+        display: grid;
+        place-items: center;
       }
-      mine-sweeper {
-        --ms-bg-color: #c9c9c9;
-        --ms-open-bg-color: #b8bcc5;
-        --ms-border-color: #8a8a8a;
-        transform: scale(1.05);
-        transform-origin: center center;
+      .board {
+        display: grid;
+        grid-template-columns: repeat(9, 1fr);
+        gap: 2px;
+        width: 100%;
+        max-width: 510px;
+      }
+      .cell {
+        width: 54px;
+        height: 54px;
+        border: 2px outset #d9d9d9;
+        background: #c9c9c9;
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        font-size: 22px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .cell.open {
+        border: 1px solid #8a8a8a;
+        background: #b8bcc5;
+      }
+      .cell.mine {
+        background: #d15a5a;
+        color: #fff;
       }
       .status {
         text-align: center;
@@ -106,64 +122,217 @@
   <body>
     <div class="frame">
       <div class="panel">
-        <span>지뢰찾기 (모듈 버전)</span>
+        <span id="mineCount">지뢰: 10</span>
         <button id="resetBtn">새 게임</button>
-        <span>9x9 · 지뢰 10</span>
+        <span id="time">시간: 0초</span>
       </div>
       <div class="board-wrap">
-        <mine-sweeper id="mineGame" cols="9" bomb="10"></mine-sweeper>
+        <div id="board" class="board"></div>
       </div>
       <div id="status" class="status">좌클릭으로 열기, 우클릭으로 깃발</div>
       <div id="startOverlay" class="start-overlay">
         <h2>지뢰찾기</h2>
-        <p>외부 모듈 기반 지뢰찾기입니다.</p>
+        <p>숫자 힌트를 보고 지뢰를 모두 피하세요.</p>
         <p>좌클릭 열기 · 우클릭 깃발</p>
         <button id="startBtn" class="start-btn">게임 시작</button>
       </div>
     </div>
 
-    <script type="module">
-      import { mine_sweeper } from "https://unpkg.com/mine-sweeper-tag@1.0.6/dist/mine-sweeper.es.js";
-
-      if (!customElements.get("mine-sweeper")) {
-        customElements.define("mine-sweeper", mine_sweeper);
-      }
-
+    <script>
+      const SIZE = 9;
+      const MINES = 10;
+      const boardEl = document.getElementById("board");
       const statusEl = document.getElementById("status");
+      const mineCountEl = document.getElementById("mineCount");
+      const timeEl = document.getElementById("time");
       const resetBtn = document.getElementById("resetBtn");
       const startOverlay = document.getElementById("startOverlay");
       const startBtn = document.getElementById("startBtn");
+
+      let board = [];
       let started = false;
-      function resetModuleGame() {
-        const game = document.getElementById("mineGame");
-        if (!game) return;
-        const clone = game.cloneNode(false);
-        clone.setAttribute("cols", "9");
-        clone.setAttribute("bomb", "10");
-        game.replaceWith(clone);
-        clone.style.visibility = "visible";
-        statusEl.textContent = "새 게임이 시작되었습니다.";
+      let gameOver = false;
+      let openedCount = 0;
+      let flags = 0;
+      let timer = 0;
+      let timerHandle = null;
+
+      function createBoard(rows, cols, mines) {
+        const next = Array.from({ length: rows }, () =>
+          Array.from({ length: cols }, () => ({
+            isMine: false,
+            isOpen: false,
+            isFlagged: false,
+            neighborCount: 0,
+          }))
+        );
+
+        let placed = 0;
+        while (placed < mines) {
+          const r = Math.floor(Math.random() * rows);
+          const c = Math.floor(Math.random() * cols);
+          if (next[r][c].isMine) continue;
+          next[r][c].isMine = true;
+          placed += 1;
+        }
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (next[r][c].isMine) continue;
+            let count = 0;
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                if (!dr && !dc) continue;
+                const nr = r + dr;
+                const nc = c + dc;
+                if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+                if (next[nr][nc].isMine) count += 1;
+              }
+            }
+            next[r][c].neighborCount = count;
+          }
+        }
+        return next;
       }
 
-      resetBtn.addEventListener("click", () => {
-        if (!started) return;
-        resetModuleGame();
-      });
+      function stopTimer() {
+        if (timerHandle) {
+          clearInterval(timerHandle);
+          timerHandle = null;
+        }
+      }
+
+      function startTimer() {
+        stopTimer();
+        timerHandle = setInterval(() => {
+          timer += 1;
+          timeEl.textContent = `시간: ${timer}초`;
+        }, 1000);
+      }
+
+      function revealAllMines() {
+        for (let r = 0; r < SIZE; r++) {
+          for (let c = 0; c < SIZE; c++) {
+            if (board[r][c].isMine) board[r][c].isOpen = true;
+          }
+        }
+      }
+
+      function floodFill(sr, sc) {
+        const stack = [[sr, sc]];
+        while (stack.length > 0) {
+          const [r, c] = stack.pop();
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              if (!dr && !dc) continue;
+              const nr = r + dr;
+              const nc = c + dc;
+              if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) continue;
+              const cell = board[nr][nc];
+              if (cell.isOpen || cell.isFlagged || cell.isMine) continue;
+              cell.isOpen = true;
+              openedCount += 1;
+              if (cell.neighborCount === 0) stack.push([nr, nc]);
+            }
+          }
+        }
+      }
+
+      function handleOpenCell(r, c) {
+        if (!started || gameOver) return;
+        const cell = board[r][c];
+        if (cell.isOpen || cell.isFlagged) return;
+
+        cell.isOpen = true;
+        openedCount += 1;
+
+        if (cell.isMine) {
+          gameOver = true;
+          revealAllMines();
+          statusEl.textContent = "게임 오버! 지뢰를 밟았습니다.";
+          stopTimer();
+          render();
+          return;
+        }
+
+        if (cell.neighborCount === 0) {
+          floodFill(r, c);
+        }
+
+        if (openedCount >= SIZE * SIZE - MINES) {
+          gameOver = true;
+          statusEl.textContent = "성공! 지뢰를 모두 찾았습니다.";
+          stopTimer();
+        }
+      }
+
+      function handleFlagCell(r, c) {
+        if (!started || gameOver) return;
+        const cell = board[r][c];
+        if (cell.isOpen) return;
+        cell.isFlagged = !cell.isFlagged;
+        flags += cell.isFlagged ? 1 : -1;
+        mineCountEl.textContent = `지뢰: ${Math.max(0, MINES - flags)}`;
+      }
+
+      function render() {
+        boardEl.innerHTML = "";
+        for (let r = 0; r < SIZE; r++) {
+          for (let c = 0; c < SIZE; c++) {
+            const data = board[r][c];
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            if (data.isOpen) cell.classList.add("open");
+            if (data.isOpen && data.isMine) cell.classList.add("mine");
+
+            if (data.isFlagged && !data.isOpen) {
+              cell.textContent = "🚩";
+            } else if (data.isOpen && data.isMine) {
+              cell.textContent = "💣";
+            } else if (data.isOpen && data.neighborCount > 0) {
+              cell.textContent = String(data.neighborCount);
+            } else {
+              cell.textContent = "";
+            }
+
+            cell.addEventListener("click", () => {
+              handleOpenCell(r, c);
+              render();
+            });
+            cell.addEventListener("contextmenu", (event) => {
+              event.preventDefault();
+              handleFlagCell(r, c);
+              render();
+            });
+            boardEl.appendChild(cell);
+          }
+        }
+      }
+
+      function initGame() {
+        gameOver = false;
+        openedCount = 0;
+        flags = 0;
+        timer = 0;
+        mineCountEl.textContent = `지뢰: ${MINES}`;
+        timeEl.textContent = "시간: 0초";
+        statusEl.textContent = "좌클릭으로 열기, 우클릭으로 깃발";
+        board = createBoard(SIZE, SIZE, MINES);
+        render();
+        if (started) startTimer();
+      }
+
       startBtn.addEventListener("click", () => {
         started = true;
         startOverlay.style.display = "none";
-        statusEl.textContent = "좌클릭으로 열기, 우클릭으로 깃발";
+        initGame();
       });
-
-      const initialGame = document.getElementById("mineGame");
-      if (initialGame) {
-        // 시작 전에는 모듈 게임 숨김
-        initialGame.style.visibility = "hidden";
-      }
-      startBtn.addEventListener("click", () => {
-        const currentGame = document.getElementById("mineGame");
-        if (currentGame) currentGame.style.visibility = "visible";
+      resetBtn.addEventListener("click", () => {
+        if (!started) return;
+        initGame();
       });
+      boardEl.addEventListener("contextmenu", (event) => event.preventDefault());
+      initGame();
     </script>
   </body>
 </html>
