@@ -116,30 +116,9 @@
       const observer = new MutationObserver(() => applyTranslations());
       observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
-      const hideOutsideControlHints = () => {
-        const hintPattern = /(SPACE|←|→|↑|↓|左移|右移|下移|下落|掉落|按键|旋转|暂停)/i;
-        const nodes = document.querySelectorAll("div,span,p,button");
-
-        nodes.forEach((node) => {
-          const el = node;
-          if (el.closest("#root")) return;
-          if (el.children && el.children.length > 0) return;
-
-          const text = (el.textContent || "").trim();
-          if (!text || text.length > 24 || !hintPattern.test(text)) return;
-
-          el.style.display = "none";
-        });
-      };
-
       window.addEventListener("load", () => {
         applyTranslations();
-        hideOutsideControlHints();
       });
-      const cleanupObserver = new MutationObserver(() => {
-        hideOutsideControlHints();
-      });
-      cleanupObserver.observe(document.body, { childList: true, subtree: true });
     </script>
   </body>
 </html>
