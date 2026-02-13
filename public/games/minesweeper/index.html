@@ -51,6 +51,13 @@
         cursor: pointer;
       }
       .panel button:active { border-style: inset; }
+      .panel select {
+        border: 2px inset #d9d9d9;
+        background: #d6dae3;
+        color: #202020;
+        font-weight: 700;
+        padding: 4px 8px;
+      }
       .board-wrap {
         height: calc(100% - 90px);
         background: #8c929f;
@@ -62,21 +69,20 @@
       }
       .board {
         display: grid;
-        grid-template-columns: repeat(9, 1fr);
         gap: 2px;
-        width: 100%;
-        max-width: 510px;
+        width: 510px;
+        height: 510px;
         justify-content: center;
       }
       .cell {
-        width: 54px;
-        height: 54px;
+        width: 100%;
+        height: 100%;
         border: 2px outset #d9d9d9;
         background: #c9c9c9;
         display: grid;
         place-items: center;
         font-weight: 800;
-        font-size: 22px;
+        font-size: clamp(12px, 2vw, 22px);
         cursor: pointer;
         user-select: none;
       }
@@ -132,6 +138,11 @@
     <div class="frame">
       <div class="panel">
         <span id="mineCount">지뢰: 10</span>
+        <select id="levelSelect" aria-label="난이도 선택">
+          <option value="easy">1단계 (9x9)</option>
+          <option value="normal">2단계 (12x12)</option>
+          <option value="hard">3단계 (16x16)</option>
+        </select>
         <button id="resetBtn">새 게임</button>
         <span id="time">시간: 0초</span>
       </div>
@@ -148,9 +159,14 @@
     </div>
 
     <script>
-      const SIZE = 9;
-      const MINES = 10;
+      const LEVELS = {
+        easy: { label: "1단계", rows: 9, cols: 9, mines: 10 },
+        normal: { label: "2단계", rows: 12, cols: 12, mines: 24 },
+        hard: { label: "3단계", rows: 16, cols: 16, mines: 40 },
+      };
+      let currentLevelKey = "easy";
       const boardEl = document.getElementById("board");
+      const levelSelect = document.getElementById("levelSelect");
       const statusEl = document.getElementById("status");
       const mineCountEl = document.getElementById("mineCount");
       const timeEl = document.getElementById("time");
@@ -165,6 +181,10 @@
       let flags = 0;
       let timer = 0;
       let timerHandle = null;
+
+      function getCurrentLevel() {
+        return LEVELS[currentLevelKey] || LEVELS.easy;
+      }
 
       function createBoard(rows, cols, mines) {
         const next = Array.from({ length: rows }, () =>
@@ -220,14 +240,16 @@
       }
 
       function revealAllMines() {
-        for (let r = 0; r < SIZE; r++) {
-          for (let c = 0; c < SIZE; c++) {
+        const level = getCurrentLevel();
+        for (let r = 0; r < level.rows; r++) {
+          for (let c = 0; c < level.cols; c++) {
             if (board[r][c].isMine) board[r][c].isOpen = true;
           }
         }
       }
 
       function floodFill(sr, sc) {
+        const level = getCurrentLevel();
         const stack = [[sr, sc]];
         while (stack.length > 0) {
           const [r, c] = stack.pop();
@@ -236,7 +258,7 @@
               if (!dr && !dc) continue;
               const nr = r + dr;
               const nc = c + dc;
-              if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) continue;
+              if (nr < 0 || nr >= level.rows || nc < 0 || nc >= level.cols) continue;
               const cell = board[nr][nc];
               if (cell.isOpen || cell.isFlagged || cell.isMine) continue;
               cell.isOpen = true;
@@ -249,6 +271,7 @@
 
       function handleOpenCell(r, c) {
         if (!started || gameOver) return;
+        const level = getCurrentLevel();
         const cell = board[r][c];
         if (cell.isOpen || cell.isFlagged) return;
 
@@ -268,7 +291,7 @@
           floodFill(r, c);
         }
 
-        if (openedCount >= SIZE * SIZE - MINES) {
+        if (openedCount >= level.rows * level.cols - level.mines) {
           gameOver = true;
           statusEl.textContent = "성공! 지뢰를 모두 찾았습니다.";
           stopTimer();
@@ -277,17 +300,30 @@
 
       function handleFlagCell(r, c) {
         if (!started || gameOver) return;
+        const level = getCurrentLevel();
         const cell = board[r][c];
         if (cell.isOpen) return;
         cell.isFlagged = !cell.isFlagged;
         flags += cell.isFlagged ? 1 : -1;
-        mineCountEl.textContent = `지뢰: ${Math.max(0, MINES - flags)}`;
+        mineCountEl.textContent = `지뢰: ${Math.max(0, level.mines - flags)}`;
+      }
+
+      function resizeBoard() {
+        const wrap = boardEl.parentElement;
+        if (!wrap) return;
+        const side = Math.floor(Math.min(wrap.clientWidth, wrap.clientHeight, 510));
+        boardEl.style.width = `${side}px`;
+        boardEl.style.height = `${side}px`;
       }
 
       function render() {
+        const level = getCurrentLevel();
+        boardEl.style.gridTemplateColumns = `repeat(${level.cols}, 1fr)`;
+        boardEl.style.gridTemplateRows = `repeat(${level.rows}, 1fr)`;
+        resizeBoard();
         boardEl.innerHTML = "";
-        for (let r = 0; r < SIZE; r++) {
-          for (let c = 0; c < SIZE; c++) {
+        for (let r = 0; r < level.rows; r++) {
+          for (let c = 0; c < level.cols; c++) {
             const data = board[r][c];
             const cell = document.createElement("div");
             cell.className = "cell";
@@ -319,14 +355,15 @@
       }
 
       function initGame() {
+        const level = getCurrentLevel();
         gameOver = false;
         openedCount = 0;
         flags = 0;
         timer = 0;
-        mineCountEl.textContent = `지뢰: ${MINES}`;
+        mineCountEl.textContent = `지뢰: ${level.mines}`;
         timeEl.textContent = "시간: 0초";
-        statusEl.textContent = "좌클릭으로 열기, 우클릭으로 깃발";
-        board = createBoard(SIZE, SIZE, MINES);
+        statusEl.textContent = `${level.label} · 좌클릭 열기, 우클릭 깃발`;
+        board = createBoard(level.rows, level.cols, level.mines);
         render();
         if (started) startTimer();
       }
@@ -340,7 +377,12 @@
         if (!started) return;
         initGame();
       });
+      levelSelect.addEventListener("change", () => {
+        currentLevelKey = levelSelect.value;
+        initGame();
+      });
       boardEl.addEventListener("contextmenu", (event) => event.preventDefault());
+      window.addEventListener("resize", resizeBoard);
       initGame();
     </script>
   </body>
