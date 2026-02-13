@@ -121,11 +121,11 @@ export default function GameHubClient() {
 
       {activeGame === 'minesweeper' && (
         <div className="rounded-xl border border-gray-700 bg-gray-900/90 shadow-2xl p-6 flex flex-col items-center gap-2">
-          <div className="w-[720px] h-[540px]" onClick={() => focusFrame('minesweeper')}>
+          <div className="w-[740px] h-[560px]" onClick={() => focusFrame('minesweeper')}>
             <iframe
               title="minesweeper"
               src="/games/minesweeper/index.html"
-              className="w-[720px] h-[540px] border-0 rounded-lg"
+              className="w-[740px] h-[560px] border-0 rounded-lg"
               ref={(el) => {
                 iframeRefs.current.minesweeper = el;
               }}

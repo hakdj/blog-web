@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=720, initial-scale=1.0" />
+    <meta name="viewport" content="width=740, initial-scale=1.0" />
     <title>지뢰찾기</title>
     <style>
       html,
@@ -22,8 +22,8 @@
       }
       .frame {
         position: relative;
-        width: min(720px, 100vw);
-        height: min(540px, 100vh);
+        width: min(740px, 100vw);
+        height: min(560px, 100vh);
         background: #c0c0c0;
         border: 2px solid #8b8b8b;
         border-top-color: #f5f5f5;
@@ -73,8 +73,8 @@
       .board {
         display: grid;
         gap: 2px;
-        width: 510px;
-        height: 510px;
+        width: 520px;
+        height: 520px;
         justify-content: center;
       }
       .cell {
@@ -315,7 +315,7 @@
       function resizeBoard() {
         const wrap = boardEl.parentElement;
         if (!wrap) return;
-        const side = Math.floor(Math.min(wrap.clientWidth, wrap.clientHeight, 510));
+        const side = Math.floor(Math.min(wrap.clientWidth, wrap.clientHeight, 520));
         boardEl.style.width = `${side}px`;
         boardEl.style.height = `${side}px`;
       }
