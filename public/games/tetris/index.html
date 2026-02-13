@@ -117,30 +117,18 @@
       observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
       const hideOutsideControlHints = () => {
-        const panel =
-          document.querySelector("#root ._3Lk6") ||
-          document.querySelector("#root > div");
-        if (!panel) return;
-
-        const panelRect = panel.getBoundingClientRect();
         const hintPattern = /(SPACE|←|→|↑|↓|左移|右移|下移|下落|掉落|按键|旋转|暂停)/i;
         const nodes = document.querySelectorAll("div,span,p,button");
 
         nodes.forEach((node) => {
           const el = node;
+          if (el.closest("#root")) return;
+          if (el.children && el.children.length > 0) return;
+
           const text = (el.textContent || "").trim();
-          if (!text || !hintPattern.test(text)) return;
+          if (!text || text.length > 24 || !hintPattern.test(text)) return;
 
-          const rect = el.getBoundingClientRect();
-          const insidePanel =
-            rect.left >= panelRect.left &&
-            rect.right <= panelRect.right &&
-            rect.top >= panelRect.top &&
-            rect.bottom <= panelRect.bottom;
-
-          if (!insidePanel) {
-            el.style.display = "none";
-          }
+          el.style.display = "none";
         });
       };
 
