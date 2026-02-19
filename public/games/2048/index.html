@@ -64,6 +64,7 @@
         border: 2px inset #b9bfcc;
         display: grid;
         place-items: center;
+        touch-action: none;
       }
       .board {
         width: 420px;
@@ -170,17 +171,18 @@
         <div class="panel-right">
           <span id="score">점수: 0</span>
           <span id="best">최고: 0</span>
+          <button id="pauseBtn">일시정지</button>
           <button id="restartBtn">새 게임</button>
         </div>
       </div>
       <div class="board-wrap">
         <div id="board" class="board"></div>
       </div>
-      <div id="status" class="status">방향키로 타일을 합쳐 2048을 만드세요.</div>
+      <div id="status" class="status">조작: 방향키/스와이프로 이동, P 일시정지</div>
       <div id="startOverlay" class="start-overlay">
         <h2>2048</h2>
         <p>같은 숫자를 합쳐 2048 타일을 만들어보세요.</p>
-        <p>조작: 방향키 이동 · 새 게임으로 초기화</p>
+        <p>조작: 방향키/스와이프 이동 · P 일시정지 · 새 게임 초기화</p>
         <button id="startBtn" class="start-btn">게임 시작</button>
       </div>
     </div>
@@ -191,6 +193,7 @@
       const scoreEl = document.getElementById("score");
       const bestEl = document.getElementById("best");
       const statusEl = document.getElementById("status");
+      const pauseBtn = document.getElementById("pauseBtn");
       const restartBtn = document.getElementById("restartBtn");
       const startOverlay = document.getElementById("startOverlay");
       const startBtn = document.getElementById("startBtn");
@@ -201,6 +204,9 @@
       let started = false;
       let gameOver = false;
       let hasWon = false;
+      let paused = false;
+      let touchStartX = 0;
+      let touchStartY = 0;
 
       function updateHeader() {
         scoreEl.textContent = `점수: ${score}`;
@@ -286,7 +292,7 @@
       }
 
       function move(direction) {
-        if (!started || gameOver) return;
+        if (!started || gameOver || paused) return;
 
         let next = cloneBoard(board);
         let gained = 0;
@@ -331,14 +337,16 @@
       }
 
       function updateGameState() {
-        if (hasWon) {
+        if (paused) {
+          statusEl.textContent = "일시정지 중... P 또는 재개 버튼으로 계속하세요.";
+        } else if (hasWon) {
           statusEl.textContent = "축하합니다! 2048 타일을 만들었습니다.";
           hasWon = false;
         } else if (!canMove()) {
           gameOver = true;
           statusEl.textContent = "게임 오버! 더 이상 움직일 수 없습니다.";
         } else {
-          statusEl.textContent = "방향키로 타일을 합쳐 2048을 만드세요.";
+          statusEl.textContent = "조작: 방향키/스와이프로 이동, P 일시정지";
         }
       }
 
@@ -347,6 +355,8 @@
         score = 0;
         gameOver = false;
         hasWon = false;
+        paused = false;
+        pauseBtn.textContent = "일시정지";
         addRandomTile();
         addRandomTile();
         updateHeader();
@@ -354,8 +364,20 @@
         updateGameState();
       }
 
+      function togglePause() {
+        if (!started || gameOver) return;
+        paused = !paused;
+        pauseBtn.textContent = paused ? "재개" : "일시정지";
+        updateGameState();
+      }
+
       window.addEventListener("keydown", (event) => {
         const key = event.key;
+        if (event.code === "KeyP") {
+          event.preventDefault();
+          togglePause();
+          return;
+        }
         if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key)) return;
         event.preventDefault();
         if (key === "ArrowUp") move("up");
@@ -364,10 +386,41 @@
         if (key === "ArrowRight") move("right");
       });
 
+      boardEl.addEventListener(
+        "touchstart",
+        (event) => {
+          if (!started || gameOver || paused) return;
+          const touch = event.changedTouches[0];
+          touchStartX = touch.clientX;
+          touchStartY = touch.clientY;
+        },
+        { passive: true }
+      );
+      boardEl.addEventListener(
+        "touchend",
+        (event) => {
+          if (!started || gameOver || paused) return;
+          const touch = event.changedTouches[0];
+          const dx = touch.clientX - touchStartX;
+          const dy = touch.clientY - touchStartY;
+          const absX = Math.abs(dx);
+          const absY = Math.abs(dy);
+          const threshold = 24;
+          if (absX < threshold && absY < threshold) return;
+          if (absX >= absY) {
+            move(dx > 0 ? "right" : "left");
+          } else {
+            move(dy > 0 ? "down" : "up");
+          }
+        },
+        { passive: true }
+      );
+
       restartBtn.addEventListener("click", () => {
         if (!started) return;
         resetGame();
       });
+      pauseBtn.addEventListener("click", () => togglePause());
 
       startBtn.addEventListener("click", () => {
         started = true;

@@ -68,6 +68,7 @@
         background: #8c929f;
         border: 2px inset #b9bfcc;
         padding: 12px;
+        touch-action: manipulation;
       }
       canvas {
         display: block;
@@ -122,17 +123,18 @@
         <div class="panel-right">
           <span id="score">점수: 0</span>
           <span id="best">최고: 0</span>
+          <button id="pauseBtn">일시정지</button>
           <button id="restartBtn">새 게임</button>
         </div>
       </div>
       <div class="game-wrap">
         <canvas id="gameCanvas"></canvas>
       </div>
-      <div id="status" class="status">조작: Space/위 방향키 점프, 아래 방향키 숙이기</div>
+      <div id="status" class="status">조작: Space/↑ 점프, ↓ 숙이기, P 일시정지, 모바일 탭 점프</div>
       <div id="startOverlay" class="start-overlay">
         <h2>Dino Run</h2>
         <p>장애물을 점프/숙이기로 피해서 오래 버티세요.</p>
-        <p>조작: Space/↑ 점프 · ↓ 숙이기</p>
+        <p>조작: Space/↑ 점프 · ↓ 숙이기 · P 일시정지 · 모바일 탭 점프</p>
         <button id="startBtn" class="start-btn">게임 시작</button>
       </div>
     </div>
@@ -146,6 +148,7 @@
       const statusEl = document.getElementById("status");
       const startOverlay = document.getElementById("startOverlay");
       const startBtn = document.getElementById("startBtn");
+      const pauseBtn = document.getElementById("pauseBtn");
       const restartBtn = document.getElementById("restartBtn");
 
       let started = false;
@@ -157,6 +160,7 @@
       let spawnTick = 0;
       let worldWidth = 680;
       let worldHeight = 430;
+      let paused = false;
 
       const gravity = 0.65;
       const groundOffset = 78;
@@ -295,6 +299,7 @@
         speed = 5.5;
         spawnTick = 0;
         gameOver = false;
+        paused = false;
         obstacles.length = 0;
         dino.width = 54;
         dino.height = 50;
@@ -302,7 +307,8 @@
         dino.vy = 0;
         dino.jumping = false;
         dino.ducking = false;
-        statusEl.textContent = "조작: Space/위 방향키 점프, 아래 방향키 숙이기";
+        pauseBtn.textContent = "일시정지";
+        statusEl.textContent = "조작: Space/↑ 점프, ↓ 숙이기, P 일시정지, 모바일 탭 점프";
         updateHud();
       }
 
@@ -402,6 +408,15 @@
         }
       }
 
+      function togglePause() {
+        if (!started || gameOver) return;
+        paused = !paused;
+        pauseBtn.textContent = paused ? "재개" : "일시정지";
+        statusEl.textContent = paused
+          ? "일시정지 중... 다시 시작하려면 P 또는 재개 버튼을 누르세요."
+          : "조작: Space/↑ 점프, ↓ 숙이기, P 일시정지, 모바일 탭 점프";
+      }
+
       function update() {
         dino.vy += gravity;
         dino.y += dino.vy;
@@ -473,18 +488,23 @@
 
       function tick() {
         if (!started) return;
-        if (!gameOver) update();
+        if (!gameOver && !paused) update();
         draw();
         updateHud();
         frameReq = window.requestAnimationFrame(tick);
       }
 
       window.addEventListener("keydown", (event) => {
-        if (event.code === "Space" || event.code === "ArrowUp") {
+        if (event.code === "KeyP") {
           event.preventDefault();
+          togglePause();
+        } else if (event.code === "Space" || event.code === "ArrowUp") {
+          event.preventDefault();
+          if (paused) return;
           jump();
         } else if (event.code === "ArrowDown") {
           event.preventDefault();
+          if (paused) return;
           setDuck(true);
         }
       });
@@ -504,6 +524,11 @@
       restartBtn.addEventListener("click", () => {
         if (!started) return;
         resetGame();
+      });
+      pauseBtn.addEventListener("click", () => togglePause());
+      canvas.addEventListener("pointerdown", () => {
+        if (!started || gameOver || paused) return;
+        jump();
       });
 
       window.addEventListener("resize", () => {
