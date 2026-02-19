@@ -408,6 +408,17 @@
         }
       }
 
+      function reportScore(nextScore) {
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage(
+              { type: "GAME_SCORE", gameId: "dino", score: Math.floor(nextScore) },
+              window.location.origin
+            );
+          }
+        } catch (_) {}
+      }
+
       function togglePause() {
         if (!started || gameOver) return;
         paused = !paused;
@@ -466,6 +477,7 @@
         if (Math.floor(score) > best) {
           best = Math.floor(score);
           localStorage.setItem("retroDinoBest", String(best));
+          reportScore(best);
         }
       }
 

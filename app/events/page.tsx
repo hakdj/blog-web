@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 
@@ -87,11 +87,11 @@ const REGION_ALIASES: Record<string, string> = {
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [ads, setAds] = useState<UserAd[]>([]);
-  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRegion, setSelectedRegion] = useState('전국');
   const [selectedType, setSelectedType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [currentPage, setCurrentPage] = useState(1);
   const viewedAdIdsRef = useRef<Set<string>>(new Set());
 
@@ -101,10 +101,6 @@ export default function EventsPage() {
     loadEvents();
     loadAds();
   }, []);
-
-  useEffect(() => {
-    filterEvents();
-  }, [events, selectedRegion, selectedType, searchQuery]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -239,17 +235,13 @@ export default function EventsPage() {
     }
   };
 
-  const filterEvents = () => {
+  const filteredEvents = useMemo(() => {
     let filtered = [...events];
 
-    // 지역 필터
     if (selectedRegion !== '전국') {
       filtered = filtered.filter((event) => {
         const raw = event.region || '';
-        const normalized =
-          REGION_ALIASES[raw] ||
-          REGION_ALIASES[raw.split(' ')[0]] ||
-          raw;
+        const normalized = REGION_ALIASES[raw] || REGION_ALIASES[raw.split(' ')[0]] || raw;
         if (normalized === selectedRegion) return true;
         const location = event.location || '';
         const token = location.split(' ')[0];
@@ -258,14 +250,12 @@ export default function EventsPage() {
       });
     }
 
-    // 유형 필터
     if (selectedType !== 'all') {
       filtered = filtered.filter((event) => event.event_type === selectedType);
     }
 
-    // 검색어 필터
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+    if (deferredSearchQuery.trim()) {
+      const query = deferredSearchQuery.toLowerCase();
       filtered = filtered.filter(
         (event) =>
           event.title.toLowerCase().includes(query) ||
@@ -274,15 +264,14 @@ export default function EventsPage() {
       );
     }
 
-    // 추천 이벤트를 먼저, 그 다음 날짜순으로 정렬
     filtered.sort((a, b) => {
       if (a.is_featured && !b.is_featured) return -1;
       if (!a.is_featured && b.is_featured) return 1;
       return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
     });
 
-    setFilteredEvents(filtered);
-  };
+    return filtered;
+  }, [events, selectedRegion, selectedType, deferredSearchQuery]);
 
   const getEventTypeLabel = (type: string) => {
     const eventType = EVENT_TYPES.find((t) => t.value === type);

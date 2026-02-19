@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const GAME_LIST = [
   { id: 'tetris', name: '테트리스', status: 'ready' },
@@ -35,23 +35,71 @@ const GAME_DESCRIPTIONS: Record<string, { title: string; desc: string; controls:
   '2048': {
     title: '2048',
     desc: '같은 숫자를 합쳐 2048을 만드는 레트로 퍼즐 게임입니다.',
-    controls: '조작: 방향키 이동, 새 게임 버튼으로 리셋',
+    controls: '조작: 방향키/스와이프 이동, P 일시정지, 새 게임 버튼으로 리셋',
   },
   dino: {
     title: '디노 런',
     desc: '장애물을 점프하고 숙이면서 피하는 러닝 액션 게임입니다.',
-    controls: '조작: Space/↑ 점프, ↓ 숙이기, 새 게임 버튼으로 리셋',
+    controls: '조작: Space/↑ 점프, ↓ 숙이기, P 일시정지, 모바일 탭 점프',
   },
 };
 
 export default function GameHubClient() {
   const [activeGame, setActiveGame] = useState('tetris');
+  const [bestScores, setBestScores] = useState<Record<string, number>>({});
   const iframeRefs = useRef<Record<string, HTMLIFrameElement | null>>({});
+  const lastSyncedRef = useRef<Record<string, number>>({});
 
   const focusFrame = (id: string) => {
     const frame = iframeRefs.current[id];
     frame?.contentWindow?.focus();
   };
+
+  useEffect(() => {
+    const loadScores = async () => {
+      try {
+        const response = await fetch('/api/games/scores');
+        if (!response.ok) return;
+        const data = await response.json();
+        const next: Record<string, number> = {};
+        for (const row of data.scores || []) {
+          if (!row?.game_id) continue;
+          next[String(row.game_id)] = Number(row.best_score || 0);
+          lastSyncedRef.current[String(row.game_id)] = Number(row.best_score || 0);
+        }
+        setBestScores(next);
+      } catch {
+        // 점수 API가 아직 없거나 일시 오류일 수 있으므로 조용히 무시
+      }
+    };
+    loadScores();
+  }, []);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const payload = event.data as { type?: string; gameId?: string; score?: number };
+      if (!payload || payload.type !== 'GAME_SCORE' || !payload.gameId) return;
+
+      const gameId = String(payload.gameId);
+      const score = Math.max(0, Math.floor(Number(payload.score || 0)));
+      const prev = lastSyncedRef.current[gameId] || 0;
+      if (!Number.isFinite(score) || score <= prev) return;
+
+      lastSyncedRef.current[gameId] = score;
+      setBestScores((old) => ({ ...old, [gameId]: Math.max(old[gameId] || 0, score) }));
+
+      fetch('/api/games/scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ game_id: gameId, score }),
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 text-gray-100">
@@ -81,6 +129,11 @@ export default function GameHubClient() {
         <p className="text-sm font-semibold text-lime-200">{GAME_DESCRIPTIONS[activeGame]?.title}</p>
         <p className="text-sm text-gray-300 mt-1">{GAME_DESCRIPTIONS[activeGame]?.desc}</p>
         <p className="text-xs text-gray-400 mt-2">{GAME_DESCRIPTIONS[activeGame]?.controls}</p>
+        {(activeGame === 'dino' || activeGame === '2048') && (
+          <p className="text-xs text-amber-300 mt-2">
+            내 최고점: <span className="font-semibold">{(bestScores[activeGame] || 0).toLocaleString()}</span>
+          </p>
+        )}
       </div>
 
       {activeGame === 'tetris' && (

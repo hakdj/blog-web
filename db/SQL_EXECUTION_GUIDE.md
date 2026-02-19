@@ -53,6 +53,16 @@
 
 ---
 
+### 0-2-2단계: 게임 최고점 저장 테이블
+**파일:** `db/CREATE_GAME_HIGH_SCORES.sql`
+
+**효과:**
+- 게임별 개인 최고점 저장용 `game_high_scores` 테이블 생성
+- `dino`, `2048` 최고점이 계정 단위로 저장됨
+- 게임 허브에서 "내 최고점" 카드로 표시 가능
+
+---
+
 ### 0-1단계: 추억의 일기장 테이블 생성
 **파일:** `db/CREATE_DIARY_TABLE.sql`
 
@@ -130,6 +140,9 @@ INSERT INTO plans (tier, interval, name, price, features, is_active) VALUES
 
 0-2-1. **`CREATE_EVENT_SYNC_STATE.sql`** 재실행
    - event_sync_state에 상태 컬럼(last_success_at 등) 추가
+
+0-2-2. **`CREATE_GAME_HIGH_SCORES.sql`** 실행
+   - 게임 최고점 저장 테이블 생성
 
 0-1. **`CREATE_DIARY_TABLE.sql`** 실행
    - 추억의 일기장 테이블 생성

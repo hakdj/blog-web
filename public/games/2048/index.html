@@ -317,6 +317,7 @@
         if (score > best) {
           best = score;
           localStorage.setItem("retro2048Best", String(best));
+          reportScore(best);
         }
 
         addRandomTile();
@@ -369,6 +370,17 @@
         paused = !paused;
         pauseBtn.textContent = paused ? "재개" : "일시정지";
         updateGameState();
+      }
+
+      function reportScore(nextScore) {
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage(
+              { type: "GAME_SCORE", gameId: "2048", score: Math.floor(nextScore) },
+              window.location.origin
+            );
+          }
+        } catch (_) {}
       }
 
       window.addEventListener("keydown", (event) => {
