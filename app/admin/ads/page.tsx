@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 const ADMIN_EMAILS = ['hakdjhakdj@naver.com', 'hakdjhakdj@gmail.com'];
 
 type AdStatus = 'pending' | 'active' | 'inactive' | 'rejected' | 'all';
+type DateRangePreset = '7d' | '30d' | '90d' | 'custom';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: '승인 대기',
@@ -28,7 +29,29 @@ interface AdminAd {
   end_date: string | null;
   views: number;
   clicks: number;
+  period_views?: number;
+  period_clicks?: number;
+  reject_reason?: string | null;
+  rejected_at?: string | null;
   created_at: string;
+}
+
+interface QaCheck {
+  key: string;
+  label: string;
+  failedCount: number;
+  passed: boolean;
+}
+
+const REJECT_REASON_TEMPLATES = [
+  '광고 링크가 유효하지 않거나 접속이 불가능합니다.',
+  '광고 이미지/설명이 서비스 정책에 맞지 않습니다.',
+  '과장/오해 소지가 있는 문구가 포함되어 있습니다.',
+  '구독 상태 또는 광고 노출 조건이 충족되지 않았습니다.',
+];
+
+function formatDateInput(date: Date) {
+  return date.toISOString().slice(0, 10);
 }
 
 export default function AdminAdsPage() {
@@ -41,6 +64,16 @@ export default function AdminAdsPage() {
   const [ads, setAds] = useState<AdminAd[]>([]);
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [rangePreset, setRangePreset] = useState<DateRangePreset>('7d');
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 6);
+    return formatDateInput(d);
+  });
+  const [dateTo, setDateTo] = useState(() => formatDateInput(new Date()));
+  const [qaChecks, setQaChecks] = useState<QaCheck[]>([]);
+  const [qaGeneratedAt, setQaGeneratedAt] = useState<string | null>(null);
+  const [qaLoading, setQaLoading] = useState(false);
 
   const [editingAd, setEditingAd] = useState<AdminAd | null>(null);
   const [editForm, setEditForm] = useState({
@@ -52,6 +85,8 @@ export default function AdminAdsPage() {
     status: 'pending' as string,
   });
   const [saving, setSaving] = useState(false);
+  const [rejectingAd, setRejectingAd] = useState<AdminAd | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   useEffect(() => {
     checkAdmin();
@@ -61,9 +96,21 @@ export default function AdminAdsPage() {
   useEffect(() => {
     if (isAdmin) {
       loadAds();
+      loadQaChecks();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, statusFilter]);
+  }, [isAdmin, statusFilter, dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (rangePreset === 'custom') return;
+    const now = new Date();
+    const from = new Date();
+    if (rangePreset === '7d') from.setDate(now.getDate() - 6);
+    if (rangePreset === '30d') from.setDate(now.getDate() - 29);
+    if (rangePreset === '90d') from.setDate(now.getDate() - 89);
+    setDateFrom(formatDateInput(from));
+    setDateTo(formatDateInput(now));
+  }, [rangePreset]);
 
   const checkAdmin = async () => {
     try {
@@ -88,12 +135,32 @@ export default function AdminAdsPage() {
   const loadAds = async () => {
     try {
       setError(null);
-      const response = await fetch(`/api/admin/ads?status=${statusFilter}`);
+      const params = new URLSearchParams({
+        status: statusFilter,
+        from: dateFrom,
+        to: dateTo,
+      });
+      const response = await fetch(`/api/admin/ads?${params.toString()}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || '광고 목록 조회 실패');
       setAds(data.ads || []);
     } catch (e) {
       setError((e as Error).message);
+    }
+  };
+
+  const loadQaChecks = async () => {
+    try {
+      setQaLoading(true);
+      const response = await fetch('/api/admin/qa/subscription-ads');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'QA 체크 조회 실패');
+      setQaChecks(data.checks || []);
+      setQaGeneratedAt(data.generated_at || null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setQaLoading(false);
     }
   };
 
@@ -152,14 +219,20 @@ export default function AdminAdsPage() {
     await patchAd({ id: ad.id, status: 'active' });
   };
 
-  const handleReject = async (ad: AdminAd) => {
-    const reason = prompt('반려 사유를 입력하세요 (선택)');
-    // 현재 스키마에 reason 컬럼은 없어서 description에 넣지 않고, status만 변경
-    await patchAd({ id: ad.id, status: 'rejected' });
-    if (reason) {
-      // 사유가 필요하면 추후 컬럼 추가 권장
-      console.log('Reject reason (not stored):', reason);
-    }
+  const openReject = (ad: AdminAd) => {
+    setRejectingAd(ad);
+    setRejectReason(ad.reject_reason || REJECT_REASON_TEMPLATES[0]);
+  };
+
+  const closeReject = () => {
+    setRejectingAd(null);
+    setRejectReason('');
+  };
+
+  const handleReject = async () => {
+    if (!rejectingAd) return;
+    await patchAd({ id: rejectingAd.id, status: 'rejected', reject_reason: rejectReason || null });
+    closeReject();
   };
 
   const handleSaveEdit = async () => {
@@ -174,6 +247,59 @@ export default function AdminAdsPage() {
       end_date: endDateIso,
     });
     closeEdit();
+  };
+
+  const exportCsv = () => {
+    const rows = filteredAds.map((ad) => {
+      const periodViews = Number(ad.period_views || 0);
+      const periodClicks = Number(ad.period_clicks || 0);
+      const periodCtr = periodViews > 0 ? ((periodClicks / periodViews) * 100).toFixed(2) : '0.00';
+      return [
+        ad.id,
+        ad.status,
+        ad.user_email || '',
+        ad.title || '',
+        ad.link_url || '',
+        ad.reject_reason || '',
+        Number(ad.views || 0),
+        Number(ad.clicks || 0),
+        periodViews,
+        periodClicks,
+        periodCtr,
+        ad.created_at ? new Date(ad.created_at).toISOString() : '',
+      ];
+    });
+
+    const header = [
+      'ad_id',
+      'status',
+      'user_email',
+      'title',
+      'link_url',
+      'reject_reason',
+      'total_views',
+      'total_clicks',
+      'period_views',
+      'period_clicks',
+      'period_ctr_percent',
+      'created_at',
+    ];
+
+    const csv = [header, ...rows]
+      .map((line) =>
+        line
+          .map((value) => `"${String(value ?? '').replaceAll('"', '""')}"`)
+          .join(',')
+      )
+      .join('\n');
+
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ads-report-${dateFrom}_to_${dateTo}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (loading) {
@@ -232,12 +358,49 @@ export default function AdminAdsPage() {
                 </button>
               ))}
             </div>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="제목/링크/이메일로 검색..."
-              className="w-full md:w-96 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="w-full md:w-auto flex flex-col md:flex-row gap-2 md:items-center">
+              <select
+                value={rangePreset}
+                onChange={(e) => setRangePreset(e.target.value as DateRangePreset)}
+                className="px-3 py-2 border border-gray-300 rounded-lg"
+              >
+                <option value="7d">최근 7일</option>
+                <option value="30d">최근 30일</option>
+                <option value="90d">최근 90일</option>
+                <option value="custom">직접 선택</option>
+              </select>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setRangePreset('custom');
+                  setDateFrom(e.target.value);
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-lg"
+              />
+              <span className="text-gray-500 text-sm text-center">~</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setRangePreset('custom');
+                  setDateTo(e.target.value);
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-lg"
+              />
+              <button
+                onClick={exportCsv}
+                className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+              >
+                CSV 내보내기
+              </button>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="제목/링크/이메일로 검색..."
+                className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
           <div className="p-6">
@@ -270,8 +433,15 @@ export default function AdminAdsPage() {
                         <div className="text-xs text-gray-500 mt-2 flex gap-4 flex-wrap">
                           <span>조회 {Number(ad.views || 0).toLocaleString()}</span>
                           <span>클릭 {Number(ad.clicks || 0).toLocaleString()}</span>
+                          <span>
+                            기간 조회 {Number(ad.period_views || 0).toLocaleString()} / 기간 클릭{' '}
+                            {Number(ad.period_clicks || 0).toLocaleString()}
+                          </span>
                           <span>등록 {new Date(ad.created_at).toLocaleDateString('ko-KR')}</span>
                         </div>
+                        {ad.status === 'rejected' && ad.reject_reason && (
+                          <p className="text-xs text-red-600 mt-2">반려 사유: {ad.reject_reason}</p>
+                        )}
                       </div>
 
                       {ad.image_url && (
@@ -295,7 +465,7 @@ export default function AdminAdsPage() {
                       )}
                       {ad.status !== 'rejected' && (
                         <button
-                          onClick={() => handleReject(ad)}
+                          onClick={() => openReject(ad)}
                           disabled={saving}
                           className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
                         >
@@ -312,6 +482,54 @@ export default function AdminAdsPage() {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">구독 만료 연동 QA 자동 점검</h2>
+              <p className="text-sm text-gray-600">
+                구독 만료/비활성 사용자 광고가 자동으로 비활성화되는지 체크합니다.
+              </p>
+              {qaGeneratedAt && (
+                <p className="text-xs text-gray-500 mt-1">
+                  마지막 점검: {new Date(qaGeneratedAt).toLocaleString('ko-KR')}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={loadQaChecks}
+              disabled={qaLoading}
+              className="px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-60"
+            >
+              {qaLoading ? '점검 중...' : '점검 새로고침'}
+            </button>
+          </div>
+          <div className="p-6 space-y-3">
+            {qaChecks.length === 0 ? (
+              <p className="text-sm text-gray-500">표시할 자동 점검 항목이 없습니다.</p>
+            ) : (
+              qaChecks.map((check) => (
+                <div
+                  key={check.key}
+                  className={`border rounded-lg p-3 ${
+                    check.passed ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-900">{check.label}</p>
+                    <span
+                      className={`text-xs px-2 py-1 rounded ${
+                        check.passed ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {check.passed ? '정상' : `이상 ${check.failedCount}건`}
+                    </span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
@@ -393,6 +611,59 @@ export default function AdminAdsPage() {
                 </button>
                 <button
                   onClick={closeEdit}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reject modal */}
+        {rejectingAd && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow max-w-xl w-full">
+              <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-900">광고 반려</h2>
+                <button onClick={closeReject} className="text-gray-500 hover:text-gray-700 text-2xl">
+                  ✕
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-gray-600">
+                  반려 사유를 선택하거나 직접 입력하세요. (유저 안내 및 운영 기록용)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {REJECT_REASON_TEMPLATES.map((template) => (
+                    <button
+                      key={template}
+                      onClick={() => setRejectReason(template)}
+                      className="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                    >
+                      {template}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="반려 사유를 입력하세요."
+                />
+              </div>
+              <div className="p-6 border-t border-gray-200 flex gap-2">
+                <button
+                  onClick={handleReject}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  반려 확정
+                </button>
+                <button
+                  onClick={closeReject}
                   disabled={saving}
                   className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 disabled:opacity-50"
                 >

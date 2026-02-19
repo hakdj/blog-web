@@ -63,6 +63,15 @@
 
 ---
 
+### 0-2-3단계: 광고 반려 사유 컬럼 추가
+**파일:** `db/ADD_AD_REJECT_REASON.sql`
+
+**효과:**
+- `user_ads.reject_reason`, `user_ads.rejected_at` 컬럼 추가
+- 관리자 반려 사유 템플릿 저장/조회 가능
+
+---
+
 ### 0-1단계: 추억의 일기장 테이블 생성
 **파일:** `db/CREATE_DIARY_TABLE.sql`
 
@@ -143,6 +152,9 @@ INSERT INTO plans (tier, interval, name, price, features, is_active) VALUES
 
 0-2-2. **`CREATE_GAME_HIGH_SCORES.sql`** 실행
    - 게임 최고점 저장 테이블 생성
+
+0-2-3. **`ADD_AD_REJECT_REASON.sql`** 실행
+   - 광고 반려 사유 컬럼 추가
 
 0-1. **`CREATE_DIARY_TABLE.sql`** 실행
    - 추억의 일기장 테이블 생성

@@ -118,7 +118,7 @@ export default async function HomePage() {
                 요즘 뭐해?
               </h3>
               <p className="text-gray-600 text-center">
-                레트로 이벤트 모임
+                이벤트/축제 일정
               </p>
             </div>
           </Link>
