@@ -372,15 +372,9 @@
 
         const spriteY = dino.ducking ? dino.y : dino.y - pixelY * 2;
         drawSpriteScaled(sprite, dino.x, spriteY, pixelX, pixelY, palette);
-        // 꼬리를 왼쪽으로 연장해 디노 실루엣을 가로형으로 보정
-        ctx.fillStyle = "#1f2937";
-        if (dino.ducking) {
-          ctx.fillRect(dino.x - pixelX * 5, dino.y + pixelY * 8, pixelX * 6, pixelY * 2);
-          ctx.fillRect(dino.x - pixelX * 7, dino.y + pixelY * 9, pixelX * 3, pixelY);
-        } else {
-          ctx.fillRect(dino.x - pixelX * 5, dino.y + pixelY * 12, pixelX * 6, pixelY * 2);
-          ctx.fillRect(dino.x - pixelX * 7, dino.y + pixelY * 13, pixelX * 3, pixelY);
+        if (!dino.ducking) {
           // 고개를 살짝 들어 보이도록 앞머리/목 부분 상향 보정
+          ctx.fillStyle = "#1f2937";
           ctx.fillRect(dino.x + pixelX * 12, dino.y + pixelY * 1, pixelX * 3, pixelY * 2);
         }
 
