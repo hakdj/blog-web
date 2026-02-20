@@ -34,6 +34,7 @@ export default function DiaryClient() {
   const [tagsInput, setTagsInput] = useState('');
   const [visibility, setVisibility] = useState<'private' | 'public'>('private');
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [selectedFileNames, setSelectedFileNames] = useState('');
 
   const [aiKeywords, setAiKeywords] = useState('');
   const [aiTone, setAiTone] = useState('따뜻하게');
@@ -59,6 +60,7 @@ export default function DiaryClient() {
     setTagsInput('');
     setVisibility('private');
     setImageUrls([]);
+    setSelectedFileNames('');
     setAiKeywords('');
   };
 
@@ -192,6 +194,7 @@ export default function DiaryClient() {
 
   const handleUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    setSelectedFileNames(Array.from(files).map((f) => f.name).join(', '));
     setError('');
     const uploaded: string[] = [];
     for (const file of Array.from(files)) {
@@ -333,10 +336,23 @@ export default function DiaryClient() {
 
           <div className="space-y-2">
             <label className="text-sm text-gray-600">사진 업로드</label>
+            <div className="flex items-center gap-3">
+              <label
+                htmlFor="diary-image-upload"
+                className="inline-flex items-center rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 cursor-pointer"
+              >
+                파일 선택
+              </label>
+              <span className="text-sm text-gray-600 truncate">
+                {selectedFileNames || '선택된 파일 없음'}
+              </span>
+            </div>
             <input
+              id="diary-image-upload"
               type="file"
               accept="image/*"
               multiple
+              className="sr-only"
               onChange={(e) => handleUpload(e.target.files)}
             />
             {imageUrls.length > 0 && (
@@ -378,6 +394,10 @@ export default function DiaryClient() {
                 <option value="차분하게">차분하게</option>
                 <option value="유쾌하게">유쾌하게</option>
                 <option value="감성적으로">감성적으로</option>
+                <option value="친근하게">친근하게</option>
+                <option value="담백하게">담백하게</option>
+                <option value="위트있게">위트있게</option>
+                <option value="서정적으로">서정적으로</option>
               </select>
               <select
                 value={aiLength}
@@ -387,6 +407,9 @@ export default function DiaryClient() {
                 <option value="짧게">짧게</option>
                 <option value="중간">중간</option>
                 <option value="길게">길게</option>
+                <option value="아주 짧게">아주 짧게</option>
+                <option value="조금 길게">조금 길게</option>
+                <option value="아주 길게">아주 길게</option>
               </select>
             </div>
             <button
