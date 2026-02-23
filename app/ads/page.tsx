@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
+const STATUS_META: Record<string, { label: string; className: string }> = {
+  pending: { label: '승인 대기', className: 'bg-amber-100 text-amber-800' },
+  active: { label: '승인됨(노출)', className: 'bg-emerald-100 text-emerald-800' },
+  inactive: { label: '비활성', className: 'bg-gray-100 text-gray-700' },
+  rejected: { label: '반려', className: 'bg-red-100 text-red-700' },
+};
+
 export default function AdRegistrationPage() {
   const supabase = createClient();
   const router = useRouter();
@@ -468,6 +475,15 @@ export default function AdRegistrationPage() {
                 <div key={ad.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
+                      <div className="mb-2">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${
+                            STATUS_META[ad.status]?.className || 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {STATUS_META[ad.status]?.label || ad.status}
+                        </span>
+                      </div>
                       <h3 className="text-lg font-bold text-gray-900 mb-1">{ad.title}</h3>
                       {ad.description && <p className="text-sm text-gray-600 mb-2">{ad.description}</p>}
                       <a
@@ -498,6 +514,16 @@ export default function AdRegistrationPage() {
                     )}
                     <div className="text-xs text-gray-400">{new Date(ad.created_at).toLocaleDateString('ko-KR')} 등록</div>
                   </div>
+                  {ad.status === 'pending' && (
+                    <p className="mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                      관리자 승인 후 노출됩니다.
+                    </p>
+                  )}
+                  {ad.status === 'rejected' && ad.reject_reason && (
+                    <p className="mb-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">
+                      반려 사유: {ad.reject_reason}
+                    </p>
+                  )}
 
                   <div className="flex gap-2">
                     <button
