@@ -590,7 +590,7 @@ export default function AdminPage() {
           
           {/* Event Sync Button */}
           <button
-            onClick={handleSyncEvents}
+            onClick={() => void handleSyncEvents()}
             disabled={syncingEvents}
             className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium flex items-center gap-2"
           >
