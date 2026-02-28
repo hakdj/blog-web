@@ -19,7 +19,7 @@
    - 빌드 로그에서 에러가 없는지 확인
 
 3. **배포 URL 확인**
-   - Production URL: `https://blog-web-five-eta.vercel.app`
+   - Production URL: `https://latte-room.vercel.app`
    - 배포된 사이트가 정상 작동하는지 확인
 
 ## 다음 단계
@@ -38,7 +38,7 @@ Vercel 대시보드에서:
 ### 3. 사이트 테스트
 배포된 사이트 접속:
 ```
-https://blog-web-five-eta.vercel.app
+https://latte-room.vercel.app
 ```
 
 예상 동작:

@@ -17,7 +17,7 @@
 
 1. 브라우저에서 https://app.supabase.com 접속
 2. 로그인 (이메일/비밀번호)
-3. 프로젝트 선택 (blog-web2 프로젝트)
+3. 프로젝트 선택 (latte-room 프로젝트)
 
 ### 1-2. SQL Editor 열기
 
@@ -65,7 +65,7 @@
 
 ### 2-1. .env.local 파일 확인
 
-1. 프로젝트 루트 폴더 (`D:\PROJECT_DATA\blog-web2`) 확인
+1. 프로젝트 루트 폴더 (`D:\PROJECT_DATA\latte-room`) 확인
 2. `.env.local` 파일이 있는지 확인
 
 ### 2-2. .env.local 파일이 없는 경우
@@ -108,7 +108,7 @@ SUPABASE_SERVICE_ROLE_KEY=여기에_실제_키_입력
 
 1. 프로젝트 폴더로 이동:
    ```bash
-   cd D:\PROJECT_DATA\blog-web2
+   cd D:\PROJECT_DATA\latte-room
    ```
 
 2. 개발 서버 실행:

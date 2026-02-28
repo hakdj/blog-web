@@ -6,8 +6,8 @@ import Header from "@/components/Header";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "구독형 블로그",
-  description: "Next.js + Supabase + Portone을 활용한 구독형 블로그 플랫폼",
+  title: "라떼방구석 | Latte Room",
+  description: "라떼방구석(Latte Room) - 추억, 게임, 이벤트, 구독을 한곳에서 즐기는 레트로 라이프 플랫폼",
 };
 
 export default function RootLayout({

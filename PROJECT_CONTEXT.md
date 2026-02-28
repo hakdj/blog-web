@@ -2,7 +2,7 @@
 
 ## 프로젝트 개요
 
-**프로젝트명:** blog-web2  
+**프로젝트명:** latte-room  
 **프로젝트 타입:** Next.js 기반 블로그 웹 애플리케이션  
 **목적:** 블로그 플랫폼 구축 및 개발
 
@@ -18,7 +18,7 @@
 ## 현재 프로젝트 구조
 
 ```
-blog-web2/
+latte-room/
 ├── app/
 │   ├── favicon.ico
 │   ├── globals.css
@@ -143,7 +143,7 @@ blog-web2/
 **Cursor AI에게 전달할 프롬프트:**
 
 ```
-나는 Next.js 16 기반 블로그 프로젝트(blog-web2)를 개발하고 있습니다. 
+나는 Next.js 16 기반 블로그 프로젝트(latte-room)를 개발하고 있습니다. 
 현재 Vercel에 배포되어 있고 빌드는 성공적으로 완료되었습니다.
 
 **현재 상황:**
@@ -169,7 +169,7 @@ blog-web2/
 
 ## 참고사항
 
-- 프로젝트는 Windows 환경 (D:\PROJECT_DATA\blog-web2)에서 개발 중
+- 프로젝트는 Windows 환경 (D:\PROJECT_DATA\latte-room)에서 개발 중
 - Vercel 배포는 정상 작동 중 (빌드 로그 확인 완료)
 - 주황색 경고 아이콘은 환경 변수 관련 경고일 가능성이 높음 (Vercel에서 확인 필요)
 

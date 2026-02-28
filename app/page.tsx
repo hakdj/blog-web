@@ -80,7 +80,7 @@ export default async function HomePage() {
             라떼 방구석
           </h1>
           <p className="text-2xl text-gray-700 mb-4">
-            그때 그 시절, 추억을 되살리다
+            라떼방구석(Latte Room)에서 그때 그 시절을 다시 만나다
           </p>
           <p className="text-lg text-gray-600 mb-8">
             90년대 감성 게임, 제품, 이벤트를 한 곳에서

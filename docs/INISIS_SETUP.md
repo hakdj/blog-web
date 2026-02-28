@@ -62,15 +62,15 @@ APP_URL=http://localhost:3000
 
 2. **Vercel에서 자동 배포 확인**
    - Vercel 대시보드에서 Preview URL 확인
-   - 예: `https://blog-web2-xxxx.vercel.app`
+   - 예: `https://latte-room-xxxx.vercel.app`
 
 3. **KG이니시스 설정에서 웹훅 URL 등록**
-   - 웹훅 URL: `https://blog-web2-xxxx.vercel.app/api/webhooks/inisis`
-   - 콜백 URL: `https://blog-web2-xxxx.vercel.app/api/inisis/callback`
+   - 웹훅 URL: `https://latte-room-xxxx.vercel.app/api/webhooks/inisis`
+   - 콜백 URL: `https://latte-room-xxxx.vercel.app/api/inisis/callback`
 
 4. **Vercel 환경 변수 설정**
    - Vercel 대시보드 > Settings > Environment Variables
-   - `APP_URL` = `https://blog-web2-xxxx.vercel.app`
+   - `APP_URL` = `https://latte-room-xxxx.vercel.app`
    - 기타 KG이니시스 관련 변수들 설정
 
 ## 3. 프로덕션 배포 설정

@@ -2,7 +2,7 @@
 
 ## 현재 상황
 - ✅ Vercel에 배포 완료
-- ✅ 배포 URL: `blog-web-five-eta.vercel.app` (또는 다른 도메인)
+- ✅ 배포 URL: `latte-room.vercel.app` (또는 다른 도메인)
 - ❌ KG이니시스에 `localhost:3000` 등록되어 있음
 
 ## KG이니시스 대시보드에서 URL 변경하기
@@ -25,25 +25,25 @@
 #### 3-1. 웹사이트 URL
 ```
 기존: http://localhost:3000
-변경: https://blog-web-five-eta.vercel.app
+변경: https://latte-room.vercel.app
 ```
 
 #### 3-2. 웹훅 URL (있는 경우)
 ```
 기존: http://localhost:3000/api/webhooks/inisis
-변경: https://blog-web-five-eta.vercel.app/api/webhooks/inisis
+변경: https://latte-room.vercel.app/api/webhooks/inisis
 ```
 
 #### 3-3. 콜백 URL (있는 경우)
 ```
 기존: http://localhost:3000/api/inisis/callback
-변경: https://blog-web-five-eta.vercel.app/api/inisis/callback
+변경: https://latte-room.vercel.app/api/inisis/callback
 ```
 
 #### 3-4. 리다이렉트 URL (있는 경우)
 ```
 기존: http://localhost:3000/api/inisis/callback?success=true
-변경: https://blog-web-five-eta.vercel.app/api/inisis/callback?success=true
+변경: https://latte-room.vercel.app/api/inisis/callback?success=true
 ```
 
 ### 4단계: Vercel 환경 변수도 업데이트
@@ -52,7 +52,7 @@ Vercel 대시보드에서:
 2. `APP_URL` 변수 찾기 (없으면 추가)
 3. 값 변경:
    ```
-   APP_URL=https://blog-web-five-eta.vercel.app
+   APP_URL=https://latte-room.vercel.app
    ```
 4. **Save** 클릭
 5. 환경 변수 변경 후 재배포가 필요할 수 있음
@@ -78,7 +78,7 @@ Vercel 대시보드에서:
 1. Vercel 배포가 완료되었는지 확인
 2. 브라우저에서 직접 접속 테스트:
    ```
-   https://blog-web-five-eta.vercel.app/api/webhooks/inisis
+   https://latte-room.vercel.app/api/webhooks/inisis
    ```
    → GET 요청이면 JSON 응답이 와야 함
 
@@ -87,14 +87,14 @@ Vercel 대시보드에서:
 ### 웹훅 엔드포인트 테스트
 브라우저에서:
 ```
-https://blog-web-five-eta.vercel.app/api/webhooks/inisis
+https://latte-room.vercel.app/api/webhooks/inisis
 ```
 → `{"message":"KG이니시스 웹훅 엔드포인트","status":"active",...}` 응답 확인
 
 ### 콜백 엔드포인트 테스트
 브라우저에서:
 ```
-https://blog-web-five-eta.vercel.app/api/inisis/callback?success=true&contract_id=test
+https://latte-room.vercel.app/api/inisis/callback?success=true&contract_id=test
 ```
 → `/pricing` 페이지로 리다이렉트되는지 확인
 

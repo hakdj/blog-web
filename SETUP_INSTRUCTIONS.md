@@ -33,7 +33,7 @@
 **Vercel에 배포된 사이트는 이미 설정되어 있으니 이 단계는 건너뛰어도 됩니다.**
 
 1. **프로젝트 폴더에 `.env.local` 파일 생성**
-   - 파일 위치: `D:\PROJECT_DATA\blog-web2\.env.local`
+   - 파일 위치: `D:\PROJECT_DATA\latte-room\.env.local`
 
 2. **다음 내용 입력** (Supabase 대시보드에서 실제 값 가져오기)
    ```
@@ -54,7 +54,7 @@
 
 1. **개발 서버 실행** (로컬 테스트 시)
    ```bash
-   cd D:\PROJECT_DATA\blog-web2
+   cd D:\PROJECT_DATA\latte-room
    npm run dev
    ```
 

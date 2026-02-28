@@ -9,7 +9,7 @@
 #### 방법:
 
 1. **브라우저 열기** → https://app.supabase.com 접속
-2. **프로젝트 선택** (blog-web2 프로젝트)
+2. **프로젝트 선택** (latte-room 프로젝트)
 3. **좌측 메뉴** → "SQL Editor" 클릭
 4. **"New query"** 버튼 클릭
 5. **아래 SQL 전체 복사** → 붙여넣기 → **"Run"** 버튼 클릭
@@ -58,7 +58,7 @@ CREATE TRIGGER on_auth_user_created
 ### 2️⃣ 테스트하기
 
 #### 방법 A: 배포된 사이트에서 테스트 (추천)
-1. https://blog-web-five-eta.vercel.app/signup 접속
+1. https://latte-room.vercel.app/signup 접속
 2. 이메일, 비밀번호 입력
 3. 회원가입 버튼 클릭
 4. ✅ 성공!
@@ -66,7 +66,7 @@ CREATE TRIGGER on_auth_user_created
 #### 방법 B: 로컬에서 테스트
 1. 터미널에서:
    ```bash
-   cd D:\PROJECT_DATA\blog-web2
+   cd D:\PROJECT_DATA\latte-room
    npm run dev
    ```
 2. 브라우저에서 http://localhost:3000/signup 접속

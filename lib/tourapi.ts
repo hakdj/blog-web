@@ -7,11 +7,31 @@ const TOUR_API_KEY = process.env.TOUR_API_KEY || process.env.NEXT_PUBLIC_TOUR_AP
 // 공공데이터포털 기준 Endpoint (KorService2)
 const TOUR_API_BASE_URL = 'https://apis.data.go.kr/B551011/KorService2';
 
-function formatServiceKey(key: string) {
-  // data.go.kr 키는 종종 이미 %2F 같은 형태로 인코딩되어 저장됨
-  // URLSearchParams로 다시 인코딩하면 %가 %25로 변해 인증 실패 가능
-  const alreadyEncoded = key.includes('%');
-  return alreadyEncoded ? key : encodeURIComponent(key);
+function normalizeServiceKey(raw: string) {
+  return raw.trim().replace(/^["']|["']$/g, '');
+}
+
+function getServiceKeyCandidates(rawKey: string) {
+  const normalized = normalizeServiceKey(rawKey);
+  const candidates = new Set<string>();
+  if (!normalized) return [];
+
+  candidates.add(normalized);
+  candidates.add(encodeURIComponent(normalized));
+
+  if (normalized.includes('%')) {
+    try {
+      const decoded = decodeURIComponent(normalized);
+      if (decoded) {
+        candidates.add(decoded);
+        candidates.add(encodeURIComponent(decoded));
+      }
+    } catch {
+      // decode 실패 시 무시하고 기존 후보만 사용
+    }
+  }
+
+  return Array.from(candidates).filter(Boolean);
 }
 
 async function fetchWithTimeout(url: string) {
@@ -117,8 +137,7 @@ export async function fetchCurrentFestivals(options: TourFetchOptions = {}): Pro
     futureDate.setMonth(futureDate.getMonth() + 3);
     const eventEndDate = futureDate.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
     
-    const serviceKeyEncoded = formatServiceKey(TOUR_API_KEY);
-    const serviceKeyRaw = TOUR_API_KEY;
+    const serviceKeyCandidates = getServiceKeyCandidates(TOUR_API_KEY);
     const params = new URLSearchParams({
       numOfRows: '100',
       pageNo: '1',
@@ -131,7 +150,7 @@ export async function fetchCurrentFestivals(options: TourFetchOptions = {}): Pro
       eventEndDate: eventEndDate,
     });
 
-    const keysToTry = Array.from(new Set([serviceKeyEncoded, serviceKeyRaw])).filter(Boolean);
+    const keysToTry = serviceKeyCandidates;
     const baseUrls = [
       `${TOUR_API_BASE_URL}/searchFestival1`,
       'https://apis.data.go.kr/B551011/KorService1/searchFestival1',
@@ -282,8 +301,7 @@ export async function fetchFestivalsByArea(areaCode: string): Promise<TourEvent[
     futureDate.setMonth(futureDate.getMonth() + 3);
     const eventEndDate = futureDate.toISOString().slice(0, 10).replace(/-/g, '');
 
-    const serviceKeyEncoded = formatServiceKey(TOUR_API_KEY);
-    const serviceKeyRaw = TOUR_API_KEY;
+    const serviceKeyCandidates = getServiceKeyCandidates(TOUR_API_KEY);
     const params = new URLSearchParams({
       numOfRows: '50',
       pageNo: '1',
@@ -297,10 +315,9 @@ export async function fetchFestivalsByArea(areaCode: string): Promise<TourEvent[
       eventEndDate: eventEndDate,
     });
 
-    const urls = Array.from(new Set([
-      `${TOUR_API_BASE_URL}/searchFestival1?serviceKey=${serviceKeyEncoded}&${params.toString()}`,
-      `${TOUR_API_BASE_URL}/searchFestival1?serviceKey=${serviceKeyRaw}&${params.toString()}`,
-    ]));
+    const urls = serviceKeyCandidates.map(
+      (key) => `${TOUR_API_BASE_URL}/searchFestival1?serviceKey=${key}&${params.toString()}`
+    );
 
     let data: any = null;
     let lastError: string | null = null;

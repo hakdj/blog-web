@@ -2,7 +2,7 @@
 
 ## 현재 상황
 - ✅ Vercel에 배포 완료
-- ✅ 배포 URL: `blog-web-five-eta.vercel.app` (또는 다른 도메인)
+- ✅ 배포 URL: `latte-room.vercel.app` (또는 다른 도메인)
 - ❌ 포트원에 `http://localhost:3000` 등록되어 있음
 
 ## 포트원 대시보드에서 URL 변경하기
@@ -19,10 +19,10 @@
 ### 3단계: 서비스 URL 변경
 1. **"서비스 URL"** 필드 찾기
 2. 현재 값: `http://localhost:3000`
-3. 변경할 값: `https://blog-web-five-eta.vercel.app`
+3. 변경할 값: `https://latte-room.vercel.app`
    ```
    기존: http://localhost:3000
-   변경: https://blog-web-five-eta.vercel.app
+   변경: https://latte-room.vercel.app
    ```
 
 ### 4단계: 저장
@@ -36,7 +36,7 @@
 1. **"결제 설정"** 또는 **"웹훅 설정"** 메뉴 확인
 2. 웹훅 URL을 다음으로 변경:
    ```
-   https://blog-web-five-eta.vercel.app/api/webhooks/portone
+   https://latte-room.vercel.app/api/webhooks/portone
    ```
 
 ### Vercel 환경 변수 업데이트
@@ -45,18 +45,18 @@ Vercel 대시보드에서:
 2. `APP_URL` 변수 확인/추가
 3. 값 설정:
    ```
-   https://blog-web-five-eta.vercel.app
+   https://latte-room.vercel.app
    ```
 4. **Save** 클릭
 
 ## 확인 사항
 
 ### ✅ 포트원 설정 확인
-- 서비스 URL: `https://blog-web-five-eta.vercel.app`
-- 웹훅 URL: `https://blog-web-five-eta.vercel.app/api/webhooks/portone` (있는 경우)
+- 서비스 URL: `https://latte-room.vercel.app`
+- 웹훅 URL: `https://latte-room.vercel.app/api/webhooks/portone` (있는 경우)
 
 ### ✅ Vercel 환경 변수 확인
-- `APP_URL`: `https://blog-web-five-eta.vercel.app`
+- `APP_URL`: `https://latte-room.vercel.app`
 - `PORTONE_API_KEY`: 포트원에서 발급받은 값
 - `PORTONE_API_SECRET`: 포트원에서 발급받은 값
 - `PORTONE_WEBHOOK_SECRET`: 포트원에서 발급받은 값
@@ -66,7 +66,7 @@ Vercel 대시보드에서:
 ### 웹훅 엔드포인트 테스트
 브라우저에서 접속:
 ```
-https://blog-web-five-eta.vercel.app/api/webhooks/portone
+https://latte-room.vercel.app/api/webhooks/portone
 ```
 → 정상 응답 확인
 

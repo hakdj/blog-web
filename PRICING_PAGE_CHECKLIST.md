@@ -21,7 +21,7 @@ git push origin master
 
 ### 2. Vercel 배포 확인
 - Vercel 대시보드에서 최신 커밋이 배포되었는지 확인
-- 배포 URL: https://blog-web-five-eta.vercel.app/pricing
+- 배포 URL: https://latte-room.vercel.app/pricing
 
 ### 3. 로컬 테스트 (선택)
 ```bash
