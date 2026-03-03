@@ -2,10 +2,10 @@
 
 ## 1) 배포 전 체크
 - Supabase SQL 실행 순서:
-  1. `db/ADD_OPENAI_KEY_TO_PROFILES.sql`
-  2. `db/CREATE_EVENT_SYNC_STATE.sql`
-  3. `db/CREATE_DIARY_TABLE.sql`
-  4. `db/CREATE_ASSISTANT_TASKS.sql`
+  1. `db/active/ADD_OPENAI_KEY_TO_PROFILES.sql`
+  2. `db/active/CREATE_EVENT_SYNC_STATE.sql`
+  3. `db/active/CREATE_DIARY_TABLE.sql`
+  4. `db/active/CREATE_ASSISTANT_TASKS.sql`
 - Vercel 환경변수:
   - `AI_KEY_ENCRYPTION_SECRET`
   - `OPENAI_MODEL`

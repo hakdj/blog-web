@@ -19,6 +19,6 @@ npm run dev
 
 ## Docs
 
-- 운영/배포/계정/결제 통합 가이드: `docs/OPERATIONS_GUIDE.md`
+- 운영/배포/계정/결제 통합 가이드: `docs/active/OPERATIONS_GUIDE.md`
 - SQL 실행 순서/재실행 원칙: `db/SQL_EXECUTION_GUIDE.md`
-- 이벤트 API 연동 가이드: `docs/TOUR_API_SETUP.md`
+- 이벤트 API 연동 가이드: `docs/active/TOUR_API_SETUP.md`

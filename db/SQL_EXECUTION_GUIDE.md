@@ -8,18 +8,18 @@
 
 ## A. 신규 환경(처음 세팅) 실행 순서
 
-1. `CREATE_PROFILES_AND_TRIGGER.sql`
-2. `CREATE_SUBSCRIPTIONS_TABLE.sql`
-3. `CREATE_DIARY_TABLE.sql`
-4. `CREATE_ASSISTANT_TASKS.sql`
-5. `CREATE_USER_ADS.sql`
-6. `CREATE_EVENTS_TABLE.sql`
-7. `CREATE_EVENT_SYNC_STATE.sql`
-8. `CREATE_GAME_HIGH_SCORES.sql`
-9. `ADD_OPENAI_KEY_TO_PROFILES.sql`
-10. `ADD_AD_REJECT_REASON.sql`
-11. `ADD_NICKNAME_TO_PROFILES.sql`
-12. `UPDATE_TO_BILLGUDOK_PLAN_FIXED.sql` (운영 정책 확인 후 1회만)
+1. `active/CREATE_PROFILES_AND_TRIGGER.sql`
+2. `active/CREATE_SUBSCRIPTIONS_TABLE.sql`
+3. `active/CREATE_DIARY_TABLE.sql`
+4. `active/CREATE_ASSISTANT_TASKS.sql`
+5. `active/CREATE_USER_ADS.sql`
+6. `active/CREATE_EVENTS_TABLE.sql`
+7. `active/CREATE_EVENT_SYNC_STATE.sql`
+8. `active/CREATE_GAME_HIGH_SCORES.sql`
+9. `active/ADD_OPENAI_KEY_TO_PROFILES.sql`
+10. `active/ADD_AD_REJECT_REASON.sql`
+11. `active/ADD_NICKNAME_TO_PROFILES.sql`
+12. `active/UPDATE_TO_BILLGUDOK_PLAN_FIXED.sql` (운영 정책 확인 후 1회만)
 
 ## B. 이미 운영 중인 현재 환경
 
@@ -31,17 +31,17 @@
 
 ## C. 운영 중 재실행 금지/주의 스크립트
 
-- `UPDATE_TO_BILLGUDOK_PLAN.sql` (구버전)
-- `UPDATE_TO_ALPHABLOG_STRUCTURE.sql` (구버전 구조 스크립트)
-- `UPDATE_TO_BILLGUDOK_PLAN_FIXED.sql` (플랜 데이터 교체성, 1회 정책 확인 후 사용)
+- `legacy/UPDATE_TO_BILLGUDOK_PLAN.sql` (구버전)
+- `legacy/UPDATE_TO_ALPHABLOG_STRUCTURE.sql` (구버전 구조 스크립트)
+- `active/UPDATE_TO_BILLGUDOK_PLAN_FIXED.sql` (플랜 데이터 교체성, 1회 정책 확인 후 사용)
 
 ## D. 점검용(읽기/검증) 스크립트
 
-- `CHECK_PLANS.sql`
-- `CHECK_AND_FIX_PLANS.sql`
-- `VERIFY_PLANS_AND_RLS.sql`
-- `QUICK_CHECK.sql`
-- `CHECK_RESULT.sql`
+- `legacy/CHECK_PLANS.sql`
+- `legacy/CHECK_AND_FIX_PLANS.sql`
+- `legacy/VERIFY_PLANS_AND_RLS.sql`
+- `legacy/QUICK_CHECK.sql`
+- `legacy/CHECK_RESULT.sql`
 
 위 파일들은 운영 반영 전 사전 점검/진단 용도이며, 실제 구조 변경은 A/B 기준으로 진행하세요.
 

@@ -76,7 +76,7 @@ export default async function HomePage() {
       {/* Hero Section - 레트로 감성 */}
       <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="text-center mb-16">
-          <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent">
+          <h1 className="text-[76px] md:text-[88px] font-extrabold mb-6 tracking-tight text-[#E60074] leading-none">
             라떼 방구석
           </h1>
           <p className="text-2xl text-gray-700 mb-4">

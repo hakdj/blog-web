@@ -4,7 +4,40 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+
+const SECTION_LINKS = [
+  {
+    href: '/games',
+    label: '게임',
+    idle: 'bg-purple-100 text-purple-700 border-purple-300',
+    active: 'bg-purple-500 text-white border-purple-600',
+  },
+  {
+    href: '/events',
+    label: '일정',
+    idle: 'bg-pink-100 text-pink-700 border-pink-300',
+    active: 'bg-pink-500 text-white border-pink-600',
+  },
+  {
+    href: '/products',
+    label: '상점',
+    idle: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    active: 'bg-yellow-500 text-white border-yellow-600',
+  },
+  {
+    href: '/diary',
+    label: '일기',
+    idle: 'bg-green-100 text-green-700 border-green-300',
+    active: 'bg-green-500 text-white border-green-600',
+  },
+  {
+    href: '/assistant',
+    label: '친구',
+    idle: 'bg-orange-100 text-orange-700 border-orange-300',
+    active: 'bg-orange-500 text-white border-orange-600',
+  },
+] as const;
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
@@ -12,6 +45,7 @@ export default function Header() {
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const supabase = createClient();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     let cancelled = false;
@@ -93,6 +127,26 @@ export default function Header() {
             >
               홈
             </Link>
+
+            <div className="hidden xl:flex items-center gap-1">
+              {SECTION_LINKS.map((section) => {
+                const active =
+                  pathname === section.href || pathname.startsWith(`${section.href}/`);
+                return (
+                  <Link
+                    key={section.href}
+                    href={section.href}
+                    className={`h-8 min-w-12 px-2 rounded-md border text-[11px] font-bold flex items-center justify-center transition-colors ${
+                      active ? section.active : section.idle
+                    }`}
+                    title={section.href}
+                  >
+                    {section.label}
+                  </Link>
+                );
+              })}
+            </div>
+
             <Link
               href="/pricing"
               className="text-gray-600 hover:text-gray-900 font-medium"

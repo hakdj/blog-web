@@ -16,7 +16,7 @@
 
 ## 2) 회원가입/로그인 문제 점검
 
-1. Supabase SQL Editor에서 `db/CREATE_PROFILES_AND_TRIGGER.sql` 실행
+1. Supabase SQL Editor에서 `db/active/CREATE_PROFILES_AND_TRIGGER.sql` 실행
 2. `profiles` 테이블 존재 확인
 3. 회원가입 후 `Authentication > Users`와 `profiles` 동기 생성 확인
 4. 이메일 인증 이슈는 Supabase Auth 설정에서 확인

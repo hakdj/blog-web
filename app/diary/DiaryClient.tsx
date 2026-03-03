@@ -230,7 +230,7 @@ export default function DiaryClient() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">추억의 일기장</h1>
+        <h1 className="text-3xl font-bold text-green-500 mb-2">추억의 일기장</h1>
         <p className="text-gray-600">소중한 추억을 기록하고 공유하세요</p>
       </div>
 

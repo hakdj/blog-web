@@ -357,7 +357,7 @@ export default function LatteFriendClient() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">라떼 친구</h1>
+        <h1 className="text-3xl font-bold text-orange-500 mb-2">라떼 친구</h1>
         <p className="text-gray-600">일정, 취미, 상담, 요약까지 한 번에 관리해요</p>
       </div>
 

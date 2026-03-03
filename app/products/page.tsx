@@ -11,7 +11,7 @@ export default async function ProductsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">구멍가게</h1>
+        <h1 className="text-3xl font-bold text-yellow-500 mb-2">구멍가게</h1>
         <p className="text-gray-600">
           추억의 레트로 제품을 만나보세요
         </p>

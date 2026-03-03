@@ -104,7 +104,7 @@ export default function GameHubClient() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 text-gray-100">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2 tracking-wide text-lime-200">그때 그 게임</h1>
+        <h1 className="text-3xl font-bold mb-2 tracking-wide text-purple-400">그때 그 게임</h1>
         <p className="text-gray-300">간단한 레트로 게임으로 추억을 즐겨보세요</p>
       </div>
 

@@ -1088,7 +1088,7 @@ export default function AdminPage() {
                   <div className="text-6xl mb-4">📊</div>
                   <p className="text-lg font-medium mb-2">구독 이력 데이터가 없습니다</p>
                   <p className="text-sm">구독 변경이 발생하면 자동으로 이력이 기록됩니다.</p>
-                  <p className="text-xs text-gray-400 mt-2">SQL 파일: db/CREATE_SUBSCRIPTION_HISTORY.sql</p>
+                  <p className="text-xs text-gray-400 mt-2">SQL 파일: db/active/CREATE_SUBSCRIPTION_HISTORY.sql</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -1186,7 +1186,7 @@ export default function AdminPage() {
                   <div className="text-6xl mb-4">🏪</div>
                   <p className="text-lg font-medium mb-2">구멍가게 상품 데이터</p>
                   <p className="text-sm">데이터베이스에 products 테이블을 생성하면 재고가 표시됩니다.</p>
-                  <p className="text-xs text-gray-400 mt-2">SQL 파일: db/CREATE_PRODUCTS_TABLE.sql</p>
+                  <p className="text-xs text-gray-400 mt-2">SQL 파일: db/active/CREATE_PRODUCTS_TABLE.sql</p>
                 </div>
               </div>
             </div>

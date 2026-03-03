@@ -332,7 +332,7 @@ export default function EventsPage() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">요즘 뭐해?</h1>
+        <h1 className="text-3xl font-bold text-pink-500 mb-2">요즘 뭐해?</h1>
         <p className="text-gray-600">
           전국 축제와 지역 일정을 확인하세요. 축제, 지역 특색, 지역 광고 정보를 제공합니다.
         </p>
