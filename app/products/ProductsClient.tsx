@@ -66,6 +66,8 @@ export default function ProductsClient() {
   const [imageUrl, setImageUrl] = useState('');
   const [externalUrl, setExternalUrl] = useState('');
   const [externalPlatform, setExternalPlatform] = useState<'smartstore' | 'coupang' | 'etc' | ''>('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('');
 
   const loadProducts = async (nextTab: 'mine' | 'all' = tab) => {
     setLoading(true);
@@ -141,6 +143,43 @@ export default function ProductsClient() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleImageUpload = async (file: File | null) => {
+    if (!file) return;
+    setUploadingImage(true);
+    setError('');
+    setOkMessage('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/upload/product-image', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || '이미지 업로드에 실패했습니다.');
+      setImageUrl(String(data.url || ''));
+      setUploadedFileName(String(data.fileName || file.name));
+      setOkMessage('사진 업로드가 완료되었습니다. 등록 시 이 이미지가 사용됩니다.');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const removeUploadedImage = async () => {
+    if (!imageUrl) return;
+    try {
+      await fetch(`/api/upload/product-image?url=${encodeURIComponent(imageUrl)}`, {
+        method: 'DELETE',
+      });
+    } catch {
+      // ignore cleanup error
+    }
+    setImageUrl('');
+    setUploadedFileName('');
   };
 
   const handleDelete = async (productId: string) => {
@@ -220,6 +259,43 @@ export default function ProductsClient() {
             placeholder="이미지 URL (선택)"
             className="w-full border rounded-lg px-3 py-2"
           />
+          <div className="rounded-lg border border-yellow-100 bg-yellow-50 p-3 space-y-2">
+            <p className="text-sm font-medium text-gray-800">또는 사진 파일 업로드</p>
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="product-image-upload"
+                className="inline-flex items-center rounded-lg border border-yellow-300 bg-white px-3 py-2 text-sm font-semibold text-yellow-700 hover:bg-yellow-100 cursor-pointer"
+              >
+                {uploadingImage ? '업로드 중...' : '사진 선택/촬영'}
+              </label>
+              <span className="text-xs text-gray-600 truncate">
+                {uploadedFileName || '선택된 파일 없음'}
+              </span>
+            </div>
+            <input
+              id="product-image-upload"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                void handleImageUpload(file);
+                e.currentTarget.value = '';
+              }}
+            />
+            {imageUrl && (
+              <div className="flex items-center gap-3">
+                <img src={imageUrl} alt="상품 미리보기" className="h-16 w-16 rounded object-cover border" />
+                <button
+                  onClick={() => void removeUploadedImage()}
+                  className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                >
+                  이미지 제거
+                </button>
+              </div>
+            )}
+          </div>
           <select
             value={externalPlatform}
             onChange={(e) => setExternalPlatform(e.target.value as 'smartstore' | 'coupang' | 'etc' | '')}
@@ -258,10 +334,10 @@ export default function ProductsClient() {
 
           <button
             onClick={handleSubmit}
-            disabled={!canSave || saving}
+            disabled={!canSave || saving || uploadingImage}
             className="w-full bg-yellow-500 text-white rounded-lg px-4 py-2 font-bold hover:bg-yellow-600 disabled:opacity-50"
           >
-            {saving ? '등록 중...' : '상품 등록'}
+            {uploadingImage ? '이미지 업로드 대기 중...' : saving ? '등록 중...' : '상품 등록'}
           </button>
           <p className="text-xs text-gray-500">
             외부 URL을 넣으면 카드에 "스토어에서 보기" 버튼이 생겨 스마트스토어/쿠팡으로 바로 이동합니다.
