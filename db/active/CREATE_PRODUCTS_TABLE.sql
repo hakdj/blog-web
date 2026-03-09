@@ -71,21 +71,7 @@ CREATE TRIGGER trigger_update_products_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_products_updated_at();
 
--- 5. 샘플 데이터 삽입
-INSERT INTO products (name, description, category, price, rental_price, stock_quantity, is_rental, is_for_sale) VALUES
-('따따블', '90년대 추억의 따따블 딱지', 'toy', 1000, 500, 50, true, true),
-('뽑기', '레트로 뽑기 세트', 'toy', 2000, 1000, 30, true, true),
-('불량식품', '추억의 불량식품 세트', 'snack', 5000, NULL, 20, false, true),
-('게임보이', '오리지널 게임보이', 'game', 50000, 10000, 5, true, true),
-('타마고치', '90년대 타마고치', 'toy', 15000, 5000, 10, true, true),
-('딱지', '레트로 딱지 세트', 'toy', 3000, 1000, 40, true, true),
-('구슬', '유리구슬 세트', 'toy', 2000, 500, 60, true, true),
-('팔찌', '고무줄 팔찌', 'toy', 1000, NULL, 100, false, true),
-('연필', '90년대 캐릭터 연필', 'stationery', 500, NULL, 200, false, true),
-('지우개', '향기나는 지우개', 'stationery', 300, NULL, 150, false, true)
-ON CONFLICT DO NOTHING;
-
--- 6. 확인 쿼리
+-- 5. 확인 쿼리
 SELECT 
   id,
   name,
