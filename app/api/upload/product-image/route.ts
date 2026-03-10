@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { isAdmin } from '@/lib/auth';
 
 /**
  * 구멍가게 상품 이미지 업로드
@@ -15,6 +16,9 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!isAdmin(user)) {
+      return NextResponse.json({ error: '관리자만 상품 이미지를 업로드할 수 있습니다.' }, { status: 403 });
     }
 
     const formData = await request.formData();
@@ -86,6 +90,9 @@ export async function DELETE(request: NextRequest) {
     } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!isAdmin(user)) {
+      return NextResponse.json({ error: '관리자만 상품 이미지를 삭제할 수 있습니다.' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

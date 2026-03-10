@@ -46,14 +46,18 @@ const platformLabel = (platform: Product['external_platform']) => {
   return '외부몰';
 };
 
-export default function ProductsClient() {
+type ProductsClientProps = {
+  canManage: boolean;
+};
+
+export default function ProductsClient({ canManage }: ProductsClientProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState('');
   const [error, setError] = useState('');
   const [okMessage, setOkMessage] = useState('');
-  const [tab, setTab] = useState<'mine' | 'all'>('mine');
+  const [tab, setTab] = useState<'mine' | 'all'>('all');
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -73,7 +77,10 @@ export default function ProductsClient() {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`/api/products${nextTab === 'mine' ? '?mine=1' : ''}`);
+      let endpoint = '/api/products';
+      if (canManage && nextTab === 'mine') endpoint = '/api/products?mine=1';
+      if (canManage && nextTab === 'all') endpoint = '/api/products?admin=1';
+      const response = await fetch(endpoint);
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || '상품 목록을 불러오지 못했습니다.');
       setProducts(data.products || []);
@@ -86,7 +93,7 @@ export default function ProductsClient() {
 
   useEffect(() => {
     void loadProducts(tab);
-  }, [tab]);
+  }, [tab, canManage]);
 
   const canSave = useMemo(() => {
     const parsedPrice = Number(price);
@@ -206,10 +213,15 @@ export default function ProductsClient() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-yellow-500 mb-2">구멍가게</h1>
-        <p className="text-gray-600">내 상품 테스트 등록과 외부몰 링크 연동을 바로 진행할 수 있습니다.</p>
+        <p className="text-gray-600">
+          {canManage
+            ? '관리자 모드: 상품 등록/삭제 및 외부몰 링크 연동을 관리할 수 있습니다.'
+            : '구독자 모드: 상품 조회만 가능합니다.'}
+        </p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6 mb-8">
+        {canManage && (
         <div className="bg-white rounded-xl shadow p-5 space-y-3">
           <h2 className="text-lg font-bold text-gray-900">상품 등록 테스트</h2>
           <input
@@ -343,26 +355,29 @@ export default function ProductsClient() {
             외부 URL을 넣으면 카드에 "스토어에서 보기" 버튼이 생겨 스마트스토어/쿠팡으로 바로 이동합니다.
           </p>
         </div>
+        )}
 
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setTab('mine')}
-              className={`px-3 py-2 rounded-lg border text-sm font-medium ${
-                tab === 'mine' ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-white text-gray-700'
-              }`}
-            >
-              내 상품
-            </button>
-            <button
-              onClick={() => setTab('all')}
-              className={`px-3 py-2 rounded-lg border text-sm font-medium ${
-                tab === 'all' ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-white text-gray-700'
-              }`}
-            >
-              전체 공개 상품
-            </button>
-          </div>
+        <div className={`${canManage ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-4`}>
+          {canManage && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setTab('mine')}
+                className={`px-3 py-2 rounded-lg border text-sm font-medium ${
+                  tab === 'mine' ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-white text-gray-700'
+                }`}
+              >
+                내 상품
+              </button>
+              <button
+                onClick={() => setTab('all')}
+                className={`px-3 py-2 rounded-lg border text-sm font-medium ${
+                  tab === 'all' ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-white text-gray-700'
+                }`}
+              >
+                전체 상품(관리)
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</div>
@@ -377,9 +392,9 @@ export default function ProductsClient() {
             <div className="bg-white rounded-xl shadow p-6 text-center text-gray-600">불러오는 중...</div>
           ) : products.length === 0 ? (
             <div className="bg-white rounded-xl shadow p-6 text-center text-gray-600">
-              {tab === 'mine'
+              {canManage && tab === 'mine'
                 ? '내가 등록한 상품이 없습니다. 왼쪽 폼에서 첫 상품을 등록해보세요.'
-                : '공개된 상품이 없습니다.'}
+                : '표시할 상품이 없습니다.'}
             </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-4">
@@ -418,7 +433,7 @@ export default function ProductsClient() {
                         스토어에서 보기
                       </a>
                     )}
-                    {tab === 'mine' && (
+                    {canManage && (
                       <button
                         onClick={() => handleDelete(product.id)}
                         disabled={deletingId === product.id}

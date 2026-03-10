@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { isAdmin } from '@/lib/auth';
 
 const ALLOWED_CATEGORIES = new Set(['toy', 'snack', 'game', 'stationery', 'etc']);
 const ALLOWED_PLATFORMS = new Set(['smartstore', 'coupang', 'etc']);
@@ -8,18 +9,53 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const mineOnly = searchParams.get('mine') === '1';
+    const adminMode = searchParams.get('admin') === '1';
     const service = createServiceClient();
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (mineOnly) {
-      const supabase = await createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    }
 
-      if (!user) {
-        return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    const adminUser = isAdmin(user);
+    if ((mineOnly || adminMode) && !adminUser) {
+      return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
+    }
+
+    if (!adminUser) {
+      const { data: subscription } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .gt('current_period_end', new Date().toISOString())
+        .limit(1);
+
+      if (!subscription || subscription.length === 0) {
+        return NextResponse.json({ error: '구독자만 상품을 조회할 수 있습니다.' }, { status: 403 });
+      }
+    }
+
+    if (adminMode) {
+      const { data, error } = await service
+        .from('products')
+        .select(
+          'id, name, description, category, price, rental_price, stock_quantity, available_quantity, is_rental, is_for_sale, image_url, external_url, external_platform, is_available, owner_user_id, created_at'
+        )
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (error) {
+        return NextResponse.json({ error: '관리자 상품 목록을 불러오지 못했습니다.' }, { status: 500 });
       }
 
+      return NextResponse.json({ products: data ?? [] });
+    }
+
+    if (mineOnly) {
       const { data, error } = await service
         .from('products')
         .select(
@@ -67,6 +103,9 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    }
+    if (!isAdmin(user)) {
+      return NextResponse.json({ error: '관리자만 상품을 등록할 수 있습니다.' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -157,6 +196,9 @@ export async function DELETE(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
+    if (!isAdmin(user)) {
+      return NextResponse.json({ error: '관리자만 상품을 삭제할 수 있습니다.' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const productId = String(searchParams.get('id') || '').trim();
@@ -174,10 +216,6 @@ export async function DELETE(request: NextRequest) {
     if (findError || !product) {
       return NextResponse.json({ error: '상품을 찾을 수 없습니다.' }, { status: 404 });
     }
-    if (product.owner_user_id !== user.id) {
-      return NextResponse.json({ error: '본인 상품만 삭제할 수 있습니다.' }, { status: 403 });
-    }
-
     const { error } = await service.from('products').delete().eq('id', productId);
     if (error) {
       return NextResponse.json({ error: '상품 삭제에 실패했습니다.' }, { status: 500 });
