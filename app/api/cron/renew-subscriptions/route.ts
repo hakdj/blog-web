@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     console.log('🔄 Running subscription renewal cron job...');
 
-    // 만료 예정 구독 조회 (오늘 ~ 내일 사이)
+    // 만료 예정 구독 조회 (오늘 ~ 내일 사이) + 연체 중인 구독(재시도 대상)
     const { data: expiringSubscriptions, error: fetchError } = await supabase
       .from('subscriptions')
       .select(`
@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
         billing_key,
         current_period_end,
         auto_renew,
+        status,
         plans (
           id,
           name,
@@ -41,10 +42,9 @@ export async function GET(request: NextRequest) {
           interval
         )
       `)
-      .eq('status', 'active')
+      .in('status', ['active', 'past_due'])
       .eq('auto_renew', true)
-      .lte('current_period_end', tomorrow.toISOString())
-      .gte('current_period_end', today.toISOString());
+      .lte('current_period_end', tomorrow.toISOString());
 
     if (fetchError) {
       console.error('Error fetching expiring subscriptions:', fetchError);
@@ -120,10 +120,13 @@ export async function GET(request: NextRequest) {
             error_message: chargeResult.error,
           });
 
-          // 자동 갱신 비활성화 (결제 실패 시)
+          // 실패 횟수 또는 상태 관리를 추가 (Grace period)
+          // 여기서는 즉시 auto_renew를 false로 끄지 않고, 
+          // 상태를 'past_due' (연체/유예 상태)로 변경하여 며칠간 재시도할 수 있는 기회를 줌.
+          // 사용자는 여전히 서비스 이용이 제한되거나 혹은 며칠 유예 기간을 얻음.
           await supabase
             .from('subscriptions')
-            .update({ auto_renew: false })
+            .update({ status: 'past_due' })
             .eq('id', subscription.id);
 
           failCount++;

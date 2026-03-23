@@ -63,12 +63,33 @@ export async function POST(request: NextRequest) {
 async function handlePaymentSucceeded(event: WebhookEvent, supabase: any) {
   const data = event.data;
   
+  // 무결성 검증: 플랜 가격 확인
+  const { data: planData } = await supabase
+    .from('plans')
+    .select('price, interval')
+    .eq('id', data.metadata.planId)
+    .single();
+
+  if (!planData || planData.price !== data.amount) {
+    console.error('⚠️ 웹훅 금액 불일치 혹은 플랜을 찾을 수 없습니다.', {
+      planPrice: planData?.price,
+      amountPaid: data.amount,
+      userId: data.customerId
+    });
+    // 부정 결제 의심으로 실패 또는 알림 처리를 할 수 있지만,
+    // 일단은 에러 로깅 후 결제 완료 기록 시 비정상 상태(suspected_fraud)를 남기도록 확장 가능합니다.
+  }
+
+  // interval에 맞춰 연장일 계산
+  const isYearly = planData?.interval === 'year' || data.metadata.interval === 'year';
+  const durationMs = isYearly ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+  
   // Update subscription status
   await supabase
     .from('subscriptions')
     .update({
       status: 'active',
-      current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      current_period_end: new Date(Date.now() + durationMs).toISOString(),
     })
     .eq('user_id', data.customerId);
 
@@ -116,10 +137,14 @@ async function handlePaymentFailed(event: WebhookEvent, supabase: any) {
 async function handleSubscriptionUpdated(event: WebhookEvent, supabase: any) {
   const data = event.data;
   
+  // interval에 맞춰 연장일 계산
+  const isYearly = data.metadata?.interval === 'year';
+  const durationMs = isYearly ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+
   await supabase
     .from('subscriptions')
     .update({
-      current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      current_period_end: new Date(Date.now() + durationMs).toISOString(),
     })
     .eq('user_id', data.customerId);
 
