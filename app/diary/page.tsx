@@ -1,9 +1,12 @@
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getActiveSubscription } from '@/lib/auth';
 import DiaryClient from './DiaryClient';
 
 export default async function DiaryPage() {
   await requireAuth();
-  return <DiaryClient />;
+  const subscription = await getActiveSubscription();
+  const isPremium = !!subscription;
+
+  return <DiaryClient isPremium={isPremium} />;
 }
 
 

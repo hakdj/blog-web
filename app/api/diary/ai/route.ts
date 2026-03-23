@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getUserAiCredentials } from '@/lib/ai-credentials';
 import { logAiUsage } from '@/lib/ai-usage-log';
 import { providerLabel } from '@/lib/ai-provider';
+import { getActiveSubscription } from '@/lib/auth';
 function buildUpstreamError(provider: 'openai' | 'anthropic' | 'google', status: number, errorText: string) {
   const lower = errorText.toLowerCase();
   const label = providerLabel(provider);
@@ -95,6 +96,11 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const subscription = await getActiveSubscription();
+    if (!subscription) {
+      return NextResponse.json({ error: 'AI 기능은 유료 구독자 전용입니다.' }, { status: 403 });
     }
 
     const body = await request.json();

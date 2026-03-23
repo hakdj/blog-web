@@ -17,7 +17,7 @@ interface DiaryEntry {
 
 const defaultDate = () => new Date().toISOString().slice(0, 10);
 
-export default function DiaryClient() {
+export default function DiaryClient({ isPremium = false }: { isPremium?: boolean }) {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -292,45 +292,62 @@ export default function DiaryClient() {
             )}
           </div>
 
+          {!isPremium && (
+            <div className="mb-4 rounded-lg bg-pink-50 p-4 border border-pink-100">
+              <p className="text-sm text-pink-700 font-medium">
+                일기 작성 및 AI 기능은 유료 구독자 전용입니다.
+              </p>
+              <a href="/pricing" className="text-xs text-pink-600 underline mt-1 inline-block">
+                구독 플랜 알아보기
+              </a>
+            </div>
+          )}
+
           <div className="space-y-3">
             <input
               value={title}
+              disabled={!isPremium}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="제목"
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:cursor-not-allowed"
             />
             <input
               type="date"
               value={entryDate}
+              disabled={!isPremium}
               onChange={(e) => setEntryDate(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:cursor-not-allowed"
             />
             <input
               value={mood}
+              disabled={!isPremium}
               onChange={(e) => setMood(e.target.value)}
               placeholder="기분 (예: 뿌듯함, 설렘)"
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:cursor-not-allowed"
             />
             <input
               value={tagsInput}
+              disabled={!isPremium}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="태그 (쉼표로 구분)"
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:cursor-not-allowed"
             />
             <select
               value={visibility}
+              disabled={!isPremium}
               onChange={(e) => setVisibility(e.target.value as 'private' | 'public')}
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:cursor-not-allowed"
             >
               <option value="private">비공개</option>
               <option value="public">공개</option>
             </select>
             <textarea
               value={content}
+              disabled={!isPremium}
               onChange={(e) => setContent(e.target.value)}
               placeholder="오늘의 추억을 적어보세요"
               rows={8}
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -339,7 +356,11 @@ export default function DiaryClient() {
             <div className="flex items-center gap-3">
               <label
                 htmlFor="diary-image-upload"
-                className="inline-flex items-center rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 cursor-pointer"
+                className={`inline-flex items-center rounded-lg border px-3 py-2 text-sm font-semibold ${
+                  isPremium 
+                    ? 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 cursor-pointer'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
               >
                 파일 선택
               </label>
@@ -352,6 +373,7 @@ export default function DiaryClient() {
               type="file"
               accept="image/*"
               multiple
+              disabled={!isPremium}
               className="sr-only"
               onChange={(e) => handleUpload(e.target.files)}
             />
@@ -362,7 +384,8 @@ export default function DiaryClient() {
                     <img src={url} alt="일기 이미지" className="h-20 w-20 rounded object-cover border" />
                     <button
                       onClick={() => removeImage(url)}
-                      className="absolute -top-2 -right-2 bg-white border rounded-full px-2 text-xs"
+                      disabled={!isPremium}
+                      className="absolute -top-2 -right-2 bg-white border rounded-full px-2 text-xs disabled:opacity-50"
                     >
                       ✕
                     </button>
@@ -376,10 +399,11 @@ export default function DiaryClient() {
             <h3 className="text-sm font-semibold text-gray-700">AI 작성</h3>
             <textarea
               value={aiKeywords}
+              disabled={!isPremium}
               onChange={(e) => setAiKeywords(e.target.value)}
               placeholder="키워드나 상황을 입력하세요 (예: 부산 여행, 친구와 재회)"
               rows={3}
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:cursor-not-allowed"
             />
             <p className="text-xs text-gray-500">
               실제 AI 사용을 원하면 마이페이지에서 AI 키(OpenAI/Claude/Gemini)를 등록하세요.
@@ -387,8 +411,9 @@ export default function DiaryClient() {
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={aiTone}
+                disabled={!isPremium}
                 onChange={(e) => setAiTone(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm"
+                className="w-full border rounded-lg px-3 py-2 text-sm disabled:bg-gray-50"
               >
                 <option value="따뜻하게">따뜻하게</option>
                 <option value="차분하게">차분하게</option>
@@ -401,8 +426,9 @@ export default function DiaryClient() {
               </select>
               <select
                 value={aiLength}
+                disabled={!isPremium}
                 onChange={(e) => setAiLength(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm"
+                className="w-full border rounded-lg px-3 py-2 text-sm disabled:bg-gray-50"
               >
                 <option value="짧게">짧게</option>
                 <option value="중간">중간</option>
@@ -414,8 +440,8 @@ export default function DiaryClient() {
             </div>
             <button
               onClick={handleAiGenerate}
-              disabled={aiLoading}
-              className="w-full bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700 disabled:opacity-50"
+              disabled={!isPremium || aiLoading}
+              className="w-full bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {aiLoading ? 'AI 작성 중...' : 'AI로 초안 만들기'}
             </button>
@@ -423,8 +449,8 @@ export default function DiaryClient() {
 
           <button
             onClick={handleSubmit}
-            disabled={saving}
-            className="w-full bg-pink-600 text-white rounded-lg px-4 py-3 font-bold hover:bg-pink-700 disabled:opacity-50"
+            disabled={!isPremium || saving}
+            className="w-full bg-pink-600 text-white rounded-lg px-4 py-3 font-bold hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? '저장 중...' : editingId ? '수정 저장' : '저장하기'}
           </button>

@@ -44,7 +44,7 @@ const GAME_DESCRIPTIONS: Record<string, { title: string; desc: string; controls:
   },
 };
 
-export default function GameHubClient() {
+export default function GameHubClient({ isPremium = false }: { isPremium?: boolean }) {
   const [activeGame, setActiveGame] = useState('tetris');
   const [bestScores, setBestScores] = useState<Record<string, number>>({});
   const iframeRefs = useRef<Record<string, HTMLIFrameElement | null>>({});
@@ -109,20 +109,34 @@ export default function GameHubClient() {
       </div>
 
       <div className="flex flex-wrap gap-3 mb-6">
-        {GAME_LIST.map((game) => (
-          <button
-            key={game.id}
-            onClick={() => setActiveGame(game.id)}
-            className={`px-4 py-2 rounded-lg font-medium border transition-colors ${
-              activeGame === game.id
-                ? 'bg-lime-700 text-lime-100 border-lime-500'
-                : 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700'
-            }`}
-          >
-            {game.name}
-            {game.status === 'soon' && <span className="ml-2 text-xs text-gray-400">(준비중)</span>}
-          </button>
-        ))}
+        {GAME_LIST.map((game) => {
+          // 무료 허용 게임 체크
+          const isFreeGame = game.id === '2048' || game.id === 'tetris';
+          const isLocked = !isPremium && !isFreeGame;
+
+          return (
+            <button
+              key={game.id}
+              onClick={() => {
+                if (isLocked) {
+                  alert('유료 구독자 전용 게임입니다. 구독 플랜을 확인해주세요!');
+                  window.location.href = '/pricing';
+                  return;
+                }
+                setActiveGame(game.id);
+              }}
+              className={`px-4 py-2 rounded-lg font-medium border transition-colors relative ${
+                activeGame === game.id
+                  ? 'bg-lime-700 text-lime-100 border-lime-500'
+                  : 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700'
+              } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+              {game.name}
+              {isLocked && <span className="ml-2 text-xs text-pink-400">🔒 유료</span>}
+              {game.status === 'soon' && <span className="ml-2 text-xs text-gray-400">(준비중)</span>}
+            </button>
+          );
+        })}
       </div>
 
       <div className="mb-4 rounded-lg border border-gray-700 bg-gray-900/70 p-4">

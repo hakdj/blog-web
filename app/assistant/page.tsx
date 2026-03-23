@@ -1,8 +1,8 @@
-import { requireAuth } from '@/lib/auth';
+import { requireSubscription } from '@/lib/auth';
 import LatteFriendClient from './LatteFriendClient';
 
 export default async function AssistantPage() {
-  await requireAuth();
+  await requireSubscription();
   return <LatteFriendClient />;
 }
 
