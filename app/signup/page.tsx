@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import DaumPostcode from 'react-daum-postcode';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -18,7 +19,27 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
   const router = useRouter();
+
+  const handleCompletePostcode = (data: any) => {
+    let fullAddress = data.address;
+    let extraAddress = '';
+
+    if (data.addressType === 'R') {
+      if (data.bname !== '') {
+        extraAddress += data.bname;
+      }
+      if (data.buildingName !== '') {
+        extraAddress += extraAddress !== '' ? `, ${data.buildingName}` : data.buildingName;
+      }
+      fullAddress += extraAddress !== '' ? ` (${extraAddress})` : '';
+    }
+
+    setPostalCode(data.zonecode);
+    setAddress(fullAddress);
+    setIsPostcodeOpen(false);
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -381,17 +402,46 @@ export default function SignupPage() {
               <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-1">
                 우편번호 <span className="text-red-500">*</span>
               </label>
-              <input
-                id="postalCode"
-                name="postalCode"
-                type="text"
-                required
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="우편번호"
-                value={postalCode}
-                onChange={(e) => setPostalCode(e.target.value)}
-              />
+              <div className="flex gap-2">
+                <input
+                  id="postalCode"
+                  name="postalCode"
+                  type="text"
+                  readOnly
+                  required
+                  className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-gray-50 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  placeholder="우편번호"
+                  value={postalCode}
+                  onClick={() => setIsPostcodeOpen(true)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsPostcodeOpen(true)}
+                  className="whitespace-nowrap inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  우편번호 검색
+                </button>
+              </div>
             </div>
+
+            {/* 주소 검색 모달 */}
+            {isPostcodeOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="bg-white p-4 rounded-lg shadow-xl w-full max-w-md">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium">주소 검색</h3>
+                    <button
+                      type="button"
+                      onClick={() => setIsPostcodeOpen(false)}
+                      className="text-gray-400 hover:text-gray-500"
+                    >
+                      <span className="text-xl">&times;</span>
+                    </button>
+                  </div>
+                  <DaumPostcode onComplete={handleCompletePostcode} autoClose={false} />
+                </div>
+              </div>
+            )}
 
             {/* 기본 주소 */}
             <div>
@@ -402,11 +452,12 @@ export default function SignupPage() {
                 id="address"
                 name="address"
                 type="text"
+                readOnly
                 required
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-gray-50 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="기본 주소"
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onClick={() => setIsPostcodeOpen(true)}
               />
             </div>
 
