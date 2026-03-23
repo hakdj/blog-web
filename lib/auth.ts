@@ -116,7 +116,7 @@ export async function requireSubscription() {
 const ADMIN_EMAILS = (
   process.env.ADMIN_EMAILS
     ? process.env.ADMIN_EMAILS.split(',').map((email) => email.trim().toLowerCase()).filter(Boolean)
-    : ['hakdjhakdj@naver.com', 'hakdjhakdj@gmail.com']
+    : ['hakdjhakdj@gmail.com']
 );
 
 export function isAdmin(user: { email?: string | null } | null): boolean {
