@@ -73,6 +73,60 @@ export async function GET() {
     // Fetch active subscriptions (keeping for compatibility)
     const activeSubscriptions = paidMembers;
 
+    // Fetch daily signups for the last 7 days
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const { data: recentSignups, error: signupsError } = await supabase
+      .from('profiles')
+      .select('created_at')
+      .gte('created_at', sevenDaysAgo.toISOString());
+
+    const dailySignupsObj: Record<string, number> = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(today.getDate() - (6 - i));
+      const dateStr = d.toISOString().split('T')[0].substring(5); // MM-DD
+      dailySignupsObj[dateStr] = 0;
+    }
+
+    if (!signupsError && recentSignups) {
+      recentSignups.forEach((profile: any) => {
+        const dateStr = new Date(profile.created_at).toISOString().split('T')[0].substring(5);
+        if (dailySignupsObj[dateStr] !== undefined) {
+          dailySignupsObj[dateStr]++;
+        }
+      });
+    }
+    const dailySignups = Object.keys(dailySignupsObj).map(date => ({ date, signups: dailySignupsObj[date] }));
+
+    // Fetch payments for the last 7 days (Daily Revenue)
+    const { data: recentPayments, error: paymentsError } = await supabase
+      .from('payments')
+      .select('amount, paid_at, status')
+      .gte('paid_at', sevenDaysAgo.toISOString())
+      .in('status', ['paid', 'completed']);
+
+    const dailyRevenueObj: Record<string, number> = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(today.getDate() - (6 - i));
+      const dateStr = d.toISOString().split('T')[0].substring(5); // MM-DD
+      dailyRevenueObj[dateStr] = 0;
+    }
+
+    if (!paymentsError && recentPayments) {
+      recentPayments.forEach((payment: any) => {
+        const dateStr = new Date(payment.paid_at).toISOString().split('T')[0].substring(5);
+        if (dailyRevenueObj[dateStr] !== undefined) {
+          dailyRevenueObj[dateStr] += payment.amount || 0;
+        }
+      });
+    }
+    const dailyRevenue = Object.keys(dailyRevenueObj).map(date => ({ date, revenue: dailyRevenueObj[date] }));
+
     // Fetch active subscriptions with user and plan details
     const { data: activeSubsData, error: activeSubsError } = await supabase
       .from('subscriptions')
@@ -184,7 +238,9 @@ export async function GET() {
       recentUsers: recentUsers || [],
       subscribers: subscribers || [],
       paidMembersList: paidMembersList || [],
-      freeMembersList: freeMembersList || []
+      freeMembersList: freeMembersList || [],
+      dailySignups,
+      dailyRevenue
     };
 
     console.log('Admin API - Success:', responseData);

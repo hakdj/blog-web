@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 const ADMIN_EMAILS = ['hakdjhakdj@gmail.com'];
 
@@ -47,6 +48,8 @@ interface AdminData {
   subscribers: Subscriber[];
   paidMembersList: Member[];
   freeMembersList: Member[];
+  dailyRevenue?: Array<{ date: string; revenue: number; }>;
+  dailySignups?: Array<{ date: string; signups: number; }>;
 }
 
 interface AiProviderMetric {
@@ -175,7 +178,9 @@ export default function AdminPage() {
         recentUsers: data.recentUsers || [],
         subscribers: data.subscribers || [],
         paidMembersList: data.paidMembersList || [],
-        freeMembersList: data.freeMembersList || []
+        freeMembersList: data.freeMembersList || [],
+        dailyRevenue: data.dailyRevenue || [],
+        dailySignups: data.dailySignups || []
       });
     } catch (error) {
       console.error('Admin - Error loading data:', error);
@@ -189,7 +194,9 @@ export default function AdminPage() {
         recentUsers: [],
         subscribers: [],
         paidMembersList: [],
-        freeMembersList: []
+        freeMembersList: [],
+        dailyRevenue: [],
+        dailySignups: []
       });
     }
   };
@@ -706,7 +713,7 @@ export default function AdminPage() {
               onClick={() => setShowRevenue(!showRevenue)}
               className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500 hover:bg-blue-50 transition-colors text-left cursor-pointer w-full"
             >
-              <h3 className="text-sm font-medium text-gray-500">총 매출</h3>
+              <h3 className="text-sm font-medium text-gray-500">누적 매출</h3>
               {showRevenue ? (
                 <>
                   <p className="text-3xl font-bold text-blue-600 mt-2">
@@ -729,6 +736,46 @@ export default function AdminPage() {
                 </>
               )}
             </button>
+          </div>
+        )}
+
+        {/* Charts Area */}
+        {adminData && activeTab === 'overview' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Signups Chart */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">최근 7일 신규 가입자</h2>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={adminData.dailySignups || []}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tick={{fontSize: 12}} />
+                    <YAxis allowDecimals={false} tick={{fontSize: 12}} />
+                    <Tooltip cursor={{fill: '#f3f4f6'}} contentStyle={{borderRadius: '8px'}} />
+                    <Bar dataKey="signups" name="가입자(명)" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Revenue Chart */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">최근 7일 일별 매출액</h2>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={adminData.dailyRevenue || []}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tick={{fontSize: 12}} />
+                    <YAxis tickFormatter={(val) => `₩${val.toLocaleString()}`} tick={{fontSize: 12}} />
+                    <Tooltip 
+                      formatter={(val: any) => [`₩${Number(val || 0).toLocaleString()}`, '매출']}
+                      contentStyle={{borderRadius: '8px'}} 
+                    />
+                    <Line type="monotone" dataKey="revenue" name="매출(원)" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: '#10b981'}} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
         )}
 

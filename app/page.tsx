@@ -88,9 +88,9 @@ export default async function HomePage() {
           {showCTA && (
             <Link
               href="/pricing"
-              className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
             >
-              🎮 지금 시작하기
+              <span>✨</span> 지금 시작하기
             </Link>
           )}
         </div>
