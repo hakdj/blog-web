@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 
-const ADMIN_EMAILS = ['hakdjhakdj@naver.com', 'hakdjhakdj@gmail.com'];
+const ADMIN_EMAILS = ['hakdjhakdj@gmail.com'];
 
 function isAdminEmail(email?: string | null) {
   return !!email && ADMIN_EMAILS.includes(email);

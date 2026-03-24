@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
-const ADMIN_EMAILS = ['hakdjhakdj@naver.com', 'hakdjhakdj@gmail.com'];
+const ADMIN_EMAILS = ['hakdjhakdj@gmail.com'];
 
 type AdStatus = 'pending' | 'active' | 'inactive' | 'rejected' | 'all';
 type DateRangePreset = '7d' | '30d' | '90d' | 'custom';

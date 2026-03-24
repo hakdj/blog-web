@@ -172,7 +172,7 @@ export default function Header() {
                 >
                   마이페이지
                 </Link>
-                {['hakdjhakdj@naver.com', 'hakdjhakdj@gmail.com'].includes(user.email || '') && (
+                {['hakdjhakdj@gmail.com'].includes(user.email || '') && (
                   <Link
                     href="/admin"
                     className="text-purple-600 hover:text-purple-800 font-bold"
