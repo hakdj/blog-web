@@ -90,6 +90,7 @@ export default function AdminPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showRevenue, setShowRevenue] = useState(false);
   const [showRevenueDetails, setShowRevenueDetails] = useState(false);
+  const [showCharts, setShowCharts] = useState(false);
   const [aiMetrics, setAiMetrics] = useState<AiProviderMetric[]>([]);
   const [eventSourceStatus, setEventSourceStatus] = useState<EventSourceStatus[]>([]);
   const [syncStatusLoading, setSyncStatusLoading] = useState(false);
@@ -741,41 +742,52 @@ export default function AdminPage() {
 
         {/* Charts Area */}
         {adminData && activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Signups Chart */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">최근 7일 신규 가입자</h2>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={adminData.dailySignups || []}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="date" tick={{fontSize: 12}} />
-                    <YAxis allowDecimals={false} tick={{fontSize: 12}} />
-                    <Tooltip cursor={{fill: '#f3f4f6'}} contentStyle={{borderRadius: '8px'}} />
-                    <Bar dataKey="signups" name="가입자(명)" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+          <div className="bg-white rounded-lg shadow mb-8">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center cursor-pointer" onClick={() => setShowCharts(!showCharts)}>
+              <h2 className="text-xl font-bold text-gray-900">상세 통계 차트 (최근 7일)</h2>
+              <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                {showCharts ? '통계 숨기기 ↑' : '통계 확인하기 ↓'}
+              </button>
             </div>
+            
+            {showCharts && (
+              <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Signups Chart */}
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                  <h3 className="text-md font-bold text-gray-800 mb-4">신규 가입자 추이</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={adminData.dailySignups || []}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="date" tick={{fontSize: 12}} />
+                        <YAxis allowDecimals={false} tick={{fontSize: 12}} />
+                        <Tooltip cursor={{fill: '#e5e7eb'}} contentStyle={{borderRadius: '8px'}} />
+                        <Bar dataKey="signups" name="가입자(명)" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
 
-            {/* Revenue Chart */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">최근 7일 일별 매출액</h2>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={adminData.dailyRevenue || []}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="date" tick={{fontSize: 12}} />
-                    <YAxis tickFormatter={(val) => `₩${val.toLocaleString()}`} tick={{fontSize: 12}} />
-                    <Tooltip 
-                      formatter={(val: any) => [`₩${Number(val || 0).toLocaleString()}`, '매출']}
-                      contentStyle={{borderRadius: '8px'}} 
-                    />
-                    <Line type="monotone" dataKey="revenue" name="매출(원)" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: '#10b981'}} />
-                  </LineChart>
-                </ResponsiveContainer>
+                {/* Revenue Chart */}
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                  <h3 className="text-md font-bold text-gray-800 mb-4">일별 매출액 추이</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={adminData.dailyRevenue || []}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="date" tick={{fontSize: 12}} />
+                        <YAxis tickFormatter={(val) => `₩${val.toLocaleString()}`} tick={{fontSize: 12}} />
+                        <Tooltip 
+                          formatter={(val: any) => [`₩${Number(val || 0).toLocaleString()}`, '매출']}
+                          contentStyle={{borderRadius: '8px'}} 
+                        />
+                        <Line type="monotone" dataKey="revenue" name="매출(원)" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: '#10b981'}} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
