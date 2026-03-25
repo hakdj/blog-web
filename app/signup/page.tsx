@@ -244,18 +244,17 @@ export default function SignupPage() {
       // Supabase 설정에서 이메일 확인이 비활성화되어 있으면 자동으로 확인된 상태
       // 확인이 필요한 경우에도 세션이 있으면 일단 대시보드로 이동
       if (data.session) {
-        // 세션이 있으면 바로 홈으로 이동
+        // 세션이 있으면 바로 홈으로 이동 (이메일 인증 OFF 상태)
         setMessage('회원가입이 완료되었습니다!');
         setTimeout(() => {
           router.push('/');
         }, 1000);
       } else if (data.user && !data.user.email_confirmed_at) {
-        // 세션이 없고 이메일 확인이 필요한 경우
-        // 하지만 일단 홈으로 이동 시도 (Supabase 설정에 따라 다를 수 있음)
-        setMessage('회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.');
+        // 세션이 없고 이메일 확인이 필요한 경우 (이메일 인증 ON 상태)
+        setMessage('🎉 회원가입 신청 완료! 이메일 주소로 전송된 인증 링크를 확인해주세요.');
         setTimeout(() => {
-          router.push('/login?message=회원가입이 완료되었습니다. 로그인해주세요.');
-        }, 2000);
+          router.push('/login?message=이메일 인증 링크를 확인한 후 로그인해주세요.');
+        }, 3000);
       } else {
         // 이미 확인된 경우
         setMessage('회원가입이 완료되었습니다!');
