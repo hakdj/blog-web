@@ -228,15 +228,14 @@ export default async function HomePage() {
             💖 지금 가장 뜨거운 추억들
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {popularDiary && (
+            {popularDiary && popularDiary.id ? ( // Check if popularDiary and its ID exist
               <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-yellow-100 flex flex-col items-center justify-center text-center">
                 <div className="text-6xl mb-4">🔥</div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">인기 공개 일기</h3>
                 <p className="text-gray-600 mb-4 line-clamp-2">{popularDiary.title}: {popularDiary.content}</p>
                 <Link href={`/diary/${popularDiary.id}`} className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
               </div>
-            )}
-            {!popularDiary && ( // Placeholder if no diary entry
+            ) : ( // Render placeholder if no valid popularDiary or ID
                 <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-yellow-100 flex flex-col items-center justify-center text-center">
                     <div className="text-6xl mb-4">🔥</div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">인기 공개 일기</h3>
