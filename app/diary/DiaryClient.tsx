@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -81,6 +82,7 @@ export default function DiaryClient({ isPremium = false }: { isPremium?: boolean
       }
       setEntries(data.entries || []);
     } catch (err) {
+      console.error('DiaryClient: Error loading entries:', err);
       setError((err as Error).message);
     } finally {
       setLoading(false);
@@ -121,6 +123,7 @@ export default function DiaryClient({ isPremium = false }: { isPremium?: boolean
       resetForm();
       await loadEntries();
     } catch (err) {
+      console.error('DiaryClient: Error submitting entry:', err);
       setError((err as Error).message);
     } finally {
       setSaving(false);
@@ -149,6 +152,7 @@ export default function DiaryClient({ isPremium = false }: { isPremium?: boolean
       }
       await loadEntries();
     } catch (err) {
+      console.error('DiaryClient: Error deleting entry:', err);
       setError((err as Error).message);
     }
   };
@@ -186,6 +190,7 @@ export default function DiaryClient({ isPremium = false }: { isPremium?: boolean
         }
       }
     } catch (err) {
+      console.error('DiaryClient: Error generating AI draft:', err);
       setError((err as Error).message);
     } finally {
       setAiLoading(false);
@@ -221,7 +226,8 @@ export default function DiaryClient({ isPremium = false }: { isPremium?: boolean
       await fetch(`/api/upload/diary-image?url=${encodeURIComponent(url)}`, {
         method: 'DELETE',
       });
-    } catch {
+    } catch (err) {
+      console.error('DiaryClient: Error removing image:', err);
       // ignore
     }
     setImageUrls((prev) => prev.filter((u) => u !== url));

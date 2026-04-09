@@ -43,6 +43,14 @@ export default async function HomePage() {
     .limit(1)
     .maybeSingle();
 
+  if (diaryError) {
+    console.error('HomePage: Error fetching popular diary:', diaryError);
+  } else if (!popularDiary) {
+    console.log('HomePage: No popular diary found.');
+  } else {
+    console.log('HomePage: Fetched popular diary:', popularDiary);
+  }
+
   // 추천 유저 광고 가져오기 (활성 광고 1개)
   const { data: featuredAd, error: adError } = await supabase
     .from('user_ads')
