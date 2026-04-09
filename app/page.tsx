@@ -33,6 +33,24 @@ export default async function HomePage() {
     }
   }
 
+  // 인기 공개 일기 가져오기 (최신 공개 일기 1개)
+  const { data: popularDiary, error: diaryError } = await supabase
+    .from('diary_entries')
+    .select('id, title, content')
+    .eq('visibility', 'public')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // 추천 유저 광고 가져오기 (활성 광고 1개)
+  const { data: featuredAd, error: adError } = await supabase
+    .from('user_ads')
+    .select('id, title, description, image_url, link_url')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   // 로그인 안 했거나, 로그인했지만 구독 없으면 CTA 표시
   const showCTA = !user || !hasSubscription;
 
@@ -187,25 +205,48 @@ export default async function HomePage() {
             💖 지금 가장 뜨거운 추억들
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Placeholder for Popular Diary/Game Rankings */}
-            <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-yellow-100 flex flex-col items-center justify-center text-center">
-              <div className="text-6xl mb-4">🔥</div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">인기 공개 일기</h3>
-              <p className="text-gray-600 mb-4">지금 사람들이 가장 많이 읽고 공감하는 일기들을 만나보세요.</p>
-              <Link href="/diary?scope=public" className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
-            </div>
+            {popularDiary && (
+              <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-yellow-100 flex flex-col items-center justify-center text-center">
+                <div className="text-6xl mb-4">🔥</div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">인기 공개 일기</h3>
+                <p className="text-gray-600 mb-4 line-clamp-2">{popularDiary.title}: {popularDiary.content}</p>
+                <Link href={`/diary/${popularDiary.id}`} className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
+              </div>
+            )}
+            {!popularDiary && ( // Placeholder if no diary entry
+                <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-yellow-100 flex flex-col items-center justify-center text-center">
+                    <div className="text-6xl mb-4">🔥</div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">인기 공개 일기</h3>
+                    <p className="text-gray-600 mb-4">아직 인기 공개 일기가 없습니다. 첫 일기를 작성해보세요!</p>
+                    <Link href="/diary?scope=public" className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
+                </div>
+            )}
+
+            {/* Best Gamer Ranking - Placeholder */}
             <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-green-100 flex flex-col items-center justify-center text-center">
               <div className="text-6xl mb-4">🏆</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">베스트 게이머 랭킹</h3>
               <p className="text-gray-600 mb-4">최고 점수를 달성한 게임 고수들의 명단입니다!</p>
               <Link href="/games" className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
             </div>
-            <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-pink-100 flex flex-col items-center justify-center text-center">
-              <div className="text-6xl mb-4">📣</div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">추천 유저 광고</h3>
-              <p className="text-gray-600 mb-4">유료 회원들이 직접 등록한 흥미로운 광고를 둘러보세요.</p>
-              <Link href="/ads" className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
-            </div>
+
+            {featuredAd && (
+              <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-pink-100 flex flex-col items-center justify-center text-center">
+                <div className="text-6xl mb-4">📣</div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">추천 유저 광고</h3>
+                {featuredAd.image_url && <img src={featuredAd.image_url} alt={featuredAd.title} className="w-24 h-24 object-cover rounded-lg mb-3" />}
+                <p className="text-gray-600 mb-4 line-clamp-2">{featuredAd.description}</p>
+                <Link href={featuredAd.link_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
+              </div>
+            )}
+            {!featuredAd && ( // Placeholder if no featured ad
+                <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-pink-100 flex flex-col items-center justify-center text-center">
+                    <div className="text-6xl mb-4">📣</div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">추천 유저 광고</h3>
+                    <p className="text-gray-600 mb-4">아직 추천 유저 광고가 없습니다. 첫 광고를 등록해보세요!</p>
+                    <Link href="/ads" className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
+                </div>
+            )}
           </div>
         </div>
 
