@@ -19,14 +19,18 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('diary_entries')
       .select('*')
-      .order('entry_date', { ascending: false })
-      .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (scope === 'public') {
-      query = query.eq('visibility', 'public');
+      query = query
+        .eq('visibility', 'public')
+        .order('views', { ascending: false, nullsFirst: false }) // Sort by views descending
+        .order('created_at', { ascending: false }); // Fallback sort
     } else {
-      query = query.eq('user_id', user.id);
+      query = query
+        .eq('user_id', user.id)
+        .order('entry_date', { ascending: false })
+        .order('created_at', { ascending: false });
     }
 
     if (q) {

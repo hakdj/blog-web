@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const { id } = await context.params;
     const { data, error } = await supabase
       .from('diary_entries')
-      .select('*')
+      .select('*, views') // Select views column
       .eq('id', id)
       .maybeSingle();
 
@@ -22,6 +22,15 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     }
     if (!data) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    // Increment views for public diaries
+    if (data.visibility === 'public') {
+      const newViews = (data.views || 0) + 1;
+      await supabase
+        .from('diary_entries')
+        .update({ views: newViews })
+        .eq('id', id);
     }
 
     return NextResponse.json({ entry: data });
@@ -105,7 +114,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       .eq('id', id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Internal server error: ' + error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

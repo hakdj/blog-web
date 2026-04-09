@@ -38,7 +38,8 @@ export default async function HomePage() {
     .from('diary_entries')
     .select('id, title, content')
     .eq('visibility', 'public')
-    .order('created_at', { ascending: false })
+    .order('views', { ascending: false, nullsFirst: false }) // Sort by views descending
+    .order('created_at', { ascending: false }) // Fallback sort
     .limit(1)
     .maybeSingle();
 
@@ -50,6 +51,20 @@ export default async function HomePage() {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  // 베스트 게이머 랭킹 가져오기 (최고 점수 1개)
+  let topRanker: any = null;
+  try {
+    // Note: process.env.NEXT_PUBLIC_APP_URL이 Vercel 환경 변수에 설정되어 있어야 합니다.
+    // 로컬 개발 환경에서는 http://localhost:3000 으로 작동합니다.
+    const rankingResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/games/ranking?limit=1`);
+    const rankingData = await rankingResponse.json();
+    if (rankingResponse.ok && rankingData.rankings && rankingData.rankings.length > 0) {
+      topRanker = rankingData.rankings[0];
+    }
+  } catch (e) {
+    console.error('Error fetching top ranker:', e);
+  }
 
   // 로그인 안 했거나, 로그인했지만 구독 없으면 CTA 표시
   const showCTA = !user || !hasSubscription;
@@ -222,13 +237,24 @@ export default async function HomePage() {
                 </div>
             )}
 
-            {/* Best Gamer Ranking - Placeholder */}
-            <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-green-100 flex flex-col items-center justify-center text-center">
-              <div className="text-6xl mb-4">🏆</div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">베스트 게이머 랭킹</h3>
-              <p className="text-gray-600 mb-4">최고 점수를 달성한 게임 고수들의 명단입니다!</p>
-              <Link href="/games" className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
-            </div>
+            {topRanker && (
+              <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-green-100 flex flex-col items-center justify-center text-center">
+                <div className="text-6xl mb-4">🏆</div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">베스트 게이머 랭킹</h3>
+                <p className="text-gray-600 mb-4">
+                  {topRanker.nickname} 님: {topRanker.best_score.toLocaleString()}점 ({topRanker.game_id})
+                </p>
+                <Link href="/games" className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
+              </div>
+            )}
+            {!topRanker && ( // Placeholder if no top ranker
+                <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-green-100 flex flex-col items-center justify-center text-center">
+                    <div className="text-6xl mb-4">🏆</div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">베스트 게이머 랭킹</h3>
+                    <p className="text-gray-600 mb-4">아직 베스트 게이머가 없습니다. 첫 기록을 세워보세요!</p>
+                    <Link href="/games" className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
+                </div>
+            )}
 
             {featuredAd && (
               <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-pink-100 flex flex-col items-center justify-center text-center">
