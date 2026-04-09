@@ -163,55 +163,9 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        {/* Premium Subscription Emphasis Section - 유료 구독 강조 */}
-        {!hasSubscription && (
-          <div className="bg-gradient-to-r from-teal-500 to-cyan-600 rounded-3xl shadow-2xl p-12 text-center text-white mb-16">
-            <h2 className="text-4xl font-bold mb-4">
-              💎 프리미엄 구독으로 모든 추억을 무제한으로!
-            </h2>
-            <p className="text-xl mb-8 opacity-90">
-              AI 일기 분석, 전체 레트로 게임, 나만의 광고 등록까지!
-            </p>
-            <Link
-              href="/pricing"
-              className="inline-block bg-white text-teal-600 px-8 py-4 rounded-full text-lg font-bold hover:bg-gray-100 transition-colors"
-            >
-              프리미엄 요금제 보기
-            </Link>
-          </div>
-        )}
-
-        {/* Social Proof Section - 사회적 증명 (인기 콘텐츠) */}
-        <div className="mb-16">
-          <h2 className="text-3xl font-bold text-gray-900 text-center mb-10">
-            💖 지금 가장 뜨거운 추억들
-          </h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Placeholder for Popular Diary/Game Rankings */}
-            <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-yellow-100 flex flex-col items-center justify-center text-center">
-              <div className="text-6xl mb-4">🔥</div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">인기 공개 일기</h3>
-              <p className="text-gray-600 mb-4">지금 사람들이 가장 많이 읽고 공감하는 일기들을 만나보세요.</p>
-              <Link href="/diary?scope=public" className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
-            </div>
-            <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-green-100 flex flex-col items-center justify-center text-center">
-              <div className="text-6xl mb-4">🏆</div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">베스트 게이머 랭킹</h3>
-              <p className="text-gray-600 mb-4">최고 점수를 달성한 게임 고수들의 명단입니다!</p>
-              <Link href="/games" className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
-            </div>
-            <div className="bg-white rounded-2xl shadow-lg p-8 border-4 border-pink-100 flex flex-col items-center justify-center text-center">
-              <div className="text-6xl mb-4">📣</div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">추천 유저 광고</h3>
-              <p className="text-gray-600 mb-4">유료 회원들이 직접 등록한 흥미로운 광고를 둘러보세요.</p>
-              <Link href="/ads" className="text-blue-600 hover:underline font-medium">더 보기 →</Link>
-            </div>
-          </div>
-        </div>
-
         {/* CTA Section - 로그인 안 했거나 구독 없을 때만 표시 */}
         {showCTA && (
-          <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 rounded-3xl shadow-2xl p-12 text-center text-white mb-16">
+          <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 rounded-3xl shadow-2xl p-12 text-center text-white">
             <h2 className="text-4xl font-bold mb-4">
               🎉 지금 가입하고 추억을 되살려보세요!
             </h2>
