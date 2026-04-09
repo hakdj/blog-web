@@ -2,7 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 
 type LogInput = {
   userId: string;
-  feature: 'assistant_chat' | 'assistant_summary' | 'diary_draft';
+  feature: 'assistant_chat' | 'assistant_summary' | 'diary_draft' | 'diary_analysis';
   provider: 'openai' | 'anthropic' | 'google';
   model: string;
   statusCode: number;
