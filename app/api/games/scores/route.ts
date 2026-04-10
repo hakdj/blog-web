@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-const ALLOWED_GAME_IDS = new Set(['dino', '2048']);
+const ALLOWED_GAME_IDS = new Set(['tetris', 'pacman', 'space-invaders', 'minesweeper', '2048', 'dino']);
 
 export async function GET() {
   try {

@@ -56,6 +56,22 @@ export default function GameHubClient({ isPremium = false }: { isPremium?: boole
   };
 
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && activeGame) {
+        // 창이 다시 활성화되면 현재 게임 프레임에 포커스 시도
+        setTimeout(() => focusFrame(activeGame), 100);
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [activeGame]);
+
+  useEffect(() => {
     const loadScores = async () => {
       try {
         const response = await fetch('/api/games/scores');
@@ -151,12 +167,12 @@ export default function GameHubClient({ isPremium = false }: { isPremium?: boole
       </div>
 
       {activeGame === 'tetris' && (
-        <div className="rounded-xl border border-gray-700 bg-gray-900/90 shadow-2xl p-6 flex flex-col items-center gap-2">
-          <div className="w-[720px] h-[540px]" onClick={() => focusFrame('tetris')}>
+        <div className="rounded-xl border border-gray-700 bg-gray-900/90 shadow-2xl p-6 flex flex-col items-center gap-2 overflow-hidden">
+          <div className="w-full max-w-[900px] aspect-[4/3] flex justify-center items-center" onClick={() => focusFrame('tetris')}>
             <iframe
               title="react-tetris"
               src="/games/tetris/index.html"
-              className="w-[720px] h-[540px] border-0 rounded-lg"
+              className="w-full h-full border-0 rounded-lg"
               ref={(el) => {
                 iframeRefs.current.tetris = el;
               }}
