@@ -53,3 +53,4 @@ CREATE POLICY "Users can delete their own diary insights" ON public.diary_insigh
 --   FOR SELECT
 --   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = TRUE));
 
+

@@ -95,12 +95,23 @@ export default function GameHubClient({ isPremium = false }: { isPremium?: boole
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       const payload = event.data as { type?: string; gameId?: string; score?: number };
+      
+      console.log('🎮 Game Message Received:', payload);
+
       if (!payload || payload.type !== 'GAME_SCORE' || !payload.gameId) return;
 
       const gameId = String(payload.gameId);
       const score = Math.max(0, Math.floor(Number(payload.score || 0)));
+      
+      console.log(`📊 Game Score Update attempt - Game: ${gameId}, Score: ${score}`);
+
       const prev = lastSyncedRef.current[gameId] || 0;
-      if (!Number.isFinite(score) || score <= prev) return;
+      if (!Number.isFinite(score) || score <= prev) {
+          console.log(`⏭️ Score not higher than previous (${prev}), skipping sync.`);
+          return;
+      }
+
+      console.log(`🚀 New High Score! Syncing to server: ${score}`);
 
       lastSyncedRef.current[gameId] = score;
       setBestScores((old) => ({ ...old, [gameId]: Math.max(old[gameId] || 0, score) }));
@@ -110,7 +121,12 @@ export default function GameHubClient({ isPremium = false }: { isPremium?: boole
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ game_id: gameId, score }),
         keepalive: true,
-      }).catch(() => {});
+      }).then(res => {
+          if (res.ok) console.log('✅ Score successfully saved to server.');
+          else console.error('❌ Failed to save score to server:', res.statusText);
+      }).catch((err) => {
+          console.error('❌ Error during score sync:', err);
+      });
     };
 
     window.addEventListener('message', onMessage);
@@ -168,7 +184,7 @@ export default function GameHubClient({ isPremium = false }: { isPremium?: boole
 
       {activeGame === 'tetris' && (
         <div className="rounded-xl border border-gray-700 bg-gray-900/90 shadow-2xl p-6 flex flex-col items-center gap-2 overflow-hidden">
-          <div className="w-full max-w-[900px] aspect-[4/3] flex justify-center items-center" onClick={() => focusFrame('tetris')}>
+          <div className="w-full max-w-[900px] aspect-[4/4.5] flex justify-center items-center" onClick={() => focusFrame('tetris')}>
             <iframe
               title="react-tetris"
               src="/games/tetris/index.html"
