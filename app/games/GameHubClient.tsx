@@ -175,11 +175,9 @@ export default function GameHubClient({ isPremium = false }: { isPremium?: boole
         <p className="text-sm font-semibold text-lime-200">{GAME_DESCRIPTIONS[activeGame]?.title}</p>
         <p className="text-sm text-gray-300 mt-1">{GAME_DESCRIPTIONS[activeGame]?.desc}</p>
         <p className="text-xs text-gray-400 mt-2">{GAME_DESCRIPTIONS[activeGame]?.controls}</p>
-        {(activeGame === 'dino' || activeGame === '2048') && (
-          <p className="text-xs text-amber-300 mt-2">
-            내 최고점: <span className="font-semibold">{(bestScores[activeGame] || 0).toLocaleString()}</span>
-          </p>
-        )}
+        <p className="text-xs text-amber-300 mt-2">
+          내 최고점: <span className="font-semibold">{(bestScores[activeGame] || 0).toLocaleString()}</span>
+        </p>
       </div>
 
       {activeGame === 'tetris' && (

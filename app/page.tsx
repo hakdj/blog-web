@@ -63,15 +63,27 @@ export default async function HomePage() {
   // 베스트 게이머 랭킹 가져오기 (최고 점수 1개)
   let topRanker: any = null;
   try {
-    // Note: process.env.NEXT_PUBLIC_APP_URL이 Vercel 환경 변수에 설정되어 있어야 합니다.
-    // 로컬 개발 환경에서는 http://localhost:3000 으로 작동합니다.
-    const rankingResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/games/ranking?limit=1`);
-    const rankingData = await rankingResponse.json();
-    if (rankingResponse.ok && rankingData.rankings && rankingData.rankings.length > 0) {
-      topRanker = rankingData.rankings[0];
+    const { data: rankingData, error: rankingError } = await supabase
+      .from('game_high_scores')
+      .select(`
+        best_score,
+        game_id,
+        profiles!game_high_scores_user_id_fkey (nickname, email)
+      `)
+      .order('best_score', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!rankingError && rankingData) {
+      const profile = Array.isArray(rankingData.profiles) ? rankingData.profiles[0] : rankingData.profiles;
+      topRanker = {
+        nickname: profile?.nickname || profile?.email || 'Unknown',
+        best_score: rankingData.best_score,
+        game_id: rankingData.game_id
+      };
     }
   } catch (e) {
-    console.error('Error fetching top ranker:', e);
+    console.error('HomePage: Error fetching top ranker from DB:', e);
   }
 
   // 로그인 안 했거나, 로그인했지만 구독 없으면 CTA 표시
