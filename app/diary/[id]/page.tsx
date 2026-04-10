@@ -8,10 +8,9 @@ interface DiaryEntryPageProps {
 }
 
 export default async function DiaryEntryPage({ params }: DiaryEntryPageProps) {
+  const { id } = await params; // await params
   const user = await requireAuth(); // 로그인 필수
   const supabase = await createClient();
-
-  const { id } = params;
 
   const { data: entry, error } = await supabase
     .from('diary_entries')
