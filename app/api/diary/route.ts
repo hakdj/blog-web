@@ -18,7 +18,12 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('diary_entries')
-      .select('*')
+      .select(`
+        *,
+        profiles (
+          nickname
+        )
+      `)
       .range(offset, offset + limit - 1);
 
     if (scope === 'public') {
@@ -39,10 +44,17 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
     if (error) {
+      console.error('API Diary GET: Error fetching entries:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ entries: data || [] });
+    // 데이터 가공 (profiles 정보에서 닉네임 추출)
+    const entries = data?.map((entry: any) => ({
+      ...entry,
+      author_nickname: entry.profiles?.nickname || '익명'
+    })) || [];
+
+    return NextResponse.json({ entries });
   } catch (error) {
     return NextResponse.json(
       { error: 'Internal server error: ' + (error as Error).message },
