@@ -182,7 +182,7 @@ export default function GameHubClient({ isPremium = false }: { isPremium?: boole
 
       {activeGame === 'tetris' && (
         <div className="rounded-xl border border-gray-700 bg-gray-900/90 shadow-2xl p-6 flex flex-col items-center gap-2 overflow-hidden">
-          <div className="w-full max-w-[900px] aspect-[4/4.5] flex justify-center items-center" onClick={() => focusFrame('tetris')}>
+          <div className="w-full max-w-[600px] aspect-[4/4.5] flex justify-center items-center" onClick={() => focusFrame('tetris')}>
             <iframe
               title="react-tetris"
               src="/games/tetris/index.html"
