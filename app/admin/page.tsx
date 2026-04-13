@@ -86,7 +86,7 @@ export default function AdminPage() {
   const [paymentMode, setPaymentMode] = useState<'test' | 'live'>('test');
   const [syncingEvents, setSyncingEvents] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
-  const [subscriptionHistory, setSubscriptionHistory] = useState<any[]>([]);
+  const [subscriptionHistory, setSubscriptionHistory] = useState<unknown[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showRevenue, setShowRevenue] = useState(false);
   const [showRevenueDetails, setShowRevenueDetails] = useState(false);
@@ -1086,7 +1086,7 @@ export default function AdminPage() {
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 mb-1">PG 설정 확인</h3>
-                      <p className="text-sm text-gray-600">좌측 메뉴 → "PG 설정" 또는 "결제 대행사" 클릭</p>
+                      <p className="text-sm text-gray-600">좌측 메뉴 → &quot;PG 설정&quot; 또는 &quot;결제 대행사&quot; 클릭</p>
                     </div>
                   </div>
 
@@ -1100,15 +1100,15 @@ export default function AdminPage() {
                       <div className="text-sm space-y-1">
                         <div className="flex items-center space-x-2">
                           <span className="text-green-600">✓</span>
-                          <span className="text-gray-600">"승인됨" 또는 "활성" → 실제 결제 가능</span>
+                          <span className="text-gray-600">&quot;승인됨&quot; 또는 &quot;활성&quot; → 실제 결제 가능</span>
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className="text-yellow-600">⚠</span>
-                          <span className="text-gray-600">"대기중" → 승인 대기 (3-5일 소요)</span>
+                          <span className="text-gray-600">&quot;대기중&quot; → 승인 대기 (3-5일 소요)</span>
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className="text-red-600">✗</span>
-                          <span className="text-gray-600">"미계약" → PG사 신청 필요</span>
+                          <span className="text-gray-600">&quot;미계약&quot; → PG사 신청 필요</span>
                         </div>
                       </div>
                     </div>
@@ -1120,7 +1120,7 @@ export default function AdminPage() {
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 mb-1">연동 모드 확인</h3>
-                      <p className="text-sm text-gray-600">채널 관리 → 연동 정보에서 "테스트" 또는 "실연동" 모드 확인</p>
+                      <p className="text-sm text-gray-600">채널 관리 → 연동 정보에서 &quot;테스트&quot; 또는 &quot;실연동&quot; 모드 확인</p>
                     </div>
                   </div>
                 </div>
