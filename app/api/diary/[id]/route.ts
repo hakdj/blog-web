@@ -7,7 +7,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
     const { id } = await context.params;
@@ -18,10 +18,11 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('API Diary GET by ID: Error fetching entry:', error);
+      return NextResponse.json({ error: '일기를 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
     }
     if (!data) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      return NextResponse.json({ error: '요청하신 일기를 찾을 수 없습니다.' }, { status: 404 });
     }
 
     // Increment views for public diaries
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     return NextResponse.json({ entry: data });
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal server error: ' + (error as Error).message },
+      { error: '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
       { status: 500 }
     );
   }
@@ -47,7 +48,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
     const subscription = await getActiveSubscription();
@@ -82,13 +83,14 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("API Diary PUT by ID: Error updating entry:", error);
+      return NextResponse.json({ error: "일기 수정 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." }, { status: 500 });
     }
 
     return NextResponse.json({ entry: data });
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal server error: ' + (error as Error).message },
+      { error: '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
       { status: 500 }
     );
   }
@@ -99,7 +101,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
     const subscription = await getActiveSubscription();
@@ -114,13 +116,14 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       .eq('id', id);
 
     if (error) {
-      return NextResponse.json({ error: 'Internal server error: ' + error.message }, { status: 500 });
+      console.error('API Diary DELETE by ID: Error deleting entry:', error);
+      return NextResponse.json({ error: '일기 삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal server error: ' + (error as Error).message },
+      { error: '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
       { status: 500 }
     );
   }

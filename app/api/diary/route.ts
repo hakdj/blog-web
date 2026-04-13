@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
     if (error) {
       console.error('API Diary GET: Error fetching entries:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: '데이터 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
     }
 
     // 데이터 가공 (profiles 정보에서 닉네임 추출)
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ entries });
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal server error: ' + (error as Error).message },
+      { error: '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
       { status: 500 }
     );
   }
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
     const subscription = await getActiveSubscription();
@@ -111,13 +111,13 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: '데이터 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
     }
 
     return NextResponse.json({ entry: data });
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal server error: ' + (error as Error).message },
+      { error: '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
       { status: 500 }
     );
   }
