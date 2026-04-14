@@ -12,7 +12,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
     const { data, error } = await supabase
@@ -25,13 +25,13 @@ export async function GET() {
       if ((error as { code?: string }).code === '42P01') {
         return NextResponse.json({ scores: [] });
       }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: '점수 정보를 불러오거나 저장하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
     }
 
     return NextResponse.json({ scores: data || [] });
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal server error: ' + (error as Error).message },
+      { error: '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
       { status: 500 }
     );
   }
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -92,13 +92,13 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: '점수 정보를 불러오거나 저장하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
     }
 
     return NextResponse.json({ score: data });
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal server error: ' + (error as Error).message },
+      { error: '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
       { status: 500 }
     );
   }
