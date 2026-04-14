@@ -179,6 +179,7 @@ export default function GameHubClient({ isPremium = false }: { isPremium?: boole
         <p className="text-xs text-amber-300 mt-2">
           내 최고점: <span className="font-semibold">{(bestScores[activeGame] || 0).toLocaleString()}</span>
         </p>
+        <p className="text-xs text-gray-500 mt-1">이 점수는 이전 최고 점수보다 높을 때만 갱신됩니다.</p>
       </div>
 
       {activeGame === 'tetris' && (
