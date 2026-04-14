@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -93,27 +94,21 @@ export default function GameHubClient({ isPremium = false }: { isPremium?: boole
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      console.log('--- GameHubClient: Raw message event received ---', event);
       if (event.origin !== window.location.origin) return;
       const payload = event.data as { type?: string; gameId?: string; score?: number };
       
-      console.log('🎮 Game Message Received:', payload);
+      console.log(`🎮 Game Message Received: type=${payload.type}, gameId=${payload.gameId}, score=${payload.score}`); // Reverted to simpler log
 
-      if (!payload || payload.type !== 'GAME_SCORE' || !payload.gameId) {
-        console.log('⏭️ Message not a valid GAME_SCORE payload, skipping.', payload);
-        return;
-      }
+      if (!payload || payload.type !== 'GAME_SCORE' || !payload.gameId) return;
 
       const gameId = String(payload.gameId);
       const score = Math.max(0, Math.floor(Number(payload.score || 0)));
       
-      console.log(`📊 Game Score Update attempt - Game: ${gameId}, Processed Score: ${score}`);
+      console.log(`📊 Game Score Update attempt - Game: ${gameId}, Score: ${score}`);
 
       const prev = lastSyncedRef.current[gameId] || 0;
-      console.log(`Current best score in client state for ${gameId}: ${prev}`);
-
       if (!Number.isFinite(score) || score <= prev) {
-          console.log(`⏭️ Score (${score}) is not higher than previous best (${prev}), skipping sync.`);
+          console.log(`⏭️ Score not higher than previous (${prev}), skipping sync.`);
           return;
       }
 
@@ -128,14 +123,8 @@ export default function GameHubClient({ isPremium = false }: { isPremium?: boole
         body: JSON.stringify({ game_id: gameId, score }),
         keepalive: true,
       }).then(res => {
-          if (res.ok) {
-            console.log('✅ Score successfully saved to server.');
-            res.json().then(data => console.log('Server response data:', data));
-          }
-          else {
-            console.error('❌ Failed to save score to server:', res.statusText);
-            res.text().then(text => console.error('Server error response body:', text));
-          }
+          if (res.ok) console.log('✅ Score successfully saved to server.');
+          else console.error('❌ Failed to save score to server:', res.statusText);
       }).catch((err) => {
           console.error('❌ Error during score sync:', err);
       });
