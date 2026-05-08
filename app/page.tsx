@@ -60,6 +60,40 @@ export default async function HomePage() {
     .limit(1)
     .maybeSingle();
 
+  // 최신 축제 리스트 가져오기 (최대 3개)
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  const { data: recentEvents, error: eventsError } = await supabase
+    .from('events')
+    .select('id, title, start_date, end_date, region')
+    .eq('is_active', true)
+    .or(`end_date.gte.${today},end_date.is.null`)
+    .order('start_date', { ascending: true })
+    .limit(3);
+
+  if (eventsError) {
+    console.error('HomePage: Error fetching recent events:', eventsError);
+  } else if (!recentEvents || recentEvents.length === 0) {
+    console.log('HomePage: No recent events found.');
+  } else {
+    console.log('HomePage: Fetched recent events:', recentEvents);
+  }
+  
+  // 구멍가게 신제품/인기 제품 리스트 가져오기 (최대 3개)
+  const { data: recentProducts, error: productsError } = await supabase
+    .from('products')
+    .select('id, name, description, price, image_url')
+    .eq('is_active', true) // 가정: 활성 제품만 가져옴
+    .order('created_at', { ascending: false }) // 최신 제품 순
+    .limit(3);
+
+  if (productsError) {
+    console.error('HomePage: Error fetching recent products:', productsError);
+  } else if (!recentProducts || recentProducts.length === 0) {
+    console.log('HomePage: No recent products found.');
+  } else {
+    console.log('HomePage: Fetched recent products:', recentProducts);
+  }
+
   // 베스트 게이머 랭킹 가져오기 (최고 점수 1개)
   let topRanker: any = null;
   try {
@@ -81,7 +115,7 @@ export default async function HomePage() {
         best_score: rankingData.best_score,
         game_id: rankingData.game_id
       };
-    }
+    } 
   } catch (e) {
     console.error('HomePage: Error fetching top ranker from DB:', e);
   }
@@ -216,6 +250,81 @@ export default async function HomePage() {
           </Link>
         </div>
 
+        {/* Features List (Moved Here) */}
+        <div className="mt-16 grid md:grid-cols-3 gap-8 mb-16"> {/* Added mb-16 for spacing */}
+          <div className="text-center">
+            <div className="text-5xl mb-4">✨</div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              90년대 감성
+            </h3>
+            <p className="text-gray-600">
+              그때 그 시절의 향수를 느껴보세요
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="text-5xl mb-4">🎯</div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              다양한 콘텐츠
+            </h3>
+            <p className="text-gray-600">
+              게임, 제품, 이벤트를 한 곳에서
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="text-5xl mb-4">💝</div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              합리적인 가격
+            </h3>
+            <p className="text-gray-600">
+              합리적인 요금으로 무제한 이용
+            </p>
+          </div>
+        </div>
+
+        {/* Recent Events Section - 신상 축제 리스트 */}
+        {recentEvents && recentEvents.length > 0 && (
+          <div className="mb-16">
+            <h2 className="text-3xl font-bold text-gray-900 text-center mb-10">
+              🎉 놓치지 마세요! 최신 축제
+            </h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {recentEvents.map((event) => (
+                <Link key={event.id} href={`/events`} className="block">
+                  <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-dashed border-purple-100 cursor-pointer">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-1">{event.title}</h3>
+                    <p className="text-sm text-gray-600 mb-1">{event.region} | {event.start_date}{event.end_date ? ` ~ ${event.end_date}` : ''}</p>
+                    <p className="text-xs text-purple-600 font-medium">자세히 보기 →</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Products Section - 구멍가게 신제품 */}
+        {recentProducts && recentProducts.length > 0 && (
+          <div className="mb-16">
+            <h2 className="text-3xl font-bold text-gray-900 text-center mb-10">
+              🛒 새로 나왔어요! 구멍가게 신제품
+            </h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {recentProducts.map((product) => (
+                <Link key={product.id} href={`/products`} className="block">
+                  <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-dashed border-yellow-100 cursor-pointer flex flex-col items-center text-center">
+                    {product.image_url && (
+                      <img src={product.image_url} alt={product.name} className="w-24 h-24 object-cover rounded-lg mb-3" />
+                    )}
+                    <h3 className="text-xl font-bold text-gray-900 mb-1 line-clamp-1">{product.name}</h3>
+                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">{product.description}</p>
+                    <p className="text-lg font-bold text-yellow-700">₩{product.price?.toLocaleString()}</p>
+                    <p className="text-xs text-yellow-600 font-medium mt-2">자세히 보기 →</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Premium Subscription Emphasis Section - 유료 구독 강조 */}
         {!hasSubscription && (
           <div className="bg-gradient-to-r from-teal-500 to-cyan-600 rounded-3xl shadow-2xl p-12 text-center text-white mb-16">
@@ -322,37 +431,6 @@ export default async function HomePage() {
             </div>
           </div>
         )}
-
-        {/* Features List */}
-        <div className="mt-16 grid md:grid-cols-3 gap-8">
-          <div className="text-center">
-            <div className="text-5xl mb-4">✨</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              90년대 감성
-            </h3>
-            <p className="text-gray-600">
-              그때 그 시절의 향수를 느껴보세요
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="text-5xl mb-4">🎯</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              다양한 콘텐츠
-            </h3>
-            <p className="text-gray-600">
-              게임, 제품, 이벤트를 한 곳에서
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="text-5xl mb-4">💝</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              합리적인 가격
-            </h3>
-            <p className="text-gray-600">
-              합리적인 요금으로 무제한 이용
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );
