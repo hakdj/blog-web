@@ -155,7 +155,7 @@ export default async function HomePage() {
             <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer border-4 border-purple-200">
               <div className="text-6xl mb-4 text-center">🎮</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-                그때 그 게임
+                레트로 게임
               </h3>
               <p className="text-gray-600 text-center">
                 추억의 레트로 게임
@@ -168,7 +168,7 @@ export default async function HomePage() {
             <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer border-4 border-pink-200">
               <div className="text-6xl mb-4 text-center">📅</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-                요즘 뭐해?
+                축제
               </h3>
               <p className="text-gray-600 text-center">
                 이벤트/축제 일정
@@ -181,7 +181,7 @@ export default async function HomePage() {
             <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer border-4 border-yellow-200">
               <div className="text-6xl mb-4 text-center">🏪</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-                구멍가게
+                레트로 상점
               </h3>
               <p className="text-gray-600 text-center">
                 추억의 물건 대여
@@ -194,7 +194,7 @@ export default async function HomePage() {
             <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer border-4 border-green-200">
               <div className="text-6xl mb-4 text-center">📔</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-                추억의 일기장
+                일기장
               </h3>
               <p className="text-gray-600 text-center">
                 나만의 일기 쓰기
@@ -207,7 +207,7 @@ export default async function HomePage() {
             <div className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer border-4 border-orange-200">
               <div className="text-6xl mb-4 text-center">🤖</div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-                라떼 친구
+                AI 친구
               </h3>
               <p className="text-gray-600 text-center">
                 AI 어시스턴트

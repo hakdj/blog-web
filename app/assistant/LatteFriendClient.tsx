@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -67,7 +68,7 @@ export default function LatteFriendClient() {
   const [activeTab, setActiveTab] = useState<'plan' | 'recommend' | 'chat' | 'summary' | 'extra'>('plan');
   const [error, setError] = useState('');
 
-  // 일정
+  // 나의 할 일
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskNote, setTaskNote] = useState('');
@@ -115,7 +116,7 @@ export default function LatteFriendClient() {
     try {
       const response = await fetch('/api/assistant/tasks');
       const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || '일정을 불러오지 못했습니다.');
+      if (!response.ok) throw new Error(data?.error || '할 일을 불러오지 못했습니다.'); // Changed '일정' to '할 일'
       setTasks(data.tasks || []);
     } catch (err) {
       setError((err as Error).message);
@@ -150,7 +151,7 @@ export default function LatteFriendClient() {
       setChatProvider(provider);
       setChatHasKey(hasKey);
       setChatLocked(!hasKey);
-      setChatNotice(hasKey ? '' : 'AI 키를 등록하면 라떼 상담을 이용할 수 있어요.');
+      setChatNotice(hasKey ? '' : 'AI 키를 등록하면 AI 상담을 이용할 수 있어요.'); // Changed '라떼 상담' to 'AI 상담'
     } catch {
       // 안내 문구는 기존 상태 유지
     }
@@ -202,7 +203,7 @@ export default function LatteFriendClient() {
   };
 
   const deleteTask = async (taskId: string) => {
-    if (!confirm('일정을 삭제할까요?')) return;
+    if (!confirm('할 일을 삭제할까요?')) return; // Changed '일정' to '할 일'
     try {
       const response = await fetch(`/api/assistant/tasks/${taskId}`, { method: 'DELETE' });
       const data = await response.json();
@@ -255,7 +256,7 @@ export default function LatteFriendClient() {
         if (response.status === 403) {
           setChatLocked(true);
           setChatHasKey(false);
-          setChatNotice('AI 키를 등록하면 라떼 상담을 이용할 수 있어요.');
+          setChatNotice('AI 키를 등록하면 AI 상담을 이용할 수 있어요.'); // Changed '라떼 상담' to 'AI 상담'
           return;
         }
         setChatNotice(data?.error || '상담에 실패했습니다. 잠시 후 다시 시도해주세요.');
@@ -357,8 +358,8 @@ export default function LatteFriendClient() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-orange-500 mb-2">라떼 친구</h1>
-        <p className="text-gray-600">일정, 취미, 상담, 요약까지 한 번에 관리해요</p>
+        <h1 className="text-3xl font-bold text-orange-500 mb-2">AI 친구</h1>
+        <p className="text-gray-600">나의 할 일, 취미, 상담, 기록 요약까지 한 번에 관리해요</p>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-6">
@@ -368,7 +369,7 @@ export default function LatteFriendClient() {
             activeTab === 'plan' ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-700'
           }`}
         >
-          일정 관리
+          나의 할 일
         </button>
         <button
           onClick={() => setActiveTab('recommend')}
@@ -384,7 +385,7 @@ export default function LatteFriendClient() {
             activeTab === 'chat' ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-700'
           }`}
         >
-          라떼 상담
+          AI 상담
         </button>
         <button
           onClick={() => setActiveTab('summary')}
@@ -413,7 +414,7 @@ export default function LatteFriendClient() {
       {activeTab === 'plan' && (
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl shadow p-5 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">오늘의 일정</h2>
+            <h2 className="text-lg font-bold text-gray-900">나의 할 일</h2>
             <input
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
@@ -438,13 +439,13 @@ export default function LatteFriendClient() {
               disabled={taskSaving}
               className="w-full bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700 disabled:opacity-50"
             >
-              {taskSaving ? '저장 중...' : '일정 추가'}
+              {taskSaving ? '저장 중...' : '할 일 추가'}
             </button>
           </div>
           <div className="lg:col-span-2 space-y-3">
             {sortedTasks.length === 0 ? (
               <div className="bg-white rounded-xl shadow p-6 text-center text-gray-600">
-                아직 등록된 일정이 없습니다.
+                아직 등록된 할 일이 없습니다.
               </div>
             ) : (
               sortedTasks.map((task) => (
@@ -524,7 +525,7 @@ export default function LatteFriendClient() {
               recommendations.map((item) => (
                 <a
                   key={item.id}
-                  href={item.link_url || '#'}
+                  href={item.link_url || '#'} 
                   target={item.link_url ? '_blank' : undefined}
                   rel={item.link_url ? 'noreferrer' : undefined}
                   className={`bg-white rounded-xl shadow p-5 space-y-2 block ${
@@ -567,7 +568,7 @@ export default function LatteFriendClient() {
               <span>{providerLabel(chatProvider)} API 키가 등록되었습니다.</span>
             ) : (
               <>
-                라떼 상담은 AI 키를 등록한 경우에만 사용할 수 있습니다.
+                AI 상담은 AI 키를 등록한 경우에만 사용할 수 있습니다.
                 <span className="ml-2 text-indigo-600">마이페이지에서 키를 등록해 주세요.</span>
               </>
             )}
@@ -586,7 +587,7 @@ export default function LatteFriendClient() {
           <div className="space-y-3 max-h-[420px] overflow-y-auto">
             {chatMessages.length === 0 ? (
               <div className="text-center text-gray-500">
-                고민이나 계획을 적어보세요. 라떼 친구가 도와줄게요.
+                고민이나 계획을 적어보세요. AI 친구가 도와줄게요.
               </div>
             ) : (
               chatMessages.map((msg, idx) => (
@@ -596,7 +597,7 @@ export default function LatteFriendClient() {
                     msg.role === 'user' ? 'bg-indigo-50 text-gray-900' : 'bg-gray-100 text-gray-700'
                   }`}
                 >
-                  <p className="text-sm font-semibold mb-1">{msg.role === 'user' ? '나' : '라떼 친구'}</p>
+                  <p className="text-sm font-semibold mb-1">{msg.role === 'user' ? '나' : 'AI 친구'}</p>
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 </div>
               ))

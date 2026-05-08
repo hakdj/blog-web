@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,31 +10,31 @@ import { usePathname, useRouter } from 'next/navigation';
 const SECTION_LINKS = [
   {
     href: '/games',
-    label: '게임',
+    label: '레트로 게임', // Changed from '게임'
     idle: 'bg-purple-100 text-purple-700 border-purple-300',
     active: 'bg-purple-500 text-white border-purple-600',
   },
   {
     href: '/events',
-    label: '일정',
+    label: '축제', // Changed from '일정'
     idle: 'bg-pink-100 text-pink-700 border-pink-300',
     active: 'bg-pink-500 text-white border-pink-600',
   },
   {
     href: '/products',
-    label: '상점',
+    label: '레트로 상점', // Changed from '상점'
     idle: 'bg-yellow-100 text-yellow-800 border-yellow-300',
     active: 'bg-yellow-500 text-white border-yellow-600',
   },
   {
     href: '/diary',
-    label: '일기',
+    label: '일기장', // Changed from '일기'
     idle: 'bg-green-100 text-green-700 border-green-300',
     active: 'bg-green-500 text-white border-green-600',
   },
   {
     href: '/assistant',
-    label: '친구',
+    label: 'AI 친구', // Changed from '친구'
     idle: 'bg-orange-100 text-orange-700 border-orange-300',
     active: 'bg-orange-500 text-white border-orange-600',
   },
@@ -214,4 +215,3 @@ export default function Header() {
     </header>
   );
 }
-
